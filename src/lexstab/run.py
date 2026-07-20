@@ -40,10 +40,11 @@ INVOCATIONS_PER_ARCH = {
     "M0_NO_MEMORY": 1, "M1_STATIC_GLOSSARY": 1, "M2_RETRIEVED_MEMORY": 1,
     "M3_CANONICAL_RESOLVER": 2, "M4_PERSONALIZED_MEMORY": 1,
     "P0_RAW_PROPOSAL": 1, "P1_CLARIFY_PROPOSAL": 1, "P2_CANONICAL_PROPOSAL": 2,
+    "P2F_CANONICAL_FACTS_PROPOSAL": 1,
     "P3_CANONICAL_PROCEDURE_PROPOSAL": 2, "P4_CANONICAL_PROCEDURE_TOOL": 2,
     "LP0_LANGUAGE_THROUGHOUT": 7, "LP0G_GOLD_START_LANGUAGE": 7,
     "LP1_CANONICAL_ONCE": 5, "LP2_CANONICAL_PROCEDURE": 5, "LP3_CANONICAL_PROCEDURE_TOOL": 5,
-    "AL_RAW": 4, "AL_CANONICAL": 4, "AL_RENDERED": 4, "AL_DRIFT": 6,
+    "AL_RAW": 4, "AL_CANONICAL": 5, "AL_RENDERED": 5, "AL_DRIFT": 8,
 }
 
 DEFAULT_COST_PER_CALL_USD = 0.01  # dry-run planning placeholder; real costs come from providers
@@ -63,6 +64,39 @@ def _git_revision(root: Path) -> str | None:
         return None
 
 
+def required_model_roles(run_config: RunConfig) -> set[str]:
+    """Return exactly the enabled roles the selected matrix can invoke."""
+    needed_roles = {"execution_primary"}
+    enabled_architectures = {
+        architecture
+        for track in run_config.tracks.values()
+        if isinstance(track, dict) and track.get("enabled")
+        for architecture in (track.get("architectures") or track.get("conditions") or [])
+    }
+    if enabled_architectures & {
+        "B_RUNTIME", "C_RUNTIME", "B_EXTERNAL_GATE", "B_EXTERNAL_GATE_GOLD",
+        "M3_CANONICAL_RESOLVER", "P2_CANONICAL_PROPOSAL",
+        "P3_CANONICAL_PROCEDURE_PROPOSAL", "P4_CANONICAL_PROCEDURE_TOOL",
+        "LP1_CANONICAL_ONCE",
+        "LP2_CANONICAL_PROCEDURE", "LP3_CANONICAL_PROCEDURE_TOOL",
+        "AL_CANONICAL", "AL_RENDERED", "AL_DRIFT",
+    }:
+        needed_roles.add("boundary_canonicalizer")
+    if enabled_architectures & {"B_EXTERNAL_GATE", "B_EXTERNAL_GATE_GOLD"}:
+        needed_roles.add("adequacy_assessor")
+    progressive = run_config.tracks.get("progressive_formalization", {})
+    if (
+        progressive.get("enabled")
+        and progressive.get("run_component_ablations")
+        and "P3_CANONICAL_PROCEDURE_PROPOSAL" in progressive.get("conditions", [])
+    ):
+        needed_roles.add("procedure_router")
+    agent_loop = run_config.tracks.get("agent_loop", {})
+    if agent_loop.get("enabled") and "AL_DRIFT" in agent_loop.get("conditions", []):
+        needed_roles.add("authoring_generator")
+    return needed_roles
+
+
 def build_run_context(
     root: Path,
     run_config: RunConfig,
@@ -71,7 +105,13 @@ def build_run_context(
     mock_script: dict[str, Any] | None = None,
 ) -> tuple[RunContext, Matrix, ModelsConfig]:
     bench = FrozenBenchmark(root, root / run_config.benchmark_manifest)
-    models_config = load_models_config(root / run_config.model_config_path, strict_env=False)
+    needed_roles = required_model_roles(run_config)
+
+    models_config = load_models_config(
+        root / run_config.model_config_path,
+        strict_env=True,
+        strict_roles=needed_roles,
+    )
     violations = validate_role_separation(models_config)
     if violations and not models_config.separation_policy.allow_role_overlap:
         raise RunError("role separation policy violated:\n" + "\n".join(violations))
@@ -90,11 +130,17 @@ def build_run_context(
             )
 
     providers = {}
-    needed_roles = {"execution_primary", "boundary_canonicalizer", "adequacy_assessor", "procedure_router"}
     for role_name in needed_roles:
         role = models_config.roles.get(role_name)
-        if role and role.enabled:
-            providers[role_name] = build_provider(role, mock_script=mock_script)
+        if role is None or not role.enabled:
+            raise RunError(f"required model role {role_name!r} is not enabled")
+        if not role.model_id:
+            raise RunError(f"required model role {role_name!r} has no resolved model ID")
+        adapter = build_provider(role, mock_script=mock_script)
+        adapter.max_transport_retries = int(
+            run_config.execution.get("transport_retries", 3)
+        )
+        providers[role_name] = adapter
 
     matrix = expand_matrix(bench, run_config)
     ctx = RunContext(
@@ -105,7 +151,7 @@ def build_run_context(
         providers=providers,
         run_id=run_id or f"run-{uuid.uuid4().hex[:12]}",
         run_clock=run_config.run_clock,
-        mocked=all(
+        mocked=any(
             models_config.roles[name].provider == "mock"
             for name in providers
             if name in models_config.roles
@@ -165,6 +211,7 @@ def write_run_manifest(
         persistence_conditions=formal.get("persistence_conditions", []),
         repetitions=run_config.repetitions,
         concurrency=int(run_config.execution.get("concurrency", 1)),
+        evaluation=run_config.evaluation,
         tracing=run_config.tracing,
         environment={
             "platform": platform.platform(),
@@ -203,10 +250,16 @@ def dry_run_report(matrix: Matrix, run_config: RunConfig) -> dict[str, Any]:
     }
 
 
-def _write_result(run_dir: Path, result: CellResult) -> None:
+def _write_result(run_dir: Path, result: CellResult, tracing: dict[str, Any]) -> None:
     jsonl_append(run_dir / "cell-results.jsonl", result.summary())
     for record in result.invocations:
-        jsonl_append(run_dir / "invocations.jsonl", record.model_dump())
+        row = record.model_dump()
+        if not tracing.get("include_prompts", True):
+            row["messages"] = []
+            row["tools"] = None
+        if not tracing.get("include_raw_responses", True):
+            row["raw_response"] = None
+        jsonl_append(run_dir / "invocations.jsonl", row)
     for ledger_record in result.ledger:
         jsonl_append(run_dir / "representation-ledger.jsonl", ledger_record.model_dump())
     for event in result.simulator_events:
@@ -260,14 +313,14 @@ def execute_run(
         results = []
         for index, cell in enumerate(ordered):
             result = _run_one(cell)
-            _write_result(run_dir, result)
+            _write_result(run_dir, result, run_config.tracing)
             results.append(result)
             if progress and (index + 1) % 25 == 0:
                 progress(f"{index + 1}/{len(ordered)} cells")
     else:
         with concurrent.futures.ThreadPoolExecutor(max_workers=concurrency) as pool:
             for result in pool.map(_run_one, ordered):
-                _write_result(run_dir, result)
+                _write_result(run_dir, result, run_config.tracing)
 
     json_write(run_dir / "run-summary.json", {
         "run_id": ctx.run_id,

@@ -38,6 +38,7 @@ class ProviderResponse:
     fingerprint: str | None = None
     provider_request_id: str | None = None
     cost_estimate: float | None = None
+    accepted_parameters: dict[str, Any] = field(default_factory=dict)
 
 
 class ModelProvider(Protocol):
@@ -198,7 +199,10 @@ class BaseAdapter:
             tools=tools,
             response_schema_id=metadata.get("response_schema_id"),
             requested_parameters=parameters,
-            accepted_parameters=metadata.get("accepted_parameters"),
+            accepted_parameters=(
+                response.accepted_parameters
+                or (dict(parameters) if self.name == "mock" else {})
+            ),
             raw_response=response.raw,
             normalized_text=response.text,
             tool_calls=response.tool_calls,

@@ -124,8 +124,14 @@ def benjamini_hochberg(pvalues: dict[str, float], alpha: float = 0.05) -> dict[s
     for rank, (name, p) in enumerate(items, start=1):
         if p <= alpha * rank / m:
             max_significant_rank = rank
-    for rank, (name, p) in enumerate(items, start=1):
-        adjusted = min(1.0, p * m / rank)
+    raw_adjusted = [min(1.0, p * m / rank) for rank, (_name, p) in enumerate(items, start=1)]
+    # BH adjusted values are the reverse cumulative minimum of the raw
+    # rank-scaled values. Without this monotonicity step, adjacent hypotheses
+    # can receive invalid, decreasing adjusted p-values.
+    adjusted_values = list(raw_adjusted)
+    for index in range(len(adjusted_values) - 2, -1, -1):
+        adjusted_values[index] = min(adjusted_values[index], adjusted_values[index + 1])
+    for rank, ((name, p), adjusted) in enumerate(zip(items, adjusted_values), start=1):
         out[name] = {
             "p": p,
             "bh_adjusted": adjusted,

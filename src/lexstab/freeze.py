@@ -34,7 +34,7 @@ from lexstab.artifacts import (
     verify_frozen_file,
     verify_frozen_rows,
 )
-from lexstab.hashing import hash_file, root_hash, stamp_content_hash
+from lexstab.hashing import hash_file, hash_json_artifact, root_hash, stamp_content_hash
 from lexstab.prompts import PromptLibrary
 from lexstab.simulators.support_domain import recompute_gold_state
 
@@ -343,6 +343,9 @@ class FrozenBenchmark:
         self.root = root
         self.manifest_path = manifest_path
         raw = json_read(manifest_path)
+        if "suite_id" in raw:
+            self._load_regression_overlay(raw)
+            return
         self.manifest = models.BenchmarkManifest.model_validate(raw)
 
         # Verify every artifact hash before use (spec §13.7, §49.2).
@@ -399,6 +402,99 @@ class FrozenBenchmark:
         self.elicitation: dict[str, models.ElicitationCase] = {}
         for file in self.manifest.elicitation_cases.files:
             self.elicitation.update(load_elicitation_cases(root, file))
+
+    def _load_regression_overlay(self, suite: dict[str, Any]) -> None:
+        """Load a promoted regression suite over its frozen base benchmark.
+
+        The embedded, human-approved requests become the only request stimuli,
+        while cases, ontology, contexts, procedures, renderings, interfaces,
+        and prompts remain hash-verified artifacts from the pinned base.
+        """
+        required = {
+            "suite_id", "suite_version", "base_benchmark_manifest",
+            "request_ids", "requests", "request_hashes",
+        }
+        missing = sorted(required - set(suite))
+        if missing:
+            raise ArtifactError(f"regression suite missing fields: {missing}")
+        base_path = self.root / suite["base_benchmark_manifest"]
+        if base_path.resolve() == self.manifest_path.resolve():
+            raise ArtifactError("regression suite cannot use itself as its base benchmark")
+        base = FrozenBenchmark(self.root, base_path)
+        requests: dict[str, models.NLRequest] = {}
+        for row in suite["requests"]:
+            request_id = row.get("request_id")
+            expected_hash = suite["request_hashes"].get(request_id)
+            actual_hash = hash_json_artifact(row)
+            if expected_hash != actual_hash:
+                raise ArtifactError(
+                    f"regression request {request_id} hash mismatch"
+                )
+            request = models.NLRequest.model_validate(row)
+            if request.request_id not in suite["request_ids"]:
+                raise ArtifactError(
+                    f"regression request {request.request_id} is not listed in request_ids"
+                )
+            if request.case_id not in base.cases:
+                raise ArtifactError(
+                    f"regression request {request.request_id}: unknown case {request.case_id}"
+                )
+            if request.labels.context_id and request.labels.context_id not in base.contexts:
+                raise ArtifactError(
+                    f"regression request {request.request_id}: unknown context "
+                    f"{request.labels.context_id}"
+                )
+            requests[request.request_id] = request
+        if set(requests) != set(suite["request_ids"]):
+            raise ArtifactError("regression suite request_ids do not match embedded requests")
+
+        # Copy every verified base artifact, then replace only the stimulus set
+        # and the split case lists. All split names resolve to the promoted case
+        # set so CLI split selection remains deterministic for regression runs.
+        self.domain = base.domain
+        promoted_case_ids = sorted({request.case_id for request in requests.values()})
+        self.cases = {case_id: base.cases[case_id] for case_id in promoted_case_ids}
+        self.requests = requests
+        self.contexts = base.contexts
+        self.renderings = base.renderings
+        self.procedures = base.procedures
+        self.interfaces = base.interfaces
+        self.memory = base.memory
+        self.elicitation = {
+            key: value for key, value in base.elicitation.items()
+            if value.linked_case_id in self.cases
+            and value.initial_request_id in self.requests
+        }
+        suite_hash = hash_json_artifact(suite)
+        combined_hash = root_hash({
+            "base_benchmark": base.manifest.artifact_root_hash,
+            "regression_suite": suite_hash,
+        })
+        requests_section = base.manifest.requests.model_copy(
+            update={"ids": sorted(requests)}
+        )
+        self.manifest = base.manifest.model_copy(
+            deep=True,
+            update={
+                "benchmark_id": suite["suite_id"],
+                "benchmark_version": suite["suite_version"],
+                "artifact_root_hash": combined_hash,
+                "cases": base.manifest.cases.model_copy(update={"ids": promoted_case_ids}),
+                "requests": requests_section,
+                "splits": {
+                    name: list(promoted_case_ids)
+                    for name in ("development", "validation", "test")
+                },
+                "changelog": [
+                    *base.manifest.changelog,
+                    {
+                        "version": suite["suite_version"],
+                        "change": "regression-suite overlay",
+                        "approved_by": suite.get("promotion", {}).get("approved_by", "operator"),
+                    },
+                ],
+            },
+        )
 
     def requests_for_case(self, case_id: str) -> list[models.NLRequest]:
         return [req for req in self.requests.values() if req.case_id == case_id]

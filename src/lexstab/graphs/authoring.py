@@ -125,7 +125,7 @@ def node_deduplicate(state: AuthoringState) -> dict:
 def node_route_review(state: AuthoringState) -> dict:
     ctx: auth.AuthoringContext = state["ctx"]
     case = ctx.cases[state["case_id"]]
-    generator_model = ctx.models_config.role("authoring_generator").model_id or "mock"
+    generator_model = ctx.models_config.role("authoring_generator").model_id or ""
     existing_ids = {row["request_id"] for row in state.get("existing", [])}
     accepted, rejected, review = [], [], []
     for candidate, equivalence, adversarial, adequacy, ambiguity in zip(

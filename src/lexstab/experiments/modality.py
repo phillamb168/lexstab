@@ -34,7 +34,10 @@ def run_modality_experiment(
     root: Path, dataset_path: Path, models_path: str, output: Path,
 ) -> dict[str, Any]:
     prompts = PromptLibrary(root / "prompts")
-    models_config = load_models_config(root / models_path, strict_env=False)
+    models_config = load_models_config(
+        root / models_path, strict_env=True,
+        strict_roles={"boundary_canonicalizer"},
+    )
     role = models_config.role("boundary_canonicalizer")
     adapter = build_provider(role)
     rows = []
@@ -45,7 +48,7 @@ def run_modality_experiment(
                 continue
             record = adapter.invoke(
                 role="boundary_canonicalizer",
-                model_id=role.model_id or "mock",
+                model_id=role.model_id or "",
                 messages=[{
                     "role": "system",
                     "content": prompts.get("engineering-canonicalizer.v1").render(user_request=text),

@@ -291,7 +291,8 @@ def _executive_summary(metrics: dict, scores: list[dict], run_manifest: dict) ->
     }
     labels = {
         "canonical state (gold intent vs raw request)": "canonical state",
-        "procedure content (gold P2 vs gold P3)": "procedure content",
+        "procedure information (gold P2 vs unordered fact control)": "procedure facts",
+        "procedure structure and named handle (fact control vs gold P3)": "procedure structure",
         "action interface (gold P3 vs gold P4)": "action interface",
     }
     measured = [
@@ -303,7 +304,9 @@ def _executive_summary(metrics: dict, scores: list[dict], run_manifest: dict) ->
         readout = "; ".join(
             f"{label} delta {_fmt(estimate)} ({verdict})" for label, estimate, verdict in sorted(measured)
         )
-        if best[0] in ("procedure content", "action interface") and best[2] == "exceeds_practical_margin":
+        if best[0] in (
+            "procedure facts", "procedure structure", "action interface"
+        ) and best[2] == "exceeds_practical_margin":
             answer14 = (
                 f"Yes: the **{best[0]}** component explains more of the gain than lexical "
                 f"normalization or canonical intent ({readout})."
@@ -316,7 +319,7 @@ def _executive_summary(metrics: dict, scores: list[dict], run_manifest: dict) ->
     else:
         answer14 = "Component ablations were not measured in this run."
     lines += [
-        "14. **Did reusable procedure content or the typed action interface explain more "
+        "14. **Did reusable procedure facts, structure, or the typed action interface explain more "
         "of the gain than lexical normalization?** " + answer14, "",
     ]
     return lines

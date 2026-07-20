@@ -159,7 +159,14 @@ def _procedure_adherence(
     checks = {
         "PRECONDITIONS_ENFORCED": preconditions_enforced,
         "CANONICAL_ARGUMENTS_PRESERVED": args_preserved,
-        "UNRELATED_STATE_UNCHANGED": True,  # refined below via final-state score
+        "UNRELATED_STATE_UNCHANGED": (
+            expected.get("resulting_state") is None
+            or (
+                result.get("final_state") is not None
+                and normalize_state(result["final_state"])
+                == normalize_state(expected["resulting_state"])
+            )
+        ),
         "single_action_proposal": single_proposal,
     }
     required = list(contract.registered_checks) + list(contract.required_observable_events)
@@ -234,6 +241,11 @@ def score_cell(
     case = bench.cases[result["case_id"]]
     request = bench.requests.get(result["request_id"]) if result.get("request_id") else None
     expected = expected_outcome(bench, case, request, run_clock)
+    # An elicitation cell is scored against the resolved task only after the
+    # scripted user has supplied the missing information. Before resolution,
+    # the original CLARIFY expectation remains authoritative.
+    if result.get("track") == "intent_elicitation" and result.get("resolved"):
+        expected = expected_outcome(bench, case, None, run_clock)
 
     decision = result.get("decision")
     behavior = _decision_to_behavior(decision)
@@ -283,7 +295,8 @@ def score_cell(
 
     # clarification/false action (§38.4)
     any_action = any(
-        event.get("event_type") == "accepted" for event in result.get("simulator_events", [])
+        event.get("event_type") == "attempted"
+        for event in result.get("simulator_events", [])
     )
     clarification_outcome = None
     false_action = False
@@ -301,6 +314,12 @@ def score_cell(
         contrast_correct = bool(full_call and (final_state_correct is not False))
 
     procedure_ad = _procedure_adherence(bench, result, result.get("procedure_id"), expected)
+    selection_events = result.get("procedure_events") or []
+    selection_correct = None
+    if result.get("procedure_selection") == "runtime":
+        runtime_events = [event for event in selection_events if event.get("mode") == "runtime"]
+        if runtime_events:
+            selection_correct = all(bool(event.get("correct")) for event in runtime_events)
     persistence = _persistence_metrics(ledger_rows)
     divergence = _first_divergence(result, expected, case)
     if persistence:
@@ -324,6 +343,31 @@ def score_cell(
     if not schema_valid and not error_category:
         error_category = "invalid_output_schema"
 
+    parity_evidence = next(
+        (
+            stage.get("output")
+            for stage in result.get("stage_outputs") or []
+            if stage.get("stage") == "information_parity"
+        ),
+        None,
+    )
+    assessment = next(
+        (
+            trace.get("assessment")
+            for trace in result.get("elicitation_trace") or []
+            if isinstance(trace.get("assessment"), dict)
+        ),
+        None,
+    )
+    adequacy_assessment_correct = None
+    if assessment is not None and request is not None:
+        adequacy_assessment_correct = bool(
+            assessment.get("adequacy") == request.labels.adequacy.value
+            and assessment.get("ambiguity") == request.labels.ambiguity.value
+            and set(assessment.get("missing_information") or [])
+            == set(request.labels.missing_information)
+        )
+
     return models.ScoreRecord(
         run_id=run_manifest.get("run_id", ""),
         cell_id=result["cell_id"],
@@ -341,6 +385,12 @@ def score_cell(
         ),
         schema_valid=schema_valid,
         decision=decision,
+        actual_operation_id=(
+            proposal.get("operation_id")
+            or bench.domain.tool_to_operation().get(actual_tool or "")
+        ),
+        actual_tool=actual_tool,
+        actual_arguments=actual_args,
         decision_correct=decision_correct,
         tool_correct=tool_correct,
         argument_field_results=norm_fields,
@@ -375,10 +425,21 @@ def score_cell(
             "ambiguity": request.labels.ambiguity.value if request else "UNAMBIGUOUS",
             "lexical_equivalence": request.labels.lexical_equivalence.value if request else "NOT_APPLICABLE",
             "variation_axes": request.labels.variation_axes if request else [],
+            "missing_information": request.labels.missing_information if request else [],
+            "clarification_targets": case.gold.clarification_targets or [],
+            "expected_operation_id": expected.get("operation_id"),
+            "expected_arguments": expected.get("arguments") or {},
+            "is_designated_canonical": bool(
+                request
+                and "canonical_terminology" in request.labels.variation_axes
+                and request.labels.contains_canonical_entity_term
+                and request.labels.contains_canonical_operation_term
+            ),
             "lexical_distance_band": request.labels.lexical_distance_band if request else None,
             "primary_h1": bool(request and request.is_primary_h1()),
             "intent_mode": result.get("intent_mode"),
             "procedure_selection": result.get("procedure_selection"),
+            "procedure_selection_correct": selection_correct,
             "procedure_packaging": result.get("procedure_packaging"),
             "family_id": case.family_id,
             "first_divergence_stage": divergence,
@@ -386,5 +447,13 @@ def score_cell(
             "resolved": result.get("resolved"),
             "elicitation_case_id": result.get("elicitation_case_id"),
             "canonicalization_status": (result.get("canonicalization") or {}).get("status"),
+            "adequacy_assessment_correct": adequacy_assessment_correct,
+            "information_parity_verified": bool(
+                parity_evidence and parity_evidence.get("verified")
+                and parity_evidence.get("common_facts_hash")
+            ),
+            "common_facts_hash": (
+                parity_evidence.get("common_facts_hash") if parity_evidence else None
+            ),
         },
     )

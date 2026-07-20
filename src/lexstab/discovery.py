@@ -73,7 +73,7 @@ def discover_renderings(
         for sample_index in range(samples):
             record = provider.invoke(
                 role=role,
-                model_id=role_config.model_id or "mock",
+                model_id=role_config.model_id or "",
                 messages=[{
                     "role": "system",
                     "content": prompt.render(
@@ -119,7 +119,7 @@ def discover_renderings(
             "definition": op.description or op.display_name,
             "discovery": {
                 "provider": role_config.provider,
-                "model_id": role_config.model_id or "mock",
+                "model_id": role_config.model_id or "",
                 "prompt_id": "lexical-convergence.v1",
                 "sample_count": samples,
                 "normalized_label_count": modal_count,

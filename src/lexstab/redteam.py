@@ -94,7 +94,7 @@ def run_redteam(
     generated: list[dict] = []
     existing_ids: set[str] = set()
     target_cases = sorted({cluster["case_id"] for cluster in clusters})
-    generator_model = ctx.models_config.role("authoring_generator").model_id or "mock"
+    generator_model = ctx.models_config.role("authoring_generator").model_id or ""
     for case_id in target_cases:
         if len(generated) >= max_candidates:
             break

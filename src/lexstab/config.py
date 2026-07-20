@@ -30,6 +30,7 @@ ROLE_NAMES = [
     "evaluation_judge",
     "failure_analyst",
 ]
+PROVIDER_NAMES = {"mock", "anthropic", "openai", "openrouter"}
 
 
 class ConfigError(Exception):
@@ -104,22 +105,44 @@ class ModelsConfig:
         return cfg
 
 
-def load_models_config(path: str | Path, *, strict_env: bool = False) -> ModelsConfig:
+def load_models_config(
+    path: str | Path,
+    *,
+    strict_env: bool = False,
+    strict_roles: set[str] | None = None,
+) -> ModelsConfig:
     raw = yaml.safe_load(Path(path).read_text())
     if not isinstance(raw, dict) or "roles" not in raw:
         raise ConfigError(f"{path}: missing 'roles' section")
     roles: dict[str, RoleConfig] = {}
-    for name, spec in raw["roles"].items():
+    for name, raw_spec in raw["roles"].items():
         if name not in ROLE_NAMES:
             raise ConfigError(f"{path}: unknown role {name!r}")
-        spec = substitute_env(spec, strict=strict_env)
+        # Disabled roles must not force operators to configure credentials or
+        # model IDs that the selected run cannot use. Enabled roles are strict
+        # in execution paths, so a missing model can never become an implicit
+        # mock invocation.
+        enabled = bool((raw_spec or {}).get("enabled", True))
+        if "provider" not in (raw_spec or {}):
+            raise ConfigError(f"{path}: role {name!r} must declare an explicit provider")
+        spec = substitute_env(
+            raw_spec,
+            strict=strict_env and enabled and (
+                strict_roles is None or name in strict_roles
+            ),
+        )
+        provider = spec.get("provider")
+        if provider not in PROVIDER_NAMES:
+            raise ConfigError(
+                f"{path}: role {name!r} has unknown provider {provider!r}"
+            )
         roles[name] = RoleConfig(
             name=name,
-            provider=spec.get("provider", "mock"),
+            provider=provider,
             model_id=spec.get("model"),
             purpose=spec.get("purpose", ""),
             parameters=spec.get("parameters", {}) or {},
-            enabled=spec.get("enabled", True),
+            enabled=enabled,
             baseline_eligible=bool(spec.get("baseline_eligible", False)),
             capabilities=spec.get("capabilities", {}) or {},
         )
@@ -242,6 +265,11 @@ def load_run_config(path: str | Path) -> RunConfig:
                 "execution.semantic_retries must be 0 unless an explicit "
                 "retry_policy_experiment condition list is configured"
             )
+    if config.tracing.get("local_jsonl", True) is not True:
+        raise ConfigError(
+            "tracing.local_jsonl must remain true because local artifacts are "
+            "the reproducible source of truth"
+        )
     return config
 
 

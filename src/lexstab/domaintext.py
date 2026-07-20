@@ -122,6 +122,26 @@ def procedure_text(procedure: Procedure, packaging: str = "inline") -> str:
     return content
 
 
+def procedure_fact_control_text(procedure: Procedure) -> str:
+    """Render procedure content without its name, handle, steps, or ordering.
+
+    This is the P2F information-parity control. It preserves the unordered
+    inputs, constraints, and behavioral content that P3 receives, but removes
+    the named procedure and sequential structure whose incremental effect the
+    P2F-to-P3 comparison is intended to estimate.
+    """
+    body = {
+        "applicable_operations": sorted(procedure.applies_to_operation_ids),
+        "required_inputs": sorted(procedure.required_inputs),
+        "unordered_task_constraints": sorted(
+            step.instruction for step in procedure.steps
+        ),
+        "forbidden_behaviors": sorted(procedure.forbidden_behaviors),
+        "output_contract": procedure.output_contract,
+    }
+    return json.dumps(body, indent=2, sort_keys=True)
+
+
 def glossary_text(records: list[Any]) -> str:
     lines = []
     for record in records:

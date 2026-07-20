@@ -93,6 +93,35 @@
       ],
       "title": "Decision"
     },
+    "actual_operation_id": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Actual Operation Id"
+    },
+    "actual_tool": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Actual Tool"
+    },
+    "actual_arguments": {
+      "additionalProperties": true,
+      "title": "Actual Arguments",
+      "type": "object"
+    },
     "decision_correct": {
       "title": "Decision Correct",
       "type": "boolean"

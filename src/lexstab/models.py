@@ -68,6 +68,7 @@ ARCHITECTURES = [
     "P0_RAW_PROPOSAL",
     "P1_CLARIFY_PROPOSAL",
     "P2_CANONICAL_PROPOSAL",
+    "P2F_CANONICAL_FACTS_PROPOSAL",
     "P3_CANONICAL_PROCEDURE_PROPOSAL",
     "P4_CANONICAL_PROCEDURE_TOOL",
     "LP0_LANGUAGE_THROUGHOUT",
@@ -614,6 +615,7 @@ class RunManifest(StrictModel):
     persistence_conditions: list[str] = Field(default_factory=list)
     repetitions: int
     concurrency: int
+    evaluation: dict[str, Any] = Field(default_factory=dict)
     tracing: dict[str, Any]
     environment: dict[str, str]
     research_overrides: dict[str, Any] = Field(default_factory=dict)
@@ -672,6 +674,9 @@ class ScoreRecord(StrictModel):
     model_id: str
     schema_valid: bool
     decision: str | None
+    actual_operation_id: str | None = None
+    actual_tool: str | None = None
+    actual_arguments: dict[str, Any] = Field(default_factory=dict)
     decision_correct: bool
     tool_correct: bool | None
     argument_field_results: dict[str, bool] = Field(default_factory=dict)

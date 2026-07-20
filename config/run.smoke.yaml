@@ -44,6 +44,7 @@ tracks:
     generic_action_interface: "dataset/interfaces/generic-action-proposal.json"
     typed_action_interfaces: "dataset/interfaces/typed-tools/support.jsonl"
     run_cumulative_ladder: true
+    # Adds the P2F unordered fact-control condition.
     run_component_ablations: true
     run_language_persistence_ablation: true
   post_canonical:
@@ -55,6 +56,7 @@ tracks:
       - "E_ORGANIZATION_TERM"
   agent_loop:
     enabled: false
+    intent_modes: ["gold"]
     conditions:
       - "AL_RAW"
       - "AL_CANONICAL"

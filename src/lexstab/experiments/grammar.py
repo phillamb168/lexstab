@@ -73,14 +73,16 @@ def run_grammar_experiment(
         raise ValueError(f"unknown condition {condition}; options: {sorted(CONDITION_PROMPTS)}")
     prompt_id, term_vars = CONDITION_PROMPTS[condition]
     prompts = PromptLibrary(root / "prompts")
-    models_config = load_models_config(root / models_path, strict_env=False)
+    models_config = load_models_config(
+        root / models_path, strict_env=True, strict_roles={"execution_primary"}
+    )
     role = models_config.role("execution_primary")
     adapter = build_provider(role)
     rows = []
     for item in jsonl_read(dataset_path):
         record = adapter.invoke(
             role="execution_primary",
-            model_id=role.model_id or "mock",
+            model_id=role.model_id or "",
             messages=[{
                 "role": "system",
                 "content": prompts.get(prompt_id).render(text=item["text"], **term_vars),

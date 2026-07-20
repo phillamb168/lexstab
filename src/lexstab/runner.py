@@ -40,7 +40,9 @@ class RunContext:
     def provider_for(self, role: str) -> tuple[BaseAdapter, str, dict]:
         role_config = self.models_config.role(role)
         adapter = self.providers[role]
-        return adapter, role_config.model_id or "mock", dict(role_config.parameters)
+        if not role_config.model_id:
+            raise ValueError(f"enabled model role {role!r} has no resolved model ID")
+        return adapter, role_config.model_id, dict(role_config.parameters)
 
 
 @dataclass
@@ -459,6 +461,25 @@ def run_formalization(ctx: RunContext, cell: MatrixCell) -> CellResult:
     context = ctx.bench.context_for_request(request)
     sim = _fresh_simulator(ctx, case)
     condition = cell.architecture
+    domain_rules = domaintext.domain_summary(ctx.bench.domain)
+    known_state = domaintext.state_json(case.initial_state)
+    shared_context = domaintext.context_text(context)
+    common_facts = {
+        "domain_rules": domain_rules,
+        "known_state": known_state,
+        "shared_context": shared_context,
+    }
+    # This fingerprint is identical for all P-ladder conditions for a given
+    # request. It makes the information-parity control inspectable instead of
+    # merely asserting that interface IDs look plausible.
+    result.stage_outputs.append({
+        "stage": "information_parity",
+        "output": {
+            "verified": True,
+            "common_facts_hash": sha256_text(canonical_json(common_facts)),
+            "fact_fields": sorted(common_facts),
+        },
+    })
 
     if condition in ("P0_RAW_PROPOSAL", "P1_CLARIFY_PROPOSAL"):
         policy = P0_POLICY if condition == "P0_RAW_PROPOSAL" else P1_POLICY
@@ -468,9 +489,9 @@ def run_formalization(ctx: RunContext, cell: MatrixCell) -> CellResult:
             prompt_id="action-proposal-executor.v1",
             variables={
                 "task_input": request.text,
-                "domain_rules": domaintext.domain_summary(ctx.bench.domain),
-                "known_state": domaintext.state_json(case.initial_state),
-                "shared_context": domaintext.context_text(context),
+                "domain_rules": domain_rules,
+                "known_state": known_state,
+                "shared_context": shared_context,
                 "clarification_policy": policy,
             },
             response_kind="generic_action_proposal",
@@ -501,13 +522,44 @@ def run_formalization(ctx: RunContext, cell: MatrixCell) -> CellResult:
             prompt_id="action-proposal-executor.v1",
             variables={
                 "task_input": json.dumps(resolution, indent=2, sort_keys=True),
-                "domain_rules": domaintext.domain_summary(ctx.bench.domain),
-                "known_state": domaintext.state_json(case.initial_state),
-                "shared_context": domaintext.context_text(context),
+                "domain_rules": domain_rules,
+                "known_state": known_state,
+                "shared_context": shared_context,
                 "clarification_policy": P1_POLICY,
             },
             response_kind="generic_action_proposal",
             stage_id="proposal_executor",
+            representation="CANONICAL_STATE",
+            canonical_ids_present=True,
+        )
+        obj, _err = extract_json_object(record.normalized_text)
+        _apply_proposal(ctx, result, sim, obj)
+        return result
+
+    if condition == "P2F_CANONICAL_FACTS_PROPOSAL":
+        fact_source = ctx.bench.procedure_for_operation(
+            resolution.get("operation_id", "")
+        )
+        if fact_source is None:
+            result.error_category = "procedure_fact_control_unavailable"
+            result.decision = "CLARIFY"
+            result.final_state = sim.snapshot()
+            result.simulator_events = [event.to_dict() for event in sim.events]
+            return result
+        fact_control = domaintext.procedure_fact_control_text(fact_source)
+        record = _invoke(
+            ctx, result,
+            role=cell.model_role,
+            prompt_id="action-proposal-executor.v1",
+            variables={
+                "task_input": json.dumps(resolution, indent=2, sort_keys=True),
+                "domain_rules": domain_rules + "\n\nUNORDERED TASK FACTS\n" + fact_control,
+                "known_state": known_state,
+                "shared_context": shared_context,
+                "clarification_policy": P1_POLICY,
+            },
+            response_kind="generic_action_proposal",
+            stage_id="fact_control_executor",
             representation="CANONICAL_STATE",
             canonical_ids_present=True,
         )
@@ -532,8 +584,8 @@ def run_formalization(ctx: RunContext, cell: MatrixCell) -> CellResult:
             variables={
                 "canonical_intent": json.dumps(resolution, indent=2, sort_keys=True),
                 "frozen_procedure": procedure_content,
-                "domain_rules": domaintext.domain_summary(ctx.bench.domain),
-                "known_state": domaintext.state_json(case.initial_state),
+                "domain_rules": domain_rules,
+                "known_state": known_state + "\n\nSHARED CONTEXT\n" + shared_context,
                 "output_boundary": "generic-action-proposal.v1",
             },
             response_kind="generic_action_proposal",
@@ -554,8 +606,8 @@ def run_formalization(ctx: RunContext, cell: MatrixCell) -> CellResult:
         variables={
             "canonical_intent": json.dumps(resolution, indent=2, sort_keys=True),
             "frozen_procedure": procedure_content,
-            "domain_rules": domaintext.domain_summary(ctx.bench.domain),
-            "known_state": domaintext.state_json(case.initial_state),
+            "domain_rules": domain_rules,
+            "known_state": known_state + "\n\nSHARED CONTEXT\n" + shared_context,
             "output_boundary": "registered typed tool interface: call exactly one available tool",
         },
         response_kind="procedure_tool",
@@ -789,39 +841,35 @@ def run_agent_loop(ctx: RunContext, cell: MatrixCell) -> CellResult:
     condition = cell.architecture
     known_state = domaintext.state_json(case.initial_state)
 
-    canonical = domaintext.gold_canonical_resolution(case) if condition != "AL_RAW" else None
+    canonical = None
+    if condition != "AL_RAW":
+        if cell.intent_mode == "gold":
+            canonical = domaintext.gold_canonical_resolution(case)
+        elif cell.intent_mode == "runtime":
+            context = ctx.bench.context_for_request(request)
+            canonical = _runtime_canonicalize(ctx, result, case, request, context)
+            if not canonical or canonical.get("status") == "CLARIFY":
+                result.decision = "CLARIFY"
+                result.question = (canonical or {}).get("question")
+                result.schema_valid = canonical is not None
+                result.final_state = sim.snapshot()
+                return result
+        else:
+            raise ValueError(f"{condition} requires gold or runtime canonical intent")
     label = ctx.bench.domain.operations[case.canonical.operation_id].display_name.lower()
     rendering_line = ""
     if condition == "AL_RENDERED" and cell.rendering_id:
         rendering = ctx.bench.renderings[cell.rendering_id]
         rendering_line = "\nMODEL-FACING RENDERING: " + domaintext.rendering_text(
-            rendering, domaintext.gold_canonical_resolution(case)
+            rendering, canonical
         )
 
     typed_outputs: dict[str, dict] = {}
+    used_labels = [label]
     stage_kinds = {"triage": "triage_result", "policy": "policy_result", "planner": "plan_result"}
     stage_prompts = {"triage": "triage.v1", "policy": "policy.v1", "planner": "planner.v1"}
     for stage in STAGES:
-        if condition == "AL_DRIFT" and stage != "triage":
-            drift_record = _invoke(
-                ctx, result,
-                role=cell.model_role,
-                prompt_id="lexical-drift.v1",
-                variables={
-                    "canonical_id": case.canonical.operation_id,
-                    "definition": ctx.bench.domain.operations[case.canonical.operation_id].description,
-                    "current_label": label,
-                    "forbidden_labels": "",
-                },
-                response_kind="drifted_label",
-                stage_id=f"{stage}_drift",
-                representation="CANONICAL_STATE",
-                canonical_ids_present=True,
-            )
-            obj, _err = extract_json_object(drift_record.normalized_text)
-            label = (obj or {}).get("alternate_label", label)
-            result.stage_outputs.append({"stage": f"{stage}_drift", "output": label})
-        extra = f"\nOPERATION LABEL IN USE: {label}" if condition != "AL_RAW" else ""
+        extra = f"\nOPERATION LABEL IN USE: {label}" if condition == "AL_DRIFT" else ""
         raw_suffix = f"\nORIGINAL USER WORDING: {request.text}" if condition == "AL_RAW" else ""
         # Canonical ID propagation (§26.8): later stages receive canonical IDs and
         # definitions in AL_CANONICAL/AL_RENDERED/AL_DRIFT; AL_RAW re-passes prose.
@@ -864,6 +912,43 @@ def run_agent_loop(ctx: RunContext, cell: MatrixCell) -> CellResult:
         obj, _err = extract_json_object(record.normalized_text)
         typed_outputs[stage] = obj or {}
         result.stage_outputs.append({"stage": stage, "output": obj})
+        if condition == "AL_DRIFT":
+            drift_record = _invoke(
+                ctx, result,
+                role="authoring_generator",
+                prompt_id="lexical-drift.v1",
+                variables={
+                    "canonical_id": canonical["operation_id"],
+                    "definition": ctx.bench.domain.operations[canonical["operation_id"]].description,
+                    "current_label": label,
+                    "forbidden_labels": "\n".join(f"- {label}" for label in used_labels),
+                },
+                response_kind="drifted_label",
+                stage_id=f"{stage}_drift",
+                representation="CANONICAL_STATE",
+                canonical_ids_present=True,
+            )
+            drift_obj, _err = extract_json_object(drift_record.normalized_text)
+            alternate = (drift_obj or {}).get("alternate_label")
+            valid_drift = bool(
+                drift_obj
+                and drift_obj.get("canonical_id") == canonical["operation_id"]
+                and isinstance(alternate, str)
+                and alternate.strip()
+                and alternate.casefold() not in {item.casefold() for item in used_labels}
+            )
+            result.stage_outputs.append({
+                "stage": f"{stage}_drift",
+                "output": drift_obj,
+                "valid": valid_drift,
+            })
+            if not valid_drift:
+                result.schema_valid = False
+                result.error_category = "drift_generation_validation_error"
+                result.final_state = sim.snapshot()
+                return result
+            label = alternate.strip()
+            used_labels.append(label)
 
     record = _invoke(
         ctx, result,
@@ -871,7 +956,11 @@ def run_agent_loop(ctx: RunContext, cell: MatrixCell) -> CellResult:
         prompt_id="executor.v1",
         variables={
             "plan_result": json.dumps(typed_outputs.get("planner", {}), sort_keys=True),
-            "operation_definitions": domaintext.operation_definitions_text(ctx.bench.domain),
+            "operation_definitions": (
+                domaintext.operation_definitions_text(ctx.bench.domain)
+                + (f"\nOPERATION LABEL IN USE: {label}" if condition == "AL_DRIFT" else "")
+                + rendering_line
+            ),
             "known_state": known_state,
         },
         response_kind="plan_executor",

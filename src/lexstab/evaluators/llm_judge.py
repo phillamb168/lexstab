@@ -70,13 +70,18 @@ def judge_clarifications(
             continue
         expected = score.get("metadata", {})
         reference = json.dumps(
-            {"missing_or_discriminating": expected.get("variation_axes", []),
-             "expected_behavior": expected.get("expected_behavior")},
+            {
+                "missing_information": expected.get("missing_information", []),
+                "clarification_targets": expected.get("clarification_targets", []),
+                "candidate_operation": expected.get("expected_operation_id"),
+                "known_arguments": expected.get("expected_arguments", {}),
+                "expected_behavior": expected.get("expected_behavior"),
+            },
             sort_keys=True,
         )
         record = adapter.invoke(
             role="evaluation_judge",
-            model_id=role.model_id or "mock",
+            model_id=role.model_id or "",
             messages=[{
                 "role": "system",
                 "content": prompts.get("semantic-equivalence-judge.v1").render(

@@ -27,6 +27,10 @@ H12 (natural-language persistence), R2 (procedure or interface dominates).
 10. Inline procedure vs packaged skill (paired)
 11. Local typed tool vs MCP capability (when MCP is enabled)
 
+The direct P0 to P4 ladder remains the prespecified progressive-formalization family. The
+gold-injected P2 to P2F and P2F to P3 component controls separately estimate the effect of adding
+unordered procedure facts and the incremental effect of procedure naming plus ordered structure.
+
 ## Metric definitions
 
 As implemented in `lexstab.metrics.aggregate` and documented in

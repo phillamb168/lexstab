@@ -44,6 +44,8 @@ tracks:
     generic_action_interface: "dataset/interfaces/generic-action-proposal.json"
     typed_action_interfaces: "dataset/interfaces/typed-tools/support.jsonl"
     run_cumulative_ladder: true
+    # Also adds P2F automatically to separate added procedure facts from
+    # the named handle and sequential procedure structure.
     run_component_ablations: true
     run_language_persistence_ablation: true
   post_canonical:
@@ -55,6 +57,9 @@ tracks:
       - "E_ORGANIZATION_TERM"
   agent_loop:
     enabled: false
+    # Gold is the primary H4 isolation condition. Add runtime to measure
+    # canonicalizer error separately without conflating it with label drift.
+    intent_modes: ["gold", "runtime"]
     conditions:
       - "AL_RAW"
       - "AL_CANONICAL"

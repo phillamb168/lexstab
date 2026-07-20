@@ -224,6 +224,7 @@ def main() -> None:
 
     step("Execute P0-P4 plus LP0, LP0G, LP1-LP3 with a representation ledger")
     for arch in ("P0_RAW_PROPOSAL", "P1_CLARIFY_PROPOSAL", "P2_CANONICAL_PROPOSAL",
+                 "P2F_CANONICAL_FACTS_PROPOSAL",
                  "P3_CANONICAL_PROCEDURE_PROPOSAL", "P4_CANONICAL_PROCEDURE_TOOL",
                  "LP0_LANGUAGE_THROUGHOUT", "LP0G_GOLD_START_LANGUAGE", "LP1_CANONICAL_ONCE",
                  "LP2_CANONICAL_PROCEDURE", "LP3_CANONICAL_PROCEDURE_TOOL"):

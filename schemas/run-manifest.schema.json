@@ -126,6 +126,11 @@
       "title": "Concurrency",
       "type": "integer"
     },
+    "evaluation": {
+      "additionalProperties": true,
+      "title": "Evaluation",
+      "type": "object"
+    },
     "tracing": {
       "additionalProperties": true,
       "title": "Tracing",

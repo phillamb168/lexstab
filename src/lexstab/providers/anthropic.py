@@ -129,4 +129,9 @@ class AnthropicProvider(BaseAdapter):
             finish_reason=body.get("stop_reason"),
             reported_model_id=body.get("model"),
             provider_request_id=response.headers.get("request-id"),
+            accepted_parameters={
+                key: parameters[key]
+                for key in ("max_tokens", "temperature", "top_p", "stop_sequences")
+                if key in parameters
+            },
         )

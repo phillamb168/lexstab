@@ -22,6 +22,7 @@ INTENT_ARCHS = {"A0_DIRECT", "A1_DIRECT_CLARIFY", "B_EXTERNAL_GATE", "B_EXTERNAL
 MEMORY_ARCHS = {"M0_NO_MEMORY", "M1_STATIC_GLOSSARY", "M2_RETRIEVED_MEMORY", "M3_CANONICAL_RESOLVER", "M4_PERSONALIZED_MEMORY"}
 P_CONDITIONS = ["P0_RAW_PROPOSAL", "P1_CLARIFY_PROPOSAL", "P2_CANONICAL_PROPOSAL",
                 "P3_CANONICAL_PROCEDURE_PROPOSAL", "P4_CANONICAL_PROCEDURE_TOOL"]
+P_FACT_CONTROL = "P2F_CANONICAL_FACTS_PROPOSAL"
 LP_CONDITIONS = ["LP0_LANGUAGE_THROUGHOUT", "LP0G_GOLD_START_LANGUAGE", "LP1_CANONICAL_ONCE",
                  "LP2_CANONICAL_PROCEDURE", "LP3_CANONICAL_PROCEDURE_TOOL"]
 AGENT_LOOP_CONDITIONS = ["AL_RAW", "AL_CANONICAL", "AL_RENDERED", "AL_DRIFT"]
@@ -46,7 +47,7 @@ class MatrixCell:
     interface_id: str | None
     intent_mode: str  # "runtime" | "gold" | "none"
     procedure_selection: str  # "gold" | "runtime" | "none"
-    procedure_packaging: str  # "inline" | "packaged" | "none"
+    procedure_packaging: str  # "inline" | "packaged" | "facts_only" | "none"
     repetition: int
     model_role: str
     elicitation_case_id: str | None = None
@@ -254,6 +255,12 @@ def expand_matrix(bench: FrozenBenchmark, config: RunConfig, model_role: str = "
                             selection_mode="gold" if needs_procedure else "none",
                             packaging="inline" if needs_procedure else "none")
                     if condition == "P3_CANONICAL_PROCEDURE_PROPOSAL" and ablations and procedure_id:
+                        # Information-parity control: same unordered procedure
+                        # facts, but no named handle or step sequence.
+                        add("progressive_formalization", P_FACT_CONTROL, case_id,
+                            request.request_id, interface=generic_id,
+                            intent_mode="gold", selection_mode="gold",
+                            packaging="facts_only")
                         # packaging ablation (§33.9 item 5) and runtime selection (§33.8)
                         add("progressive_formalization", condition, case_id, request.request_id,
                             procedure=procedure_id, interface=generic_id, intent_mode="gold",
@@ -292,6 +299,7 @@ def expand_matrix(bench: FrozenBenchmark, config: RunConfig, model_role: str = "
     agent_loop = tracks.get("agent_loop", {})
     if agent_loop.get("enabled"):
         conditions = agent_loop.get("conditions", AGENT_LOOP_CONDITIONS)
+        configured_intent_modes = agent_loop.get("intent_modes", ["gold"])
         for case_id in agent_loop.get("case_ids") or case_ids:
             if case_id not in bench.cases:
                 continue
@@ -301,9 +309,18 @@ def expand_matrix(bench: FrozenBenchmark, config: RunConfig, model_role: str = "
                 if request.labels.expected_behavior.value != "EXECUTE":
                     continue
                 for condition in conditions:
-                    add("agent_loop", condition, case_id, request.request_id,
-                        rendering=rendering.rendering_id if (rendering and condition == "AL_RENDERED") else None,
-                        intent_mode="runtime")
+                    modes = ["none"] if condition == "AL_RAW" else configured_intent_modes
+                    for mode in modes:
+                        if mode not in ("gold", "runtime", "none"):
+                            skipped.append({
+                                "reason": "unknown agent-loop intent mode",
+                                "architecture": condition,
+                                "intent_mode": mode,
+                            })
+                            continue
+                        add("agent_loop", condition, case_id, request.request_id,
+                            rendering=rendering.rendering_id if (rendering and condition == "AL_RENDERED") else None,
+                            intent_mode=mode)
 
     ordered = sorted(cells, key=lambda cell: cell.cell_id)
     matrix_hash = sha256_text(canonical_json([cell.to_dict() for cell in ordered]))

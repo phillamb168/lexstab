@@ -61,7 +61,8 @@ LANGSMITH_API_KEY=
 LANGSMITH_PROJECT=lexstab-local
 LANGSMITH_ENDPOINT=https://api.smith.langchain.com
 LEXSTAB_RUNS_DIR=./runs
-LEXSTAB_CACHE_DIR=./.cache/lexstab
+LEXSTAB_CODE_SANDBOX_RUNTIME=docker
+LEXSTAB_CODE_SANDBOX_IMAGE=python:3.13-alpine
 ```
 
 **Model IDs must be exact provider identifiers, never marketing aliases** ("Opus", "GPT", "latest")
@@ -93,6 +94,10 @@ recorded as a research override. Summary of the §19.1 role table:
 The primary evaluator is deterministic code plus the state simulator; the judge is optional,
 blinded, and gated (see step 11). Evaluation (`lexstab evaluate`) requires **no** model access at
 all.
+
+Only roles reachable from the selected tracks must resolve. A required role with a missing model
+ID fails configuration before the first invocation. If any invoked role uses the mock provider,
+the entire run is marked `mocked: true` and cannot become a baseline.
 
 ## 4. Verify configuration: `lexstab doctor` (spec §42.3)
 
@@ -190,7 +195,7 @@ baseline-eligibility flags, and resolved execution model ID. Useful options:
 - `--run-id <name>` — choose the run directory name.
 - `--runner graph|procedural` — LangGraph or the procedural baseline runner; both execute
   identical node functions (D-008). Default: `procedural`.
-- `--manifest <path>` — override the benchmark manifest (used for regression suites, step 14).
+- `--manifest <path>` overrides the frozen benchmark or promoted regression-suite manifest.
 
 `semantic_retries` is pinned to 0 for all primary conditions; failed JSON parses are recorded and
 scored incorrect, never re-prompted (spec §7.11; D-018).
@@ -301,8 +306,10 @@ uv run lexstab regression promote \
 uv run lexstab regression verify --version 0.2.0
 ```
 
-Only requests whose candidate record carries an approving reviewer decision can be promoted. Run
-the regression suite (fewer repetitions is normal for CI, spec §17.3):
+Only requests whose candidate record carries an approving reviewer decision can be promoted. A
+regression-suite manifest is a verified overlay on its pinned base benchmark. It replaces only the
+request stimuli and reuses the base ontology, cases, contexts, procedures, interfaces, renderings,
+and prompts. Run it with fewer repetitions as is normal for CI:
 
 ```bash
 uv run pytest tests/regression
@@ -310,7 +317,14 @@ uv run lexstab run \
   --config config/run.local.yaml \
   --manifest dataset/manifests/regression-v0.2.0.json \
   --repetitions 3
+uv run lexstab evaluate --run runs/<run_id>
+uv run lexstab regression check \
+  --run runs/<run_id> \
+  --thresholds config/thresholds.example.yaml
 ```
+
+The check writes `threshold-check.json` and exits nonzero when a blocking gate fails. Narrow runs
+report specialized gates as skipped when their selected tracks do not produce the relevant metric.
 
 ## 14. Recovery guidance
 
@@ -367,3 +381,9 @@ uv run lexstab experiment modality --dataset dataset/modality/artifact-chains.js
 
 Each accepts `--models` and `--output`; shipped datasets are minimal demonstrations, and
 research-grade corpora are operator work (see `IMPLEMENTATION_STATUS.md`).
+
+The code experiment never executes real model output directly on the host. It uses the configured
+container runtime with no network, a read-only filesystem, dropped capabilities, resource limits,
+and an unprivileged user. If the runtime is unavailable, the experiment records a sandbox error
+and does not execute the candidate. Local execution exists only for repository-owned deterministic
+mock fixtures used by offline tests.

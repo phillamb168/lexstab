@@ -86,3 +86,173 @@ def load_regression_suite(root: Path, version: str) -> dict[str, Any]:
         if actual != expected:
             raise ArtifactError(f"regression request {row['request_id']} hash mismatch")
     return suite
+
+
+def check_run_thresholds(run_dir: Path, thresholds: dict[str, Any]) -> dict[str, Any]:
+    """Evaluate a completed run against configured blocking gates.
+
+    Only gates represented by the selected tracks are applied. Every skipped
+    gate is reported explicitly so a narrow scheduled run cannot appear to
+    have exercised procedure, elicitation, or interface checks that were not
+    in its matrix.
+    """
+    metrics = json_read(run_dir / "metrics.json")
+    manifest = json_read(run_dir / "run-manifest.json")
+    failures: list[str] = []
+    skipped: list[str] = []
+    checks: list[dict[str, Any]] = []
+    require_intervals = thresholds.get("blocking", {}).get(
+        "require_case_clustered_interval", True
+    )
+
+    if manifest.get("mocked") or not manifest.get("baseline_eligible"):
+        failures.append("run is mocked or baseline-ineligible")
+    completion = metrics.get("completion") or {}
+    if thresholds.get("blocking", {}).get("block_on_missing_cells", True):
+        if metrics.get("missing_cells") or completion.get("completion_rate") != 1.0:
+            failures.append("run contains missing or unscored matrix cells")
+
+    headline = metrics.get("headline") or []
+    baseline_arch = thresholds.get("baseline_architecture", "A1_DIRECT_CLARIFY")
+    baselines = {
+        row.get("track"): row
+        for row in headline
+        if row.get("architecture") == baseline_arch
+    }
+
+    def estimate(row: dict, key: str) -> float | None:
+        value = row.get(key)
+        if isinstance(value, dict):
+            return value.get("estimate")
+        return value if isinstance(value, (int, float)) else None
+
+    gates = thresholds.get("gates") or {}
+    schema_min = (gates.get("schema_validity") or {}).get("minimum")
+    false_action_max = (gates.get("false_action_rate") or {}).get("maximum")
+    unnecessary_max = (
+        gates.get("unnecessary_clarification_rate") or {}
+    ).get("maximum")
+    drop_fields = {
+        "full_call_accuracy": "full_call_accuracy",
+        "final_state_accuracy": "final_state_accuracy",
+        "operational_invariance": "operational_invariance",
+        "contrast_accuracy": "contrast_accuracy",
+    }
+
+    for row in headline:
+        label = f"{row.get('track')}:{row.get('architecture')}"
+        if schema_min is not None:
+            interval = row.get("schema_validity") or {}
+            actual = estimate(row, "schema_validity")
+            conservative = interval.get("ci_low") if require_intervals else actual
+            passed = conservative is not None and conservative >= float(schema_min)
+            checks.append({"gate": "schema_validity", "condition": label,
+                           "actual": actual, "conservative_value": conservative,
+                           "required": schema_min, "passed": passed})
+            if not passed:
+                failures.append(
+                    f"{label} schema-validity lower bound {conservative} is below {schema_min}"
+                )
+        if false_action_max is not None and row.get("false_action_rate") is not None:
+            actual = float(row["false_action_rate"])
+            interval = row.get("false_action_interval") or {}
+            conservative = interval.get("ci_high") if require_intervals else actual
+            passed = conservative is not None and conservative <= float(false_action_max)
+            checks.append({"gate": "false_action_rate", "condition": label,
+                           "actual": actual, "conservative_value": conservative,
+                           "required": false_action_max, "passed": passed})
+            if not passed:
+                failures.append(
+                    f"{label} false-action upper bound {conservative} exceeds {false_action_max}"
+                )
+        clarification = row.get("clarification") or {}
+        if unnecessary_max is not None and clarification.get("unnecessary_clarification_rate") is not None:
+            actual = float(clarification["unnecessary_clarification_rate"])
+            interval = row.get("unnecessary_clarification_interval") or {}
+            conservative = interval.get("ci_high") if require_intervals else actual
+            passed = conservative is not None and conservative <= float(unnecessary_max)
+            checks.append({"gate": "unnecessary_clarification_rate", "condition": label,
+                           "actual": actual, "conservative_value": conservative,
+                           "required": unnecessary_max, "passed": passed})
+            if not passed:
+                failures.append(
+                    f"{label} unnecessary-clarification upper bound {conservative} "
+                    f"exceeds {unnecessary_max}"
+                )
+        baseline = baselines.get(row.get("track"))
+        if baseline is None or row.get("architecture") == baseline_arch:
+            continue
+        for gate_name, field in drop_fields.items():
+            maximum_drop = (gates.get(gate_name) or {}).get("maximum_drop_from_baseline")
+            if maximum_drop is None:
+                continue
+            baseline_value = estimate(baseline, field)
+            actual = estimate(row, field)
+            if baseline_value is None or actual is None:
+                skipped.append(f"{label} {gate_name}: metric not defined for selected stratum")
+                continue
+            interval = row.get(field) or {}
+            conservative_actual = (
+                interval.get("ci_low") if require_intervals else actual
+            )
+            if conservative_actual is None:
+                failures.append(f"{label} {gate_name}: required interval is missing")
+                continue
+            drop = baseline_value - actual
+            conservative_drop = baseline_value - conservative_actual
+            passed = conservative_drop <= float(maximum_drop)
+            checks.append({"gate": gate_name, "condition": label, "actual": actual,
+                           "baseline": baseline_value, "drop": drop,
+                           "conservative_drop": conservative_drop,
+                           "required": maximum_drop, "passed": passed})
+            if not passed:
+                failures.append(
+                    f"{label} {gate_name} conservative drop {conservative_drop:.6f} "
+                    f"exceeds {maximum_drop}"
+                )
+
+    specialized_intervals: dict[str, list[tuple[str, dict[str, Any]]]] = {
+        "adequacy_accuracy": list((metrics.get("adequacy_assessment") or {}).items()),
+        "unresolved_without_action_rate": [
+            (architecture, values["unresolved_without_action_interval"])
+            for architecture, values in (metrics.get("elicitation") or {}).items()
+            if values.get("unresolved_without_action_interval", {}).get("estimate") is not None
+        ],
+        "procedure_selection_accuracy": list(
+            (metrics.get("procedure_selection") or {}).items()
+        ),
+        "typed_interface_validation_rate": list(
+            (metrics.get("typed_interface") or {}).items()
+        ),
+    }
+    for gate_name, values in specialized_intervals.items():
+        gate = gates.get(gate_name)
+        if not gate:
+            continue
+        if not values:
+            skipped.append(f"{gate_name}: selected tracks do not produce this metric")
+            continue
+        minimum = gate.get("minimum")
+        if minimum is None:
+            continue
+        for condition, interval in values:
+            actual = interval.get("estimate")
+            conservative = interval.get("ci_low") if require_intervals else actual
+            passed = conservative is not None and conservative >= float(minimum)
+            checks.append({"gate": gate_name, "condition": condition,
+                           "actual": actual, "conservative_value": conservative,
+                           "required": minimum, "passed": passed})
+            if not passed:
+                failures.append(
+                    f"{condition} {gate_name} lower bound {conservative} is below {minimum}"
+                )
+
+    report = {
+        "run_id": metrics.get("run_id"),
+        "passed": not failures,
+        "failures": failures,
+        "checks": checks,
+        "skipped": skipped,
+    }
+    json_write(run_dir / "threshold-check.json", report)
+    return report

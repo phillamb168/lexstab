@@ -18,6 +18,7 @@ Everything for one run lives under `runs/<id>/`:
 | `simulator-events.jsonl`, `procedure-events.jsonl`, `interface-events.jsonl` | State transitions, procedure adherence events, action-boundary validation events |
 | `scores.jsonl` | Deterministic per-cell scores (written by `lexstab evaluate`) |
 | `metrics.json` | Aggregated metrics — the file this guide indexes |
+| `threshold-check.json` (optional) | Blocking regression-gate results, including conservative interval values, failures, and gates skipped because the run did not exercise the required track |
 | `report.md`, `report.html` | Generated report with executive summary and required tables (spec §44.1–44.3) |
 | `tables/` | CSV/Parquet: headline, formalization transitions, failure views, and the per-call `analysis-table.parquet` exported for external hierarchical-model fitting (D-010) |
 | `charts/` | The §44.6 visualizations (PNG + SVG; D-020) |
@@ -84,11 +85,13 @@ Computed over EXECUTE/CLARIFY-labeled requests (REFUSE scored separately): `tp/f
 `precision` (TP/(TP+FP)), `recall` (TP/(TP+FN)), `f1`, plus:
 
 - `false_action_rate` — CLARIFY-labeled requests that caused any tool action (also surfaced as
-  the headline row's `false_action_rate`; the central safety number).
+  the headline row's `false_action_rate`; the central safety number). Its case-clustered interval
+  is `headline[].false_action_interval`.
 - `refusal_false_action_rate` — REFUSE-labeled requests that caused any action.
-- `unnecessary_clarification_rate` — EXECUTE-labeled requests that received clarification.
+- `unnecessary_clarification_rate` — EXECUTE-labeled requests that received clarification. Its
+  case-clustered interval is `headline[].unnecessary_clarification_interval`.
 
-### Adequacy and elicitation metrics (§38.5, §9.2) — `adequacy_matrix`, `elicitation`
+### Adequacy and elicitation metrics (§38.5, §9.2) — `adequacy_matrix`, `elicitation`, `adequacy_assessment`
 
 `adequacy_matrix` reports `n`, `error_rate`, and `false_action_rate` for each derived cell
 (`adequate/conventional`, `adequate/varied`, `inadequate_or_ambiguous/conventional`,
@@ -98,7 +101,13 @@ descriptive; denominators are always reported.
 
 `elicitation[<architecture>]` (intent track): `resolution_rate`, `final_resolution_accuracy`,
 `false_action_rate`, `unresolved_without_action_rate`, `mean_turns_to_resolution`,
-`mean_model_calls`.
+`mean_model_calls`. `unresolved_without_action_interval` supplies the case-clustered interval used
+by the regression gate.
+
+`adequacy_assessment[<architecture>]` measures whether the model's initial adequacy and ambiguity
+assessment agrees with the frozen request labels before elicitation. This is deliberately separate
+from the descriptive error attribution in `adequacy_matrix`. Each entry is an estimate with a
+case-clustered interval and denominator.
 
 ### Architecture metrics (§38.6) — `primary_comparisons[]`, `formalization_transitions[]`
 
@@ -159,8 +168,9 @@ typed interface within one trajectory), `first_divergence_distribution`, and
 prompts (D-013).
 
 `component_ablations[]` holds the §33.9 gold-injected ablations: canonical state (gold P2 vs P1),
-runtime canonicalization error (runtime P2 vs gold P2), procedure content (gold P2 vs gold P3),
-action interface (gold P3 vs gold P4), procedure packaging (inline vs packaged), and procedure
+runtime canonicalization error (runtime P2 vs gold P2), procedure-fact information
+(gold P2 vs gold P2F), procedure naming and ordered structure (gold P2F vs gold P3), action
+interface (gold P3 vs gold P4), procedure packaging (inline vs packaged), and procedure
 selection (gold vs runtime, with per-cell detail in `procedure-events.jsonl`). Action-boundary
 error decomposition (proposal parse, unknown operation, invalid arguments, tool selection, schema
 validation, precondition rejection — plus MCP discovery/transport when tested) is in
@@ -169,6 +179,11 @@ validation, precondition rejection — plus MCP discovery/transport when tested)
 adherence (required-step recall, forbidden-action rate, full-procedure success — never inferred
 private reasoning) come from `procedure-events.jsonl` and
 `charts/procedure_adherence_by_family.*`.
+
+`procedure_selection[<condition>]` reports event-backed selection accuracy with a case-clustered
+interval. `typed_interface[<condition>]` reports event-backed interface validation accuracy with
+the same interval shape. These blocks, rather than proxy headline measures, supply the specialized
+regression gates.
 
 `exploratory_fdr` applies Benjamini–Hochberg correction to the secondary McNemar p-values and is
 labeled exploratory (spec §39.6; D-010).
@@ -255,7 +270,9 @@ The architecture interpretation map asks four questions in order:
 The progressive-formalization companion view walks P0 → P1 → P2 → P3 → P4 and annotates every edge
 with the paired final-state delta, false-action delta, latency delta, cost delta, and confidence
 interval. A cumulative endpoint score without edge deltas is insufficient (spec §44.7, §46.27):
-gains are attributed only to the transition where they entered.
+gains are attributed only to the transition where they entered. The gold-injected P2F control is
+reported separately: P2 to P2F isolates added unordered procedure facts, while P2F to P3 isolates
+the named handle and ordered procedure structure.
 
 ## 5. Reading "Does the added architecture earn its complexity?" (spec §44.8)
 

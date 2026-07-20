@@ -41,7 +41,7 @@ class AuthoringContext:
         prompt = self.prompts.get(prompt_id)
         record = adapter.invoke(
             role=role,
-            model_id=role_config.model_id or "mock",
+            model_id=role_config.model_id or "",
             messages=[{"role": "system", "content": prompt.render(**variables)}],
             tools=None,
             response_schema=None,
@@ -306,7 +306,7 @@ def author_requests(
 ) -> dict[str, Any]:
     """Full authoring pipeline for the selected cases (§18.1 node order)."""
     existing = existing or []
-    generator_model = ctx.models_config.role("authoring_generator").model_id or "mock"
+    generator_model = ctx.models_config.role("authoring_generator").model_id or ""
     axes = axes or ["entity_synonym", "operation_synonym", "idiomatic", "indirect_request"]
     state: dict[str, Any] = {
         "authoring_run_id": ctx.authoring_run_id,

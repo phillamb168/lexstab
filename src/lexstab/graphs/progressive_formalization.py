@@ -37,7 +37,8 @@ def node_verify_information_parity(state: FormalizationState) -> dict:
     ctx: RunContext = state["ctx"]
     cell = state["cell"]
     if cell.architecture in ("P0_RAW_PROPOSAL", "P1_CLARIFY_PROPOSAL",
-                             "P2_CANONICAL_PROPOSAL", "P3_CANONICAL_PROCEDURE_PROPOSAL"):
+                             "P2_CANONICAL_PROPOSAL", "P2F_CANONICAL_FACTS_PROPOSAL",
+                             "P3_CANONICAL_PROCEDURE_PROPOSAL"):
         if cell.interface_id != "GENERIC_ACTION_PROPOSAL_V1":
             raise ValueError(f"{cell.architecture} must use the generic proposal interface")
     if cell.architecture in ("P4_CANONICAL_PROCEDURE_TOOL", "LP3_CANONICAL_PROCEDURE_TOOL"):
@@ -63,6 +64,19 @@ def node_record_ledger(state: FormalizationState) -> dict:
     result: CellResult = state["result"]
     if not result.ledger:
         raise ValueError(f"cell {result.cell.cell_id}: no representation ledger recorded")
+    if result.cell.architecture.startswith("P"):
+        parity = next(
+            (
+                stage.get("output")
+                for stage in result.stage_outputs
+                if stage.get("stage") == "information_parity"
+            ),
+            None,
+        )
+        if not parity or not parity.get("verified") or not parity.get("common_facts_hash"):
+            raise ValueError(
+                f"cell {result.cell.cell_id}: information-parity evidence missing"
+            )
     return {}
 
 

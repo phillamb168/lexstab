@@ -53,6 +53,13 @@ def test_benjamini_hochberg():
     assert result["a"]["bh_adjusted"] == pytest.approx(0.003)
 
 
+def test_benjamini_hochberg_adjusted_values_are_monotone():
+    result = benjamini_hochberg({"a": 0.01, "b": 0.011, "c": 0.5})
+    ordered = [result[name]["bh_adjusted"] for name in ("a", "b", "c")]
+    assert ordered == sorted(ordered)
+    assert result["a"]["bh_adjusted"] == pytest.approx(0.0165)
+
+
 def test_practical_equivalence_verdicts():
     from lexstab.metrics.statistics import Interval
 

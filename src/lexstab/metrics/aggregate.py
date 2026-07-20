@@ -41,8 +41,12 @@ def _obs(scores: list[dict], field: str) -> list[tuple[str, float]]:
     return out
 
 
-def _ci(scores: list[dict], field: str, *, samples: int, seed: int) -> dict[str, Any]:
-    return cluster_bootstrap_rate(_obs(scores, field), samples=samples, seed=seed).to_dict()
+def _ci(
+    scores: list[dict], field: str, *, samples: int, seed: int, confidence: float
+) -> dict[str, Any]:
+    return cluster_bootstrap_rate(
+        _obs(scores, field), samples=samples, seed=seed, confidence=confidence
+    ).to_dict()
 
 
 def _group(scores: list[dict], key_fn) -> dict[Any, list[dict]]:
@@ -60,33 +64,58 @@ def primary_h1_stratum(scores: list[dict]) -> list[dict]:
 # ---------------------------------------------------------------- headline
 
 
-def headline_metrics(scores: list[dict], *, samples: int = 2000, seed: int = 104729) -> list[dict]:
+def headline_metrics(
+    scores: list[dict], *, samples: int = 2000, seed: int = 104729,
+    confidence: float = 0.95,
+) -> list[dict]:
     rows = []
     for (track, arch), group in sorted(_group(
         scores, lambda s: (s["track"], s["architecture"])
     ).items()):
         h1 = primary_h1_stratum(group)
         clar = clarification_metrics(group)
-        invariance = operational_invariance(h1)
+        invariance = operational_invariance(
+            h1, samples=samples, seed=seed, confidence=confidence
+        )
         contrast_scores = [s for s in group if s.get("contrast_correct") is not None]
+        clarify_expected = [
+            s for s in group
+            if s.get("metadata", {}).get("expected_behavior") == "CLARIFY"
+        ]
+        execute_expected = [
+            s for s in group
+            if s.get("metadata", {}).get("expected_behavior") == "EXECUTE"
+        ]
         row = {
             "track": track,
             "architecture": arch,
             "n_cells": len(group),
-            "schema_validity": _ci(group, "schema_valid", samples=samples, seed=seed),
-            "decision_accuracy": _ci(group, "decision_correct", samples=samples, seed=seed),
-            "full_call_accuracy": _ci(h1 or group, "full_call_correct", samples=samples, seed=seed),
+            "schema_validity": _ci(group, "schema_valid", samples=samples, seed=seed, confidence=confidence),
+            "decision_accuracy": _ci(group, "decision_correct", samples=samples, seed=seed, confidence=confidence),
+            "full_call_accuracy": _ci(h1 or group, "full_call_correct", samples=samples, seed=seed, confidence=confidence),
             "final_state_accuracy": _ci(
                 [s for s in (h1 or group) if s.get("final_state_correct") is not None],
-                "final_state_correct", samples=samples, seed=seed,
+                "final_state_correct", samples=samples, seed=seed, confidence=confidence,
             ),
             "operational_invariance": invariance,
-            "contrast_accuracy": _ci(contrast_scores, "contrast_correct", samples=samples, seed=seed),
+            "contrast_accuracy": _ci(contrast_scores, "contrast_correct", samples=samples, seed=seed, confidence=confidence),
             "false_action_rate": clar["false_action_rate"],
+            "false_action_interval": _ci(
+                clarify_expected, "false_action", samples=samples, seed=seed,
+                confidence=confidence,
+            ),
             "clarification": clar,
+            "unnecessary_clarification_interval": _ci(
+                [
+                    {**s, "unnecessary_clarification": s.get("clarification_outcome") == "FP"}
+                    for s in execute_expected if s.get("clarification_outcome")
+                ],
+                "unnecessary_clarification", samples=samples, seed=seed,
+                confidence=confidence,
+            ),
             "refusal_correctness": _ci(
                 [s for s in group if s.get("refusal_correct") is not None],
-                "refusal_correct", samples=samples, seed=seed,
+                "refusal_correct", samples=samples, seed=seed, confidence=confidence,
             ),
             "usage": usage_metrics(group),
         }
@@ -114,14 +143,20 @@ def robustness_metrics(scores: list[dict]) -> dict[str, Any]:
                 request_accs[request_id] = sum(
                     1.0 for s in reps if s["full_call_correct"]
                 ) / len(reps)
-                request_decisions[request_id] = tuple(
-                    sorted({(s.get("decision"), (s.get("tool_call") or {}).get("tool") if s.get("tool_call") else None) for s in reps})
-                )
+                request_decisions[request_id] = tuple(sorted({
+                    (
+                        s.get("decision"),
+                        s.get("actual_operation_id"),
+                        s.get("actual_tool"),
+                        repr(sorted((s.get("actual_arguments") or {}).items())),
+                    )
+                    for s in reps
+                }))
             accs = list(request_accs.values())
             base = [
                 acc for request_id, acc in request_accs.items()
                 if any(
-                    s.get("metadata", {}).get("lexical_distance_band") == "LOW"
+                    s.get("metadata", {}).get("is_designated_canonical")
                     for s in by_request[request_id]
                 )
             ]
@@ -174,7 +209,10 @@ def robustness_metrics(scores: list[dict]) -> dict[str, Any]:
     return out
 
 
-def operational_invariance(h1_scores: list[dict]) -> dict[str, Any]:
+def operational_invariance(
+    h1_scores: list[dict], *, samples: int = 2000, seed: int = 104729,
+    confidence: float = 0.95,
+) -> dict[str, Any]:
     by_case = _group(h1_scores, lambda s: s["case_id"])
     values = []
     for case_id, case_scores in by_case.items():
@@ -182,12 +220,9 @@ def operational_invariance(h1_scores: list[dict]) -> dict[str, Any]:
             s["full_call_correct"] and s.get("final_state_correct") is not False
             for s in case_scores
         ) else 0.0))
-    if not values:
-        return {"estimate": None, "n_cases": 0}
-    return {
-        "estimate": sum(v for _c, v in values) / len(values),
-        "n_cases": len(values),
-    }
+    return cluster_bootstrap_rate(
+        values, samples=samples, seed=seed, confidence=confidence
+    ).to_dict()
 
 
 # ---------------------------------------------------------------- clarification (§38.4)
@@ -297,9 +332,12 @@ def paired_comparison(
     scores: list[dict], arch_a: str, arch_b: str, field: str, margin: float,
     *, samples: int = 2000, seed: int = 104729, restrict_h1: bool = True,
     intent_mode: str | None = None, label: str | None = None,
+    confidence: float = 0.95,
 ) -> dict[str, Any]:
     paired = _paired_values(scores, arch_a, arch_b, field, restrict_h1=restrict_h1, intent_mode=intent_mode)
-    delta = cluster_bootstrap_delta(paired, samples=samples, seed=seed)
+    delta = cluster_bootstrap_delta(
+        paired, samples=samples, seed=seed, confidence=confidence
+    )
     decision = practical_equivalence(label or f"{arch_b} - {arch_a}", delta, margin)
     discordance = paired_discordance(paired)
     return {
@@ -311,7 +349,8 @@ def paired_comparison(
 
 
 def primary_comparisons(scores: list[dict], equivalence: dict[str, float],
-                        *, samples: int = 2000, seed: int = 104729) -> list[dict]:
+                        *, samples: int = 2000, seed: int = 104729,
+                        confidence: float = 0.95) -> list[dict]:
     margin = float(equivalence.get("success_margin", 0.01))
     fs_margin = float(equivalence.get("final_state_margin", margin))
     comparisons = [
@@ -336,6 +375,7 @@ def primary_comparisons(scores: list[dict], equivalence: dict[str, float],
         result = paired_comparison(
             scores, arch_a, arch_b, field, cmp_margin,
             samples=samples, seed=seed, intent_mode=mode, label=label,
+            confidence=confidence,
         )
         if result["n_pairs"] > 0:
             out.append(result)
@@ -346,14 +386,14 @@ def primary_comparisons(scores: list[dict], equivalence: dict[str, float],
 
 
 def formalization_transitions(scores: list[dict], *, samples: int = 2000, seed: int = 104729,
-                              margin: float = 0.02) -> list[dict]:
+                              margin: float = 0.02, confidence: float = 0.95) -> list[dict]:
     out = []
     ladder = [arch for arch in P_LADDER]
     for arch_a, arch_b in zip(ladder, ladder[1:]):
         quality = paired_comparison(
             scores, arch_a, arch_b, "final_state_correct", margin,
             samples=samples, seed=seed, intent_mode="runtime",
-            label=f"{arch_b} - {arch_a} (final state)",
+            label=f"{arch_b} - {arch_a} (final state)", confidence=confidence,
         )
         group_a = [s for s in scores if s["architecture"] == arch_a]
         group_b = [s for s in scores if s["architecture"] == arch_b]
@@ -385,20 +425,21 @@ def formalization_transitions(scores: list[dict], *, samples: int = 2000, seed: 
             "marginal_quality": paired_comparison(
                 scores, "P1_CLARIFY_PROPOSAL", arch, "final_state_correct", margin,
                 samples=samples, seed=seed, intent_mode="runtime",
-                label=f"{arch} - P1_CLARIFY_PROPOSAL",
+                label=f"{arch} - P1_CLARIFY_PROPOSAL", confidence=confidence,
             ),
         })
     return out
 
 
 def component_ablations(scores: list[dict], *, samples: int = 2000, seed: int = 104729,
-                        margin: float = 0.02) -> list[dict]:
+                        margin: float = 0.02, confidence: float = 0.95) -> list[dict]:
     """Gold-injected component ablations (§33.9)."""
     out = []
     specs = [
         ("canonical state (gold intent vs raw request)", "P1_CLARIFY_PROPOSAL", "P2_CANONICAL_PROPOSAL", "gold"),
         ("runtime canonicalization error (runtime vs gold P2)", None, None, None),
-        ("procedure content (gold P2 vs gold P3)", "P2_CANONICAL_PROPOSAL", "P3_CANONICAL_PROCEDURE_PROPOSAL", "gold"),
+        ("procedure information (gold P2 vs unordered fact control)", "P2_CANONICAL_PROPOSAL", "P2F_CANONICAL_FACTS_PROPOSAL", "gold"),
+        ("procedure structure and named handle (fact control vs gold P3)", "P2F_CANONICAL_FACTS_PROPOSAL", "P3_CANONICAL_PROCEDURE_PROPOSAL", "gold"),
         ("action interface (gold P3 vs gold P4)", "P3_CANONICAL_PROCEDURE_PROPOSAL", "P4_CANONICAL_PROCEDURE_TOOL", "gold"),
     ]
     for label, arch_a, arch_b, mode in specs:
@@ -417,13 +458,16 @@ def component_ablations(scores: list[dict], *, samples: int = 2000, seed: int = 
                 if other and s.get("final_state_correct") is not None and other.get("final_state_correct") is not None:
                     paired.append((s["case_id"], 1.0 if s["final_state_correct"] else 0.0,
                                    1.0 if other["final_state_correct"] else 0.0))
-            delta = cluster_bootstrap_delta(paired, samples=samples, seed=seed)
+            delta = cluster_bootstrap_delta(
+                paired, samples=samples, seed=seed, confidence=confidence
+            )
             out.append({"ablation": label,
                         **practical_equivalence("P2 gold - P2 runtime", delta, margin).to_dict(),
                         "n_pairs": len(paired)})
             continue
         result = paired_comparison(scores, arch_a, arch_b, "final_state_correct", margin,
-                                   samples=samples, seed=seed, intent_mode=mode, label=label)
+                                   samples=samples, seed=seed, intent_mode=mode, label=label,
+                                   confidence=confidence)
         result["ablation"] = label
         out.append(result)
     # packaging ablation
@@ -444,21 +488,27 @@ def component_ablations(scores: list[dict], *, samples: int = 2000, seed: int = 
             paired.append((s["case_id"], 1.0 if s["final_state_correct"] else 0.0,
                            1.0 if other["final_state_correct"] else 0.0))
     if paired:
-        delta = cluster_bootstrap_delta(paired, samples=samples, seed=seed)
+        delta = cluster_bootstrap_delta(
+            paired, samples=samples, seed=seed, confidence=confidence
+        )
         out.append({"ablation": "procedure packaging (inline vs packaged skill)",
                     **practical_equivalence("packaged - inline", delta, margin).to_dict(),
                     "n_pairs": len(paired)})
     # selection ablation
     runtime_selected = [s for s in scores if s.get("metadata", {}).get("procedure_selection") == "runtime"]
     if runtime_selected:
-        correct = [s for s in scores if s.get("procedure_adherence")]
         selection_events = [
-            1.0 if s.get("metadata", {}).get("procedure_selection_correct", True) else 0.0
+            s.get("metadata", {}).get("procedure_selection_correct")
             for s in runtime_selected
+            if s.get("metadata", {}).get("procedure_selection_correct") is not None
         ]
         out.append({
             "ablation": "procedure selection (gold registry vs runtime router)",
             "runtime_selected_n": len(runtime_selected),
+            "procedure_selection_accuracy": (
+                sum(1 for value in selection_events if value) / len(selection_events)
+                if selection_events else None
+            ),
             "note": "selection correctness is recorded per cell in procedure-events.jsonl",
         })
     return out
@@ -496,7 +546,10 @@ def persistence_metrics(scores: list[dict]) -> dict[str, Any]:
 # ---------------------------------------------------------------- elicitation (§38.5)
 
 
-def elicitation_metrics(scores: list[dict]) -> dict[str, Any]:
+def elicitation_metrics(
+    scores: list[dict], *, samples: int = 2000, seed: int = 104729,
+    confidence: float = 0.95,
+) -> dict[str, Any]:
     intent_scores = [s for s in scores if s["track"] == "intent_elicitation"]
     out = {}
     for arch, group in sorted(_group(intent_scores, lambda s: s["architecture"]).items()):
@@ -506,6 +559,16 @@ def elicitation_metrics(scores: list[dict]) -> dict[str, Any]:
         unresolved_without_action = [
             s for s in group
             if not s.get("metadata", {}).get("resolved") and not s.get("false_action")
+        ]
+        unresolved_rows = [
+            {
+                **s,
+                "unresolved_without_action": (
+                    not s.get("metadata", {}).get("resolved")
+                    and not s.get("false_action")
+                ),
+            }
+            for s in group
         ]
         resolution_correct = [
             s for s in resolved
@@ -521,6 +584,10 @@ def elicitation_metrics(scores: list[dict]) -> dict[str, Any]:
             "unresolved_without_action_rate": (
                 len(unresolved_without_action) / len(group) if group else None
             ),
+            "unresolved_without_action_interval": _ci(
+                unresolved_rows, "unresolved_without_action", samples=samples,
+                seed=seed, confidence=confidence,
+            ),
             "mean_turns_to_resolution": (
                 sum(s.get("metadata", {}).get("turns_used", 0) for s in resolved) / len(resolved)
                 if resolved else None
@@ -531,6 +598,65 @@ def elicitation_metrics(scores: list[dict]) -> dict[str, Any]:
             ),
         }
     return out
+
+
+def adequacy_assessment_metrics(
+    scores: list[dict], *, samples: int = 2000, seed: int = 104729,
+    confidence: float = 0.95,
+) -> dict[str, Any]:
+    eligible = [
+        {**score, "adequacy_assessment_correct": score.get("metadata", {}).get("adequacy_assessment_correct")}
+        for score in scores
+        if score.get("metadata", {}).get("adequacy_assessment_correct") is not None
+    ]
+    return {
+        architecture: _ci(
+            group, "adequacy_assessment_correct", samples=samples, seed=seed,
+            confidence=confidence,
+        )
+        for architecture, group in sorted(
+            _group(eligible, lambda score: score["architecture"]).items()
+        )
+    }
+
+
+def procedure_selection_metrics(
+    scores: list[dict], *, samples: int = 2000, seed: int = 104729,
+    confidence: float = 0.95,
+) -> dict[str, Any]:
+    eligible = [
+        {**score, "procedure_selection_correct": score.get("metadata", {}).get("procedure_selection_correct")}
+        for score in scores
+        if score.get("metadata", {}).get("procedure_selection_correct") is not None
+    ]
+    return {
+        architecture: _ci(
+            group, "procedure_selection_correct", samples=samples, seed=seed,
+            confidence=confidence,
+        )
+        for architecture, group in sorted(
+            _group(eligible, lambda score: score["architecture"]).items()
+        )
+    }
+
+
+def typed_interface_metrics(
+    scores: list[dict], *, samples: int = 2000, seed: int = 104729,
+    confidence: float = 0.95,
+) -> dict[str, Any]:
+    eligible = [
+        {**score, "typed_interface_valid": not bool(score.get("interface_errors"))}
+        for score in scores
+        if score.get("architecture") == "P4_CANONICAL_PROCEDURE_TOOL"
+    ]
+    if not eligible:
+        return {}
+    return {
+        "P4_CANONICAL_PROCEDURE_TOOL": _ci(
+            eligible, "typed_interface_valid", samples=samples, seed=seed,
+            confidence=confidence,
+        )
+    }
 
 
 # ---------------------------------------------------------------- usage / complexity
@@ -580,6 +706,7 @@ ARCHITECTURE_BOM: dict[str, dict[str, Any]] = {
     "P0_RAW_PROPOSAL": {"mutable_model_stages": 1, "external_services": ["execution provider"], "persisted_stores": [], "nl_handoffs": 0},
     "P1_CLARIFY_PROPOSAL": {"mutable_model_stages": 1, "external_services": ["execution provider"], "persisted_stores": [], "nl_handoffs": 0},
     "P2_CANONICAL_PROPOSAL": {"mutable_model_stages": 2, "external_services": ["execution provider", "canonicalizer provider"], "persisted_stores": [], "nl_handoffs": 0},
+    "P2F_CANONICAL_FACTS_PROPOSAL": {"mutable_model_stages": 1, "external_services": ["execution provider"], "persisted_stores": ["procedure fact control"], "nl_handoffs": 0},
     "P3_CANONICAL_PROCEDURE_PROPOSAL": {"mutable_model_stages": 2, "external_services": ["execution provider", "canonicalizer provider"], "persisted_stores": ["procedure registry"], "nl_handoffs": 0},
     "P4_CANONICAL_PROCEDURE_TOOL": {"mutable_model_stages": 2, "external_services": ["execution provider", "canonicalizer provider"], "persisted_stores": ["procedure registry", "typed tool registry"], "nl_handoffs": 0},
     "LP0_LANGUAGE_THROUGHOUT": {"mutable_model_stages": 7, "external_services": ["execution provider"], "persisted_stores": [], "nl_handoffs": 4},

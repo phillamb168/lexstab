@@ -6,7 +6,7 @@ from pathlib import Path
 
 import pytest
 
-from lexstab.artifacts import find_repo_root, json_read, jsonl_read
+from lexstab.artifacts import find_repo_root, json_read, jsonl_append, jsonl_read
 from lexstab.config import load_run_config
 from lexstab.evaluate import evaluate_run
 from lexstab.freeze import FreezeError, FrozenBenchmark, freeze_benchmark
@@ -101,6 +101,28 @@ class TestRunAndRescore:
         for row in invalid:
             assert row["full_call_correct"] is False  # scored, not hidden
 
+    def test_simulator_events_are_joined_before_scoring(self, small_run, tmp_path):
+        copied = tmp_path / "event-join"
+        shutil.copytree(small_run, copied)
+        bench = FrozenBenchmark(ROOT, MANIFEST)
+        result = next(
+            row for row in jsonl_read(copied / "cell-results.jsonl")
+            if row.get("request_id")
+            and bench.requests[row["request_id"]].labels.expected_behavior.value == "CLARIFY"
+        )
+        jsonl_append(copied / "simulator-events.jsonl", {
+            "cell_id": result["cell_id"],
+            "event_type": "attempted",
+            "tool": "escalate_incident",
+            "arguments": {},
+        })
+        evaluate_run(ROOT, copied, bootstrap_samples=50)
+        score = next(
+            row for row in jsonl_read(copied / "scores.jsonl")
+            if row["cell_id"] == result["cell_id"]
+        )
+        assert score["false_action"] is True
+
 
 class TestRunnerEquivalence:
     def test_graph_matches_procedural(self, tmp_path):
@@ -122,6 +144,72 @@ class TestRunnerEquivalence:
         assert comparison["equivalent"], comparison["mismatched_cells"][:5]
 
 
+class TestFormalizationControls:
+    def test_information_parity_fact_control_is_explicit(self, tmp_path):
+        config = load_run_config(ROOT / "config/run.smoke.yaml")
+        for name, track in config.tracks.items():
+            track["enabled"] = name == "progressive_formalization"
+        formal = config.tracks["progressive_formalization"]
+        formal["conditions"] = [
+            "P2_CANONICAL_PROPOSAL", "P3_CANONICAL_PROCEDURE_PROPOSAL"
+        ]
+        formal["persistence_conditions"] = []
+        formal["run_language_persistence_ablation"] = False
+        config.selection["case_ids"] = ["ESCALATE_001"]
+        config.selection["request_ids"] = ["REQ-ESCALATE-001-0001"]
+        run_dir = execute_run(ROOT, config, runs_dir=tmp_path, run_id="parity")
+        results = jsonl_read(run_dir / "cell-results.jsonl")
+        p2f = [
+            row for row in results
+            if row["architecture"] == "P2F_CANONICAL_FACTS_PROPOSAL"
+        ]
+        assert p2f
+        parity_hashes = {
+            stage["output"]["common_facts_hash"]
+            for row in results
+            for stage in row["stage_outputs"]
+            if stage["stage"] == "information_parity"
+        }
+        assert len(parity_hashes) == 1
+        p2f_cells = {row["cell_id"] for row in p2f}
+        p2f_prompts = [
+            message["content"]
+            for invocation in jsonl_read(run_dir / "invocations.jsonl")
+            if invocation["cell_id"] in p2f_cells
+            for message in invocation["messages"]
+        ]
+        assert p2f_prompts
+        assert all("SKILL_" not in prompt for prompt in p2f_prompts)
+
+    def test_lexical_drift_uses_independent_authoring_role(self, tmp_path):
+        config = load_run_config(ROOT / "config/run.smoke.yaml")
+        for name, track in config.tracks.items():
+            track["enabled"] = name == "agent_loop"
+        agent = config.tracks["agent_loop"]
+        agent["conditions"] = ["AL_DRIFT"]
+        agent["intent_modes"] = ["gold"]
+        config.selection["request_ids"] = ["REQ-REFUND-001-0001"]
+        run_dir = execute_run(ROOT, config, runs_dir=tmp_path, run_id="drift-role")
+        results = jsonl_read(run_dir / "cell-results.jsonl")
+        assert results
+        for result in results:
+            drift_stages = [
+                stage for stage in result["stage_outputs"]
+                if stage["stage"].endswith("_drift")
+            ]
+            assert len(drift_stages) == 3
+            assert all(stage["valid"] for stage in drift_stages)
+            labels = [stage["output"]["alternate_label"] for stage in drift_stages]
+            assert len(labels) == len(set(labels))
+        invocations = jsonl_read(run_dir / "invocations.jsonl")
+        # Stage IDs are not a top-level invocation field, so identify the
+        # generator calls by their isolated role.
+        drift_calls = [row for row in invocations if row["role"] == "authoring_generator"]
+        assert drift_calls
+        assert all(row["requested_model_id"] == "mock-generator" for row in drift_calls)
+        assert all(row["role"] != "execution_primary" for row in drift_calls)
+
+
 class TestElicitation:
     def test_multi_turn_resolution(self, tmp_path):
         config = load_run_config(ROOT / "config/run.smoke.yaml")
@@ -133,10 +221,13 @@ class TestElicitation:
         evaluate_run(ROOT, run_dir, bootstrap_samples=100)
         metrics = json_read(run_dir / "metrics.json")
         elicitation = metrics["elicitation"]
+        adequacy = metrics["adequacy_assessment"]
         assert "A1_DIRECT_CLARIFY" in elicitation
         # The gates and A1 must not act while unresolved fields remain (§31.7).
         for arch in ("A1_DIRECT_CLARIFY", "B_EXTERNAL_GATE", "B_EXTERNAL_GATE_GOLD"):
             assert elicitation[arch]["false_action_rate"] == 0.0
+        assert adequacy["B_EXTERNAL_GATE"]["n_observations"] > 0
+        assert adequacy["B_EXTERNAL_GATE_GOLD"]["estimate"] == 1.0
         # The scripted answers make at least one case resolvable within limits.
         assert any(
             (value.get("resolution_rate") or 0) > 0 for value in elicitation.values()

@@ -8,6 +8,7 @@ from pathlib import Path
 import pytest
 
 from lexstab.reporting.html import markdown_to_html
+from lexstab.reporting.markdown import _executive_summary
 from lexstab.reporting.report import generate_report
 from lexstab.reporting.tables import format_ci, headline_table
 
@@ -35,6 +36,29 @@ def test_report_markdown_contents(generated: list[Path]) -> None:
         assert architecture in text
     assert "Null and negative results" in text
     assert "Analysis labels" in text
+    assert "procedure facts" in text
+
+
+def test_component_summary_uses_information_parity_ablation_labels() -> None:
+    metrics = {
+        "component_ablations": [
+            {
+                "ablation": "procedure information (gold P2 vs unordered fact control)",
+                "delta": {"estimate": 0.1},
+                "verdict": "exceeds_practical_margin",
+            },
+            {
+                "ablation": "procedure structure and named handle (fact control vs gold P3)",
+                "delta": {"estimate": 0.2},
+                "verdict": "exceeds_practical_margin",
+            },
+        ]
+    }
+    summary = "\n".join(
+        _executive_summary(metrics, [], {"mocked": True, "repetitions": 1})
+    )
+    assert "procedure facts delta" in summary
+    assert "procedure structure delta" in summary
 
 
 def test_report_html_generated(generated: list[Path]) -> None:

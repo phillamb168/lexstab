@@ -71,6 +71,11 @@ def _root() -> Path:
     return root
 
 
+def _runs_root(root: Path) -> Path:
+    configured = Path(os.environ.get("LEXSTAB_RUNS_DIR", "runs"))
+    return configured if configured.is_absolute() else root / configured
+
+
 def _fail(message: str) -> None:
     typer.secho(f"ERROR: {message}", fg=typer.colors.RED, err=True)
     raise typer.Exit(code=1)
@@ -93,18 +98,28 @@ def doctor(
     root = _root()
     problems: list[str] = []
     try:
-        models_config = load_models_config(root / models_path, strict_env=False)
+        run_config = load_run_config(root / run_path)
+        from lexstab.run import required_model_roles
+
+        needed_roles = required_model_roles(run_config)
+        models_config = load_models_config(
+            root / models_path,
+            strict_env=True,
+            strict_roles=needed_roles,
+        )
     except Exception as exc:
-        _fail(f"model config: {exc}")
+        _fail(f"model or run config: {exc}")
         return
     violations = validate_role_separation(models_config)
     if violations and not models_config.separation_policy.allow_role_overlap:
         problems.extend(violations)
-    for name, role in models_config.roles.items():
-        if role.enabled and role.provider != "mock" and not role.model_id:
+    for name in sorted(needed_roles):
+        role = models_config.roles.get(name)
+        if role is None or not role.enabled:
+            problems.append(f"required role {name}: not enabled")
+        elif not role.model_id:
             problems.append(f"role {name}: model ID unresolved (set its environment variable)")
     try:
-        run_config = load_run_config(root / run_path)
         manifest_path = root / run_config.benchmark_manifest
         if not manifest_path.exists():
             problems.append(f"benchmark manifest missing: {run_config.benchmark_manifest}")
@@ -363,7 +378,13 @@ def _authoring_context(root: Path, models_path: str, run_id: str):
     from lexstab.prompts import PromptLibrary
     from lexstab.providers.registry import build_provider
 
-    models_config = load_models_config(root / models_path, strict_env=False)
+    authoring_roles = {
+        "authoring_generator", "authoring_equivalence_critic",
+        "authoring_adversarial_critic", "failure_analyst",
+    }
+    models_config = load_models_config(
+        root / models_path, strict_env=True, strict_roles=authoring_roles
+    )
     violations = validate_role_separation(models_config)
     if violations and not models_config.separation_policy.allow_role_overlap:
         _fail("role separation policy violated:\n" + "\n".join(violations))
@@ -477,7 +498,9 @@ def discover_renderings_cmd(
     from lexstab.discovery import discover_renderings
     from lexstab.providers.registry import build_provider
 
-    models_config = load_models_config(root / models_path, strict_env=False)
+    models_config = load_models_config(
+        root / models_path, strict_env=True, strict_roles={role}
+    )
     provider = build_provider(models_config.role(role))
     renderings = discover_renderings(
         root, DomainStore.load(root), models_config, provider,
@@ -789,7 +812,8 @@ def run_cmd(
             cell_runner = graph_run_cell
         else:
             from lexstab.runner import run_cell as cell_runner  # type: ignore[assignment]
-        run_dir = execute_run(root, run_config, run_id=run_id, cell_runner=cell_runner,
+        run_dir = execute_run(root, run_config, runs_dir=_runs_root(root),
+                              run_id=run_id, cell_runner=cell_runner,
                               progress=lambda msg: typer.echo(f"  {msg}"))
     except (RunError, ArtifactError) as exc:
         _fail(str(exc))
@@ -850,7 +874,9 @@ def judge_cmd(
     root = _root()
     from lexstab.evaluators.llm_judge import calibration_status, judge_clarifications
 
-    models_config = load_models_config(root / models_path, strict_env=False)
+    models_config = load_models_config(
+        root / models_path, strict_env=True, strict_roles={"evaluation_judge"}
+    )
     judged = judge_clarifications(root, root / run, models_config, limit=limit)
     status = calibration_status(root / run)
     label = "calibrated" if status["calibrated"] else f"EXPLORATORY ({status['reason']})"
@@ -971,6 +997,22 @@ def regression_verify(version: str = typer.Option(..., "--version")) -> None:
 
     suite = load_regression_suite(root, version)
     _ok(f"regression suite v{version} valid: {len(suite['request_ids'])} promoted requests")
+
+
+@regression_app.command("check")
+def regression_check(
+    run: str = typer.Option(..., "--run"),
+    thresholds: str = typer.Option("config/thresholds.example.yaml", "--thresholds"),
+) -> None:
+    """Apply blocking regression gates to a completed, evaluated run."""
+    root = _root()
+    from lexstab.config import load_thresholds
+    from lexstab.regression import check_run_thresholds
+
+    report = check_run_thresholds(root / run, load_thresholds(root / thresholds))
+    typer.echo(json.dumps(report, indent=2))
+    if not report["passed"]:
+        raise typer.Exit(code=1)
 
 
 # ---------------------------------------------------------------- auxiliary experiments

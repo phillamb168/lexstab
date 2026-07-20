@@ -9,8 +9,8 @@ on:
   workflow_dispatch:
     inputs:
       manifest:
-        description: Regression suite manifest path
-        default: dataset/manifests/regression-v0.1.0.json
+        description: Frozen benchmark or promoted regression-suite manifest path
+        default: dataset/manifests/benchmark-v0.1.0.json
       repetitions:
         description: Repetitions
         default: "3"
@@ -27,9 +27,9 @@ jobs:
       - name: Guard - require configured credentials
         id: guard
         run: |
-          if [ -z "${{ secrets.EXECUTION_MODEL_ID }}" ]; then
+          if [ -z "${{ secrets.EXECUTION_MODEL_ID }}" ] || [ -z "${{ secrets.CANONICALIZER_MODEL_ID }}" ]; then
             echo "configured=false" >> "$GITHUB_OUTPUT"
-            echo "No EXECUTION_MODEL_ID secret configured; skipping paid regression run."
+            echo "Execution or canonicalizer model ID is missing; skipping paid regression run."
           else
             echo "configured=true" >> "$GITHUB_OUTPUT"
           fi
@@ -44,13 +44,15 @@ jobs:
           CANONICALIZER_MODEL_ID: ${{ secrets.CANONICALIZER_MODEL_ID }}
           ADEQUACY_ASSESSOR_MODEL_ID: ${{ secrets.ADEQUACY_ASSESSOR_MODEL_ID }}
         run: |
-          uv run lexstab doctor --models config/models.example.yaml --run config/run.example.yaml
           uv run lexstab run --config config/run.example.yaml \
+            --manifest ${{ github.event.inputs.manifest || 'dataset/manifests/benchmark-v0.1.0.json' }} \
             --track boundary --split validation \
             --repetitions ${{ github.event.inputs.repetitions || 3 }} \
             --run-id scheduled-${{ github.run_id }}
           uv run lexstab evaluate --run runs/scheduled-${{ github.run_id }}
           uv run lexstab report --run runs/scheduled-${{ github.run_id }}
+          uv run lexstab regression check --run runs/scheduled-${{ github.run_id }} \
+            --thresholds config/thresholds.example.yaml
       - name: Upload run artifacts
         if: steps.guard.outputs.configured == 'true'
         uses: actions/upload-artifact@v4

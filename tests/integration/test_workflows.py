@@ -96,6 +96,35 @@ def test_regression_promotion_requires_approval(tmp_path):
         )
 
 
+def test_regression_suite_is_executable_as_frozen_overlay(tmp_path):
+    from lexstab.artifacts import json_write
+    from lexstab.config import load_run_config
+    from lexstab.hashing import hash_json_artifact
+    from lexstab.run import execute_run
+
+    row = jsonl_read(ROOT / "dataset/requests/frozen/support-v0.1.0.jsonl")[0]
+    suite = {
+        "schema_version": "1.2.0",
+        "suite_id": "test-regression-suite",
+        "suite_version": "test",
+        "base_benchmark_manifest": "dataset/manifests/benchmark-v0.1.0.json",
+        "promotion": {"approved_by": "test"},
+        "request_ids": [row["request_id"]],
+        "requests": [row],
+        "request_hashes": {row["request_id"]: hash_json_artifact(row)},
+    }
+    suite_path = tmp_path / "regression-suite.json"
+    json_write(suite_path, suite)
+    config = load_run_config(ROOT / "config/run.smoke.yaml")
+    config.benchmark_manifest = str(suite_path)
+    for name, track in config.tracks.items():
+        track["enabled"] = name == "boundary"
+    run_dir = execute_run(ROOT, config, runs_dir=tmp_path, run_id="regression-overlay")
+    matrix = jsonl_read(run_dir / "matrix.jsonl")
+    assert matrix
+    assert {cell["request_id"] for cell in matrix} == {row["request_id"]}
+
+
 def test_experiments_run_offline(tmp_path):
     from lexstab.experiments.code import run_code_experiment
     from lexstab.experiments.grammar import run_grammar_experiment

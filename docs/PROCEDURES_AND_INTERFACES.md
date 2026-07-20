@@ -145,15 +145,20 @@ information addition is explicitly the named variable. Enforcement points:
 - The progressive-formalization graph contains the node `verify_information_parity`
   (`src/lexstab/graphs/progressive_formalization.py`), which runs after artifact loading and
   before condition selection on every cell.
+- Every P-ladder result records an `information_parity` stage containing a hash of the domain
+  rules, known state, and shared context supplied to that condition. P3 and P4 receive the same
+  shared context inside their known-state section, so parity can be verified from stored traces.
 - `evaluation.formalization_accounting.require_information_parity_check: true` in the run config
   (`config/run.example.yaml`) and `progressive_formalization.require_information_parity_check` in
   the threshold config (`config/thresholds.example.yaml`) keep the check load-bearing for CI.
 - The track dry-run (`lexstab run --track progressive_formalization --dry-run`) reports procedure
   and interface hashes and which conditions use runtime versus gold canonical intent, so parity
   can be audited before spending money (spec §42.14).
-- Procedure conditions additionally require the §33.10 information-parity control: the same
-  factual content supplied without procedural sequencing or the named handle, so a procedure win
-  can be attributed to structure rather than smuggled facts (spec §46.28).
+- `P2F_CANONICAL_FACTS_PROPOSAL` is the procedure information-parity control. It receives the
+  procedure's required inputs, constraints, forbidden behaviors, and output contract in sorted,
+  unordered form, with the procedure ID, title, step IDs, and step order removed. The P2-to-P2F
+  comparison estimates the effect of added information; P2F-to-P3 estimates the incremental
+  effect of the named procedure and sequential structure (spec §46.28).
 
 Prompt tokens and placement are recorded per invocation because procedures and tool schemas change
 context length (spec §33.10, §46.8).

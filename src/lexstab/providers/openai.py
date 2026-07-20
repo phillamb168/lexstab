@@ -126,4 +126,9 @@ class OpenAIProvider(BaseAdapter):
             reported_model_id=body.get("model"),
             fingerprint=body.get("system_fingerprint"),
             provider_request_id=response.headers.get("x-request-id"),
+            accepted_parameters={
+                key: parameters[key]
+                for key in ("temperature", "max_tokens", "top_p", "seed")
+                if key in parameters
+            },
         )
