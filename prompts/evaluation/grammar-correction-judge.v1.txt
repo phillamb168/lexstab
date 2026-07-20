@@ -1,0 +1,37 @@
+PROMPT_ID: grammar-correction-judge.v1
+PURPOSE: Judge whether an open-ended grammar correction is acceptable under a human-authored rubric when multiple surface forms are valid.
+REQUIRED_VARIABLES: original_text, gold_annotations, candidate_output, rubric
+RESPONSE_SCHEMA: judge_result.v1
+
+---
+
+Evaluate the candidate correction using only the supplied rubric and gold annotations.
+
+ORIGINAL TEXT
+{original_text}
+
+GOLD ANNOTATIONS
+{gold_annotations}
+
+CANDIDATE OUTPUT
+{candidate_output}
+
+RUBRIC
+{rubric}
+
+A correction may be acceptable in more than one surface form. Judge whether the candidate satisfies the rubric, not whether it matches one particular wording.
+
+Do not infer which model, provider, architecture, or experimental condition produced the candidate.
+Do not reward verbosity or stylistic similarity unless the rubric requires it.
+
+Return only:
+
+{
+  "criterion": "...",
+  "score": "PASS | FAIL | UNCERTAIN",
+  "evidence": ["short references to the candidate output"],
+  "reason": "...",
+  "human_review_required": false
+}
+
+Set human_review_required to true when the gold annotations or rubric do not determine the answer.

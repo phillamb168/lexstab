@@ -1,0 +1,163 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://lexstab.invalid/schemas/benchmark-manifest.schema.json",
+  "$defs": {
+    "BenchmarkSection": {
+      "additionalProperties": false,
+      "properties": {
+        "files": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Files",
+          "type": "array"
+        },
+        "ids": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Ids",
+          "type": "array"
+        },
+        "hashes": {
+          "additionalProperties": {
+            "type": "string"
+          },
+          "title": "Hashes",
+          "type": "object"
+        }
+      },
+      "title": "BenchmarkSection",
+      "type": "object"
+    }
+  },
+  "additionalProperties": false,
+  "properties": {
+    "schema_version": {
+      "default": "1.2.0",
+      "title": "Schema Version",
+      "type": "string"
+    },
+    "benchmark_id": {
+      "title": "Benchmark Id",
+      "type": "string"
+    },
+    "benchmark_version": {
+      "title": "Benchmark Version",
+      "type": "string"
+    },
+    "created_at": {
+      "title": "Created At",
+      "type": "string"
+    },
+    "description": {
+      "default": "",
+      "title": "Description",
+      "type": "string"
+    },
+    "artifact_root_hash": {
+      "title": "Artifact Root Hash",
+      "type": "string"
+    },
+    "ontology": {
+      "additionalProperties": true,
+      "title": "Ontology",
+      "type": "object"
+    },
+    "cases": {
+      "$ref": "#/$defs/BenchmarkSection"
+    },
+    "requests": {
+      "$ref": "#/$defs/BenchmarkSection"
+    },
+    "renderings": {
+      "$ref": "#/$defs/BenchmarkSection"
+    },
+    "procedures": {
+      "$ref": "#/$defs/BenchmarkSection"
+    },
+    "action_interfaces": {
+      "$ref": "#/$defs/BenchmarkSection"
+    },
+    "contexts": {
+      "$ref": "#/$defs/BenchmarkSection"
+    },
+    "semantic_memory": {
+      "$ref": "#/$defs/BenchmarkSection"
+    },
+    "elicitation_cases": {
+      "$ref": "#/$defs/BenchmarkSection"
+    },
+    "prompt_versions": {
+      "additionalProperties": {
+        "type": "string"
+      },
+      "title": "Prompt Versions",
+      "type": "object"
+    },
+    "prompt_hashes": {
+      "additionalProperties": {
+        "type": "string"
+      },
+      "title": "Prompt Hashes",
+      "type": "object"
+    },
+    "splits": {
+      "additionalProperties": {
+        "items": {
+          "type": "string"
+        },
+        "type": "array"
+      },
+      "title": "Splits",
+      "type": "object"
+    },
+    "allowed_architectures": {
+      "items": {
+        "type": "string"
+      },
+      "title": "Allowed Architectures",
+      "type": "array"
+    },
+    "validation": {
+      "additionalProperties": {
+        "type": "boolean"
+      },
+      "title": "Validation",
+      "type": "object"
+    },
+    "development_overwrite": {
+      "default": false,
+      "title": "Development Overwrite",
+      "type": "boolean"
+    },
+    "changelog": {
+      "items": {
+        "additionalProperties": true,
+        "type": "object"
+      },
+      "title": "Changelog",
+      "type": "array"
+    }
+  },
+  "required": [
+    "benchmark_id",
+    "benchmark_version",
+    "created_at",
+    "artifact_root_hash",
+    "ontology",
+    "cases",
+    "requests",
+    "renderings",
+    "procedures",
+    "action_interfaces",
+    "contexts",
+    "semantic_memory",
+    "prompt_versions",
+    "splits",
+    "allowed_architectures",
+    "validation"
+  ],
+  "title": "BenchmarkManifest",
+  "type": "object"
+}

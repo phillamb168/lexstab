@@ -1,0 +1,16 @@
+PROMPT_ID: grammar-definition-only.v1
+PURPOSE: Detect and correct the target editorial phenomenon from its definition alone without any label.
+REQUIRED_VARIABLES: text
+RESPONSE_SCHEMA: grammar_correction.v1
+
+---
+
+Review the text for cases where a definite noun phrase refers to something that has not previously been introduced and cannot otherwise be uniquely identified from context.
+
+Correct only those cases.
+Do not make any other stylistic changes.
+
+Return JSON with detected spans and the corrected text.
+
+TEXT
+{text}

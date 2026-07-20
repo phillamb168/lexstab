@@ -1,0 +1,18 @@
+PROMPT_ID: grammar-model-term-definition.v1
+PURPOSE: Detect and correct the target editorial phenomenon using the model-discovered term plus its definition.
+REQUIRED_VARIABLES: model_discovered_term, text
+RESPONSE_SCHEMA: grammar_correction.v1
+
+---
+
+Review the text for instances of {model_discovered_term}.
+
+For this task, {model_discovered_term} means a definite noun phrase referring to something that has not previously been introduced and cannot otherwise be uniquely identified from context.
+
+Correct only those cases.
+Do not make any other stylistic changes.
+
+Return JSON with detected spans and the corrected text.
+
+TEXT
+{text}

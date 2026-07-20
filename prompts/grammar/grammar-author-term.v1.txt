@@ -1,0 +1,16 @@
+PROMPT_ID: grammar-author-term.v1
+PURPOSE: Detect and correct the target editorial phenomenon using the author-chosen term with no definition.
+REQUIRED_VARIABLES: author_term, text
+RESPONSE_SCHEMA: grammar_correction.v1
+
+---
+
+Review the text for instances of {author_term}.
+
+For this task, make only corrections required by {author_term}.
+Do not make any other stylistic changes.
+
+Return JSON with detected spans and the corrected text.
+
+TEXT
+{text}

@@ -1,0 +1,4 @@
+{"forbidden_edits": ["rewording unrelated clauses"], "instances": [{"end_character": 38, "original_span": "The queue", "replacement": "A queue", "start_character": 29}], "item_id": "GR-001", "phenomenon_present": true, "text": "A server received a request. The queue then forwarded it to a worker."}
+{"forbidden_edits": [], "instances": [], "item_id": "GR-002", "phenomenon_present": false, "text": "A queue was configured. The queue forwarded each request to a worker."}
+{"forbidden_edits": [], "instances": [{"end_character": 42, "original_span": "The dashboard", "replacement": "A dashboard", "start_character": 29}], "item_id": "GR-003", "phenomenon_present": true, "text": "An engineer opened a ticket. The dashboard showed no alerts for it."}
+{"forbidden_edits": [], "instances": [], "item_id": "GR-004", "phenomenon_present": false, "text": "A customer sent an email. The email described a billing problem."}

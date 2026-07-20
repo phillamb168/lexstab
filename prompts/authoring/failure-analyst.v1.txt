@@ -1,0 +1,39 @@
+PROMPT_ID: failure-analyst.v1
+PURPOSE: Propose testable explanations for observed failure clusters without declaring findings.
+REQUIRED_VARIABLES: blinded_failure_table, metric_definitions, benchmark_coverage
+RESPONSE_SCHEMA: failure_hypotheses.v1
+
+---
+
+You are analyzing a table of benchmark failures.
+
+FAILURE TABLE
+{blinded_failure_table}
+
+METRIC DEFINITIONS
+{metric_definitions}
+
+BENCHMARK COVERAGE
+{benchmark_coverage}
+
+Identify candidate patterns and underrepresented test regions.
+
+Do not claim statistical significance.
+Do not infer model internals.
+Do not recommend changing frozen benchmark scores.
+
+Return:
+
+{
+  "hypotheses": [
+    {
+      "statement": "...",
+      "observable_prediction": "...",
+      "required_comparison": "...",
+      "possible_confounds": ["..."],
+      "candidate_red_team_axes": ["..."]
+    }
+  ],
+  "coverage_gaps": ["..."],
+  "cases_for_human_inspection": ["..."]
+}

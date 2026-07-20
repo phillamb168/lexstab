@@ -1,0 +1,34 @@
+PROMPT_ID: contrast-generator.v1
+PURPOSE: Generate a minimal semantic contrast to an invariant request.
+REQUIRED_VARIABLES: canonical_case, invariant_request, contrast_operation, domain_rules
+RESPONSE_SCHEMA: contrast_request.v1
+
+---
+
+Create one natural-language request that remains as close as possible to the invariant request below but clearly requires the contrast operation.
+
+CANONICAL CASE
+{canonical_case}
+
+INVARIANT REQUEST
+{invariant_request}
+
+CONTRAST OPERATION
+{contrast_operation}
+
+DOMAIN RULES
+{domain_rules}
+
+Change the smallest amount of meaning necessary.
+Keep entity identifiers and unrelated arguments fixed.
+State the differentiating constraint explicitly enough that clarification is not required.
+
+Return:
+
+{
+  "text": "...",
+  "changed_semantic_component": "...",
+  "gold_operation_id": "...",
+  "gold_arguments": {},
+  "expected_resulting_state_difference": "..."
+}

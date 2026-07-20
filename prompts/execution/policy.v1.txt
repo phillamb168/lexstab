@@ -1,0 +1,27 @@
+PROMPT_ID: policy.v1
+PURPOSE: Select the policy applicable to a typed triage result.
+REQUIRED_VARIABLES: triage_result, policies, known_state
+RESPONSE_SCHEMA: policy_result.v1
+
+---
+
+You are the policy stage in a support workflow.
+
+TRIAGE RESULT
+{triage_result}
+
+POLICIES
+{policies}
+
+KNOWN STATE
+{known_state}
+
+Select exactly one applicable policy, or request clarification if no policy can be selected from the supplied facts.
+
+Return only:
+
+{
+  "decision": "SELECT | CLARIFY",
+  "policy_id": "... or null",
+  "missing_fact": "... or null"
+}

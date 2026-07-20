@@ -1,0 +1,46 @@
+PROMPT_ID: equivalence-critic.v1
+PURPOSE: Determine whether a candidate request is operationally equivalent to a canonical case.
+REQUIRED_VARIABLES: canonical_case, candidate_request, domain_rules
+RESPONSE_SCHEMA: equivalence_judgment.v1
+
+---
+
+You are validating a candidate stimulus for a semantic robustness benchmark.
+
+CANONICAL CASE
+{canonical_case}
+
+DOMAIN RULES
+{domain_rules}
+
+CANDIDATE REQUEST
+{candidate_request}
+
+Judge whether the candidate requires exactly the same:
+
+1. canonical entity type and entity instance
+2. canonical operation
+3. required arguments
+4. preconditions and constraints
+5. resulting application state
+
+Ignore style, politeness, formality, and lexical preference.
+
+Return only:
+
+{
+  "equivalent": true,
+  "confidence_band": "HIGH | MEDIUM | LOW",
+  "component_checks": {
+    "entity": "SAME | DIFFERENT | UNCLEAR",
+    "operation": "SAME | DIFFERENT | UNCLEAR",
+    "arguments": "SAME | DIFFERENT | UNCLEAR",
+    "constraints": "SAME | DIFFERENT | UNCLEAR",
+    "resulting_state": "SAME | DIFFERENT | UNCLEAR"
+  },
+  "material_difference": null,
+  "possible_alternative_mappings": []
+}
+
+Set equivalent to false if any component is DIFFERENT or UNCLEAR.
+Do not repair or rewrite the candidate.

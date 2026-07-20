@@ -1,0 +1,29 @@
+PROMPT_ID: lexical-drift.v1
+PURPOSE: Produce a meaning-preserving alternate label for a resolved canonical object.
+REQUIRED_VARIABLES: canonical_id, definition, current_label, forbidden_labels
+RESPONSE_SCHEMA: drifted_label.v1
+
+---
+
+You are generating a lexical-drift test condition.
+
+CANONICAL ID
+{canonical_id}
+
+DEFINITION
+{definition}
+
+CURRENT LABEL
+{current_label}
+
+FORBIDDEN LABELS
+{forbidden_labels}
+
+Produce one concise alternate label that preserves the definition but does not repeat the current or forbidden labels.
+
+Return only:
+
+{
+  "canonical_id": "...",
+  "alternate_label": "..."
+}

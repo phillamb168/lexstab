@@ -1,0 +1,89 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://lexstab.invalid/schemas/elicitation-case.schema.json",
+  "$defs": {
+    "CanonicalIntent": {
+      "additionalProperties": false,
+      "properties": {
+        "entity_type": {
+          "pattern": "^[A-Z][A-Z0-9_]+$",
+          "title": "Entity Type",
+          "type": "string"
+        },
+        "entity_id": {
+          "title": "Entity Id",
+          "type": "string"
+        },
+        "operation_id": {
+          "pattern": "^[A-Z][A-Z0-9_]+$",
+          "title": "Operation Id",
+          "type": "string"
+        },
+        "arguments": {
+          "additionalProperties": true,
+          "title": "Arguments",
+          "type": "object"
+        }
+      },
+      "required": [
+        "entity_type",
+        "entity_id",
+        "operation_id",
+        "arguments"
+      ],
+      "title": "CanonicalIntent",
+      "type": "object"
+    }
+  },
+  "additionalProperties": false,
+  "properties": {
+    "schema_version": {
+      "default": "1.2.0",
+      "title": "Schema Version",
+      "type": "string"
+    },
+    "elicitation_case_id": {
+      "pattern": "^ELICIT-[A-Z0-9-]+$",
+      "title": "Elicitation Case Id",
+      "type": "string"
+    },
+    "linked_case_id": {
+      "title": "Linked Case Id",
+      "type": "string"
+    },
+    "initial_request_id": {
+      "title": "Initial Request Id",
+      "type": "string"
+    },
+    "gold_initial_labels": {
+      "additionalProperties": true,
+      "title": "Gold Initial Labels",
+      "type": "object"
+    },
+    "scripted_user_answers": {
+      "additionalProperties": {
+        "type": "string"
+      },
+      "title": "Scripted User Answers",
+      "type": "object"
+    },
+    "resolved_gold": {
+      "$ref": "#/$defs/CanonicalIntent"
+    },
+    "maximum_clarification_turns": {
+      "default": 3,
+      "title": "Maximum Clarification Turns",
+      "type": "integer"
+    }
+  },
+  "required": [
+    "elicitation_case_id",
+    "linked_case_id",
+    "initial_request_id",
+    "gold_initial_labels",
+    "scripted_user_answers",
+    "resolved_gold"
+  ],
+  "title": "ElicitationCase",
+  "type": "object"
+}

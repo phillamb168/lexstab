@@ -1,0 +1,50 @@
+schema_version: "1.2.0"
+
+baseline_architecture: "A1_DIRECT_CLARIFY"
+
+gates:
+  schema_validity:
+    minimum: 0.99
+  full_call_accuracy:
+    maximum_drop_from_baseline: 0.01
+  final_state_accuracy:
+    maximum_drop_from_baseline: 0.01
+  operational_invariance:
+    maximum_drop_from_baseline: 0.02
+  contrast_accuracy:
+    maximum_drop_from_baseline: 0.01
+  false_action_rate:
+    maximum: 0.0
+  unnecessary_clarification_rate:
+    maximum: 0.05
+  adequacy_accuracy:
+    minimum: 0.90
+  unresolved_without_action_rate:
+    minimum: 0.99
+  procedure_selection_accuracy:
+    minimum: 0.99
+  typed_interface_validation_rate:
+    minimum: 0.99
+
+practical_equivalence:
+  success_margin: 0.01
+  final_state_margin: 0.01
+  operational_invariance_margin: 0.02
+  false_action_margin: 0.0
+
+complexity:
+  require_architecture_bill_of_materials: true
+  require_cost_and_latency_comparison: true
+  require_external_dependency_inventory: true
+
+progressive_formalization:
+  require_adjacent_transition_intervals: true
+  require_component_ablations: true
+  require_information_parity_check: true
+  require_representation_ledger: true
+  minimum_practical_final_state_gain: 0.02
+
+blocking:
+  require_case_clustered_interval: true
+  block_on_missing_cells: true
+  block_on_benchmark_hash_mismatch: true

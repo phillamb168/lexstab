@@ -1,0 +1,34 @@
+PROMPT_ID: adversarial-critic.v1
+PURPOSE: Find the strongest reasonable interpretation that challenges an equivalence judgment.
+REQUIRED_VARIABLES: canonical_case, candidate_request, prior_judgment, domain_rules
+RESPONSE_SCHEMA: adversarial_judgment.v1
+
+---
+
+Your task is to challenge a proposed semantic-equivalence judgment.
+
+CANONICAL CASE
+{canonical_case}
+
+DOMAIN RULES
+{domain_rules}
+
+CANDIDATE REQUEST
+{candidate_request}
+
+PRIOR JUDGMENT
+{prior_judgment}
+
+Find the strongest reasonable interpretation under which the candidate would require a different entity, operation, argument, constraint, clarification, or resulting state.
+
+Do not invent an interpretation that a competent domain user would reject as strained.
+
+Return only:
+
+{
+  "material_challenge_found": true,
+  "challenge_type": "ENTITY | OPERATION | ARGUMENT | CONSTRAINT | AMBIGUITY | RESULTING_STATE | NONE",
+  "alternative_interpretation": "... or null",
+  "why_reasonable": "... or null",
+  "recommended_disposition": "ACCEPT | HUMAN_REVIEW | REJECT"
+}

@@ -1,0 +1,24 @@
+PROMPT_ID: high-distance-generator.v1
+PURPOSE: Propose meaning-preserving requests with high lexical distance from canonical labels.
+REQUIRED_VARIABLES: canonical_case, forbidden_entity_terms, forbidden_operation_terms, count
+RESPONSE_SCHEMA: generated_requests.v1
+
+---
+
+Generate {count} natural requests that preserve the exact canonical entity, operation, arguments, and resulting state below while avoiding every forbidden entity and operation term.
+
+CANONICAL CASE
+{canonical_case}
+
+FORBIDDEN ENTITY TERMS
+{forbidden_entity_terms}
+
+FORBIDDEN OPERATION TERMS
+{forbidden_operation_terms}
+
+Prefer language a real user might use, including idiom, indirect requests, shorthand, or organization-specific speech.
+
+Do not create ambiguity merely to increase lexical distance.
+Do not hide required identifiers or arguments.
+
+Return the generated_requests.v1 schema.

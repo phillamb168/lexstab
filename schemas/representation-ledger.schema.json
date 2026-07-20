@@ -1,0 +1,61 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://lexstab.invalid/schemas/representation-ledger.schema.json",
+  "additionalProperties": false,
+  "properties": {
+    "run_id": {
+      "title": "Run Id",
+      "type": "string"
+    },
+    "cell_id": {
+      "title": "Cell Id",
+      "type": "string"
+    },
+    "stage_id": {
+      "title": "Stage Id",
+      "type": "string"
+    },
+    "stage_index": {
+      "title": "Stage Index",
+      "type": "integer"
+    },
+    "authoritative_representation": {
+      "title": "Authoritative Representation",
+      "type": "string"
+    },
+    "canonical_ids_present": {
+      "title": "Canonical Ids Present",
+      "type": "boolean"
+    },
+    "procedure_id_present": {
+      "title": "Procedure Id Present",
+      "type": "boolean"
+    },
+    "typed_schema_present": {
+      "title": "Typed Schema Present",
+      "type": "boolean"
+    },
+    "input_content_hash": {
+      "title": "Input Content Hash",
+      "type": "string"
+    },
+    "output_content_hash": {
+      "title": "Output Content Hash",
+      "type": "string"
+    }
+  },
+  "required": [
+    "run_id",
+    "cell_id",
+    "stage_id",
+    "stage_index",
+    "authoritative_representation",
+    "canonical_ids_present",
+    "procedure_id_present",
+    "typed_schema_present",
+    "input_content_hash",
+    "output_content_hash"
+  ],
+  "title": "RepresentationLedgerRecord",
+  "type": "object"
+}

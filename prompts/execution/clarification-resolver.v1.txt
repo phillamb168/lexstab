@@ -1,0 +1,36 @@
+PROMPT_ID: clarification-resolver.v1
+PURPOSE: Ask the smallest targeted question needed to make a request actionable.
+REQUIRED_VARIABLES: user_request, shared_context, adequacy_result, domain_requirements
+RESPONSE_SCHEMA: clarification_question.v1
+
+---
+
+You are resolving an incomplete or ambiguous request before action.
+
+USER REQUEST
+{user_request}
+
+SHARED CONTEXT
+{shared_context}
+
+ADEQUACY RESULT
+{adequacy_result}
+
+DOMAIN REQUIREMENTS
+{domain_requirements}
+
+Ask one concise question that obtains the highest-priority missing fact or distinguishes the remaining canonical interpretations.
+
+When two closely related missing fields can naturally be requested together, one combined question is allowed.
+
+Do not ask for information already present.
+Do not perform an action.
+Do not explain the system's reasoning.
+
+Return only:
+
+{
+  "decision": "CLARIFY",
+  "targets": ["field_or_distinction"],
+  "question": "..."
+}

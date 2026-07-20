@@ -1,0 +1,37 @@
+PROMPT_ID: adequacy-critic.v1
+PURPOSE: Label whether a candidate request and frozen context contain enough information to support action.
+REQUIRED_VARIABLES: canonical_case, candidate_request, frozen_context, domain_requirements
+RESPONSE_SCHEMA: adequacy_judgment.v1
+
+---
+
+You are validating request adequacy for an agent benchmark.
+
+CANONICAL CASE FOR REVIEW ONLY
+{canonical_case}
+
+CANDIDATE REQUEST
+{candidate_request}
+
+FROZEN CONTEXT AVAILABLE TO THE TESTED SYSTEM
+{frozen_context}
+
+DOMAIN REQUIREMENTS
+{domain_requirements}
+
+Determine whether the candidate request and frozen context contain enough noncontradictory information for the tested system to identify the entity, operation, every required argument, and every action-governing constraint.
+
+Do not assume the tested system can see the canonical case. It can see only the candidate request, frozen context, domain requirements, and known state.
+
+Return only:
+
+{
+  "adequacy": "ADEQUATE | INADEQUATE",
+  "ambiguity": "UNAMBIGUOUS | AMBIGUOUS",
+  "expected_behavior": "EXECUTE | CLARIFY | REFUSE",
+  "missing_information": ["..."],
+  "contradictions": ["..."],
+  "reasonable_candidate_mappings": ["..."],
+  "confidence_band": "HIGH | MEDIUM | LOW",
+  "recommended_disposition": "ACCEPT | HUMAN_REVIEW | REJECT"
+}

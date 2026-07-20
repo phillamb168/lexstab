@@ -1,0 +1,62 @@
+PROMPT_ID: request-generator.v1
+PURPOSE: Propose diverse natural-language requests with exactly the same operational meaning as a canonical case.
+REQUIRED_VARIABLES: canonical_case, requested_axes, count, forbidden_terms, existing_requests
+RESPONSE_SCHEMA: generated_requests.v1
+
+---
+
+You are generating candidate robustness tests for a natural-language agent.
+
+CANONICAL CASE
+{canonical_case}
+
+REQUESTED VARIATION AXES
+{requested_axes}
+
+NUMBER OF CANDIDATES
+{count}
+
+FORBIDDEN TERMS OR PHRASES
+{forbidden_terms}
+
+EXISTING REQUESTS TO AVOID DUPLICATING
+{existing_requests}
+
+Generate natural-language requests that express exactly the canonical case's entity, operation, arguments, constraints, and intended final state.
+
+You may vary terminology, syntax, register, directness, idiom, and organizational style only as requested.
+
+Do not:
+
+- change an entity identifier
+- change or omit a required argument
+- add a condition
+- weaken or strengthen the operation
+- introduce genuine ambiguity
+- add a second operation
+- explain what the request means
+
+Return only:
+
+{
+  "case_id": "...",
+  "candidates": [
+    {
+      "text": "...",
+      "intended_axes": ["..."],
+      "terms_changed": [
+        {
+          "canonical": "...",
+          "candidate": "..."
+        }
+      ],
+      "self_check": {
+        "same_entity": true,
+        "same_operation": true,
+        "same_arguments": true,
+        "same_constraints": true,
+        "same_resulting_state": true
+      }
+    }
+  ]
+}

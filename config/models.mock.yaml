@@ -1,0 +1,86 @@
+# Offline configuration: every role uses the deterministic mock provider.
+# Mock runs are wiring smoke tests only; they are never baseline-eligible
+# research evidence (decision D-009, spec §17.4, §46.26).
+schema_version: "1.2.0"
+
+roles:
+  execution_primary:
+    provider: "mock"
+    model: "mock"
+    purpose: "model_under_test"
+    baseline_eligible: false
+    parameters:
+      temperature: 0.0
+      max_tokens: 1024
+
+  boundary_canonicalizer:
+    provider: "mock"
+    model: "mock-canonicalizer"
+    purpose: "runtime_canonicalization"
+    parameters:
+      temperature: 0.0
+      max_tokens: 768
+
+  adequacy_assessor:
+    provider: "mock"
+    model: "mock-assessor"
+    purpose: "runtime_adequacy_and_ambiguity_gate"
+    parameters:
+      temperature: 0.0
+      max_tokens: 768
+
+  procedure_router:
+    provider: "mock"
+    model: "mock-router"
+    purpose: "runtime_procedure_selection"
+    parameters:
+      temperature: 0.0
+      max_tokens: 512
+
+  authoring_generator:
+    provider: "mock"
+    model: "mock-generator"
+    purpose: "candidate_generation"
+    parameters:
+      temperature: 0.8
+      max_tokens: 4096
+
+  authoring_equivalence_critic:
+    provider: "mock"
+    model: "mock-equivalence-critic"
+    purpose: "semantic_validation"
+    parameters:
+      temperature: 0.0
+      max_tokens: 1536
+
+  authoring_adversarial_critic:
+    provider: "mock"
+    model: "mock-adversarial-critic"
+    purpose: "counter_interpretation"
+    parameters:
+      temperature: 0.3
+      max_tokens: 1536
+
+  evaluation_judge:
+    enabled: true
+    provider: "mock"
+    model: "mock-judge"
+    purpose: "optional_blinded_judging"
+    parameters:
+      temperature: 0.0
+      max_tokens: 2048
+
+  failure_analyst:
+    enabled: true
+    provider: "mock"
+    model: "mock-analyst"
+    purpose: "hypothesis_generation"
+    parameters:
+      temperature: 0.2
+      max_tokens: 4096
+
+separation_policy:
+  forbid_execution_model_as_judge: true
+  forbid_generator_as_sole_critic: true
+  forbid_mut_as_primary_data_generator: true
+  allow_role_overlap: false

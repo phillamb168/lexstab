@@ -1,0 +1,160 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://lexstab.invalid/schemas/semantic-memory.schema.json",
+  "$defs": {
+    "MemoryCanonicalMapping": {
+      "additionalProperties": false,
+      "properties": {
+        "operation_id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Operation Id"
+        },
+        "entity_type": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Entity Type"
+        },
+        "required_unresolved_arguments": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Required Unresolved Arguments",
+          "type": "array"
+        }
+      },
+      "title": "MemoryCanonicalMapping",
+      "type": "object"
+    },
+    "MemoryScope": {
+      "additionalProperties": false,
+      "properties": {
+        "organization_id": {
+          "title": "Organization Id",
+          "type": "string"
+        },
+        "team_id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Team Id"
+        },
+        "user_id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "User Id"
+        }
+      },
+      "required": [
+        "organization_id"
+      ],
+      "title": "MemoryScope",
+      "type": "object"
+    }
+  },
+  "additionalProperties": false,
+  "properties": {
+    "schema_version": {
+      "default": "1.2.0",
+      "title": "Schema Version",
+      "type": "string"
+    },
+    "memory_id": {
+      "pattern": "^MEM-[A-Z0-9-]+$",
+      "title": "Memory Id",
+      "type": "string"
+    },
+    "scope": {
+      "$ref": "#/$defs/MemoryScope"
+    },
+    "surface_form": {
+      "minLength": 1,
+      "title": "Surface Form",
+      "type": "string"
+    },
+    "canonical_mapping": {
+      "$ref": "#/$defs/MemoryCanonicalMapping"
+    },
+    "status": {
+      "enum": [
+        "CONFIRMED",
+        "CANDIDATE",
+        "SUPERSEDED",
+        "RETRACTED"
+      ],
+      "title": "Status",
+      "type": "string"
+    },
+    "confirmed_by": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Confirmed By"
+    },
+    "effective_from": {
+      "title": "Effective From",
+      "type": "string"
+    },
+    "effective_to": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Effective To"
+    },
+    "provenance": {
+      "additionalProperties": true,
+      "title": "Provenance",
+      "type": "object"
+    }
+  },
+  "required": [
+    "memory_id",
+    "scope",
+    "surface_form",
+    "canonical_mapping",
+    "status",
+    "effective_from",
+    "provenance"
+  ],
+  "title": "SemanticMemoryRecord",
+  "type": "object"
+}

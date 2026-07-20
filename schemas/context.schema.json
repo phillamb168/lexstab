@@ -1,0 +1,81 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://lexstab.invalid/schemas/context.schema.json",
+  "$defs": {
+    "ContextMessage": {
+      "additionalProperties": false,
+      "properties": {
+        "role": {
+          "enum": [
+            "user",
+            "assistant",
+            "system"
+          ],
+          "title": "Role",
+          "type": "string"
+        },
+        "content": {
+          "title": "Content",
+          "type": "string"
+        }
+      },
+      "required": [
+        "role",
+        "content"
+      ],
+      "title": "ContextMessage",
+      "type": "object"
+    }
+  },
+  "additionalProperties": false,
+  "properties": {
+    "schema_version": {
+      "default": "1.2.0",
+      "title": "Schema Version",
+      "type": "string"
+    },
+    "context_id": {
+      "pattern": "^CTX-[A-Z0-9-]+$",
+      "title": "Context Id",
+      "type": "string"
+    },
+    "messages": {
+      "items": {
+        "$ref": "#/$defs/ContextMessage"
+      },
+      "title": "Messages",
+      "type": "array"
+    },
+    "visible_state": {
+      "additionalProperties": true,
+      "title": "Visible State",
+      "type": "object"
+    },
+    "available_to_architectures": {
+      "items": {
+        "type": "string"
+      },
+      "title": "Available To Architectures",
+      "type": "array"
+    },
+    "content_hash": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Content Hash"
+    }
+  },
+  "required": [
+    "context_id",
+    "messages",
+    "available_to_architectures"
+  ],
+  "title": "FrozenContext",
+  "type": "object"
+}

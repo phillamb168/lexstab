@@ -1,0 +1,115 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://lexstab.invalid/schemas/action-interface.schema.json",
+  "$defs": {
+    "InterfaceKind": {
+      "enum": [
+        "GENERIC_PROPOSAL",
+        "NATIVE_TOOL",
+        "MCP_CAPABILITY"
+      ],
+      "title": "InterfaceKind",
+      "type": "string"
+    }
+  },
+  "additionalProperties": false,
+  "properties": {
+    "schema_version": {
+      "default": "1.2.0",
+      "title": "Schema Version",
+      "type": "string"
+    },
+    "interface_id": {
+      "pattern": "^[A-Z][A-Z0-9_]+$",
+      "title": "Interface Id",
+      "type": "string"
+    },
+    "interface_version": {
+      "title": "Interface Version",
+      "type": "string"
+    },
+    "kind": {
+      "$ref": "#/$defs/InterfaceKind"
+    },
+    "operation_ids": {
+      "items": {
+        "type": "string"
+      },
+      "minItems": 1,
+      "title": "Operation Ids",
+      "type": "array"
+    },
+    "tools": {
+      "items": {
+        "additionalProperties": true,
+        "type": "object"
+      },
+      "title": "Tools",
+      "type": "array"
+    },
+    "argument_schema_hash": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Argument Schema Hash"
+    },
+    "tool_description_hash": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Tool Description Hash"
+    },
+    "transport": {
+      "default": "local",
+      "title": "Transport",
+      "type": "string"
+    },
+    "adapter_version": {
+      "default": "1",
+      "title": "Adapter Version",
+      "type": "string"
+    },
+    "validation_behavior": {
+      "default": "reject_invalid",
+      "title": "Validation Behavior",
+      "type": "string"
+    },
+    "discovery_behavior": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Discovery Behavior"
+    },
+    "provenance": {
+      "additionalProperties": true,
+      "title": "Provenance",
+      "type": "object"
+    }
+  },
+  "required": [
+    "interface_id",
+    "interface_version",
+    "kind",
+    "operation_ids"
+  ],
+  "title": "ActionInterface",
+  "type": "object"
+}

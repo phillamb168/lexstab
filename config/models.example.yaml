@@ -1,0 +1,105 @@
+schema_version: "1.2.0"
+
+roles:
+  execution_primary:
+    provider: "anthropic"
+    model: "${EXECUTION_MODEL_ID}"
+    purpose: "model_under_test"
+    baseline_eligible: true
+    parameters:
+      temperature: 0.0
+      max_tokens: 1024
+    capabilities:
+      native_tools: true
+      structured_output: true
+
+  execution_comparison:
+    enabled: false
+    provider: "openrouter"
+    model: "${COMPARISON_MODEL_ID}"
+    purpose: "model_under_test"
+    parameters:
+      temperature: 0.0
+      max_tokens: 1024
+
+  boundary_canonicalizer:
+    provider: "openrouter"
+    model: "${CANONICALIZER_MODEL_ID}"
+    purpose: "runtime_canonicalization"
+    parameters:
+      temperature: 0.0
+      max_tokens: 768
+
+  adequacy_assessor:
+    provider: "openrouter"
+    model: "${ADEQUACY_ASSESSOR_MODEL_ID}"
+    purpose: "runtime_adequacy_and_ambiguity_gate"
+    parameters:
+      temperature: 0.0
+      max_tokens: 768
+
+  memory_retriever:
+    enabled: false
+    provider: "openrouter"
+    model: "${MEMORY_RETRIEVER_MODEL_ID}"
+    purpose: "semantic_memory_retrieval_or_reranking"
+    parameters:
+      temperature: 0.0
+      max_tokens: 768
+
+  procedure_router:
+    enabled: true
+    provider: "openrouter"
+    model: "${PROCEDURE_ROUTER_MODEL_ID}"
+    purpose: "runtime_procedure_selection"
+    parameters:
+      temperature: 0.0
+      max_tokens: 512
+
+  authoring_generator:
+    provider: "openrouter"
+    model: "${AUTHORING_GENERATOR_MODEL_ID}"
+    purpose: "candidate_generation"
+    parameters:
+      temperature: 0.8
+      max_tokens: 4096
+
+  authoring_equivalence_critic:
+    provider: "openrouter"
+    model: "${EQUIVALENCE_CRITIC_MODEL_ID}"
+    purpose: "semantic_validation"
+    parameters:
+      temperature: 0.0
+      max_tokens: 1536
+
+  authoring_adversarial_critic:
+    provider: "openrouter"
+    model: "${ADVERSARIAL_CRITIC_MODEL_ID}"
+    purpose: "counter_interpretation"
+    parameters:
+      temperature: 0.3
+      max_tokens: 1536
+
+  evaluation_judge:
+    enabled: true
+    provider: "openrouter"
+    model: "${EVALUATION_JUDGE_MODEL_ID}"
+    purpose: "optional_blinded_judging"
+    parameters:
+      temperature: 0.0
+      max_tokens: 2048
+
+  failure_analyst:
+    enabled: true
+    provider: "openrouter"
+    model: "${FAILURE_ANALYST_MODEL_ID}"
+    purpose: "hypothesis_generation"
+    parameters:
+      temperature: 0.2
+      max_tokens: 4096
+
+separation_policy:
+  forbid_execution_model_as_judge: true
+  forbid_generator_as_sole_critic: true
+  forbid_mut_as_primary_data_generator: true
+  allow_role_overlap: false

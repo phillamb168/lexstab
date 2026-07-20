@@ -1,0 +1,563 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://lexstab.invalid/schemas/request.schema.json",
+  "$defs": {
+    "Adequacy": {
+      "enum": [
+        "ADEQUATE",
+        "INADEQUATE"
+      ],
+      "title": "Adequacy",
+      "type": "string"
+    },
+    "Ambiguity": {
+      "enum": [
+        "UNAMBIGUOUS",
+        "AMBIGUOUS"
+      ],
+      "title": "Ambiguity",
+      "type": "string"
+    },
+    "ExpectedBehavior": {
+      "enum": [
+        "EXECUTE",
+        "CLARIFY",
+        "REFUSE"
+      ],
+      "title": "ExpectedBehavior",
+      "type": "string"
+    },
+    "LexicalEquivalence": {
+      "enum": [
+        "INVARIANT",
+        "CONTRAST",
+        "NOT_APPLICABLE"
+      ],
+      "title": "LexicalEquivalence",
+      "type": "string"
+    },
+    "Provenance": {
+      "additionalProperties": false,
+      "properties": {
+        "created_at": {
+          "title": "Created At",
+          "type": "string"
+        },
+        "source_run_id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Source Run Id"
+        },
+        "parent_request_id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Parent Request Id"
+        },
+        "content_hash": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Content Hash"
+        }
+      },
+      "required": [
+        "created_at"
+      ],
+      "title": "Provenance",
+      "type": "object"
+    },
+    "RequestLabels": {
+      "additionalProperties": false,
+      "properties": {
+        "semantic_role": {
+          "$ref": "#/$defs/SemanticRole"
+        },
+        "adequacy": {
+          "$ref": "#/$defs/Adequacy"
+        },
+        "ambiguity": {
+          "$ref": "#/$defs/Ambiguity"
+        },
+        "expected_behavior": {
+          "$ref": "#/$defs/ExpectedBehavior"
+        },
+        "lexical_equivalence": {
+          "$ref": "#/$defs/LexicalEquivalence"
+        },
+        "missing_information": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Missing Information",
+          "type": "array"
+        },
+        "contradiction_reason": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Contradiction Reason"
+        },
+        "context_id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Context Id"
+        },
+        "variation_axes": {
+          "items": {
+            "type": "string"
+          },
+          "minItems": 1,
+          "title": "Variation Axes",
+          "type": "array"
+        },
+        "contains_canonical_entity_term": {
+          "default": false,
+          "title": "Contains Canonical Entity Term",
+          "type": "boolean"
+        },
+        "contains_canonical_operation_term": {
+          "default": false,
+          "title": "Contains Canonical Operation Term",
+          "type": "boolean"
+        },
+        "contains_model_discovered_term": {
+          "default": false,
+          "title": "Contains Model Discovered Term",
+          "type": "boolean"
+        },
+        "contains_organization_term": {
+          "default": false,
+          "title": "Contains Organization Term",
+          "type": "boolean"
+        },
+        "lexical_distance_band": {
+          "default": "MEDIUM",
+          "enum": [
+            "LOW",
+            "MEDIUM",
+            "HIGH"
+          ],
+          "title": "Lexical Distance Band",
+          "type": "string"
+        },
+        "contrast_operation_id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Contrast Operation Id"
+        },
+        "contrast_arguments": {
+          "anyOf": [
+            {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Contrast Arguments"
+        },
+        "refusal_operation_id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Refusal Operation Id"
+        },
+        "refusal_policy_reference": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Refusal Policy Reference"
+        }
+      },
+      "required": [
+        "semantic_role",
+        "adequacy",
+        "ambiguity",
+        "expected_behavior",
+        "lexical_equivalence",
+        "variation_axes"
+      ],
+      "title": "RequestLabels",
+      "type": "object"
+    },
+    "RequestSource": {
+      "additionalProperties": false,
+      "properties": {
+        "type": {
+          "enum": [
+            "human",
+            "synthetic",
+            "redteam"
+          ],
+          "title": "Type",
+          "type": "string"
+        },
+        "creator": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Creator"
+        },
+        "model_provider": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Model Provider"
+        },
+        "model_id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Model Id"
+        },
+        "prompt_id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Prompt Id"
+        },
+        "seed": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Seed"
+        }
+      },
+      "required": [
+        "type"
+      ],
+      "title": "RequestSource",
+      "type": "object"
+    },
+    "RequestValidation": {
+      "additionalProperties": false,
+      "properties": {
+        "status": {
+          "$ref": "#/$defs/ValidationStatus"
+        },
+        "semantic_equivalence": {
+          "anyOf": [
+            {
+              "type": "boolean"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Semantic Equivalence"
+        },
+        "adequacy_verified": {
+          "anyOf": [
+            {
+              "type": "boolean"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Adequacy Verified"
+        },
+        "ambiguity_verified": {
+          "anyOf": [
+            {
+              "type": "boolean"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Ambiguity Verified"
+        },
+        "reviewers": {
+          "items": {
+            "$ref": "#/$defs/ReviewerDecision"
+          },
+          "title": "Reviewers",
+          "type": "array"
+        },
+        "approved_by": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Approved By"
+        },
+        "approved_at": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Approved At"
+        },
+        "critic_judgments": {
+          "items": {
+            "additionalProperties": true,
+            "type": "object"
+          },
+          "title": "Critic Judgments",
+          "type": "array"
+        }
+      },
+      "required": [
+        "status"
+      ],
+      "title": "RequestValidation",
+      "type": "object"
+    },
+    "ReviewerDecision": {
+      "additionalProperties": false,
+      "properties": {
+        "reviewer_id": {
+          "title": "Reviewer Id",
+          "type": "string"
+        },
+        "decision": {
+          "enum": [
+            "APPROVE",
+            "REJECT",
+            "EDIT_AND_APPROVE",
+            "NEEDS_SECOND_REVIEW"
+          ],
+          "title": "Decision",
+          "type": "string"
+        },
+        "notes": {
+          "default": "",
+          "title": "Notes",
+          "type": "string"
+        },
+        "reviewed_at": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Reviewed At"
+        },
+        "label_assessment": {
+          "anyOf": [
+            {
+              "additionalProperties": {
+                "type": "string"
+              },
+              "type": "object"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Label Assessment"
+        }
+      },
+      "required": [
+        "reviewer_id",
+        "decision"
+      ],
+      "title": "ReviewerDecision",
+      "type": "object"
+    },
+    "SemanticRole": {
+      "enum": [
+        "INVARIANT",
+        "CLARIFICATION",
+        "CONTRAST",
+        "REFUSAL"
+      ],
+      "title": "SemanticRole",
+      "type": "string"
+    },
+    "ValidationStatus": {
+      "enum": [
+        "CANDIDATE",
+        "NEEDS_REVIEW",
+        "APPROVED",
+        "FROZEN",
+        "REJECTED",
+        "SUPERSEDED"
+      ],
+      "title": "ValidationStatus",
+      "type": "string"
+    }
+  },
+  "additionalProperties": false,
+  "properties": {
+    "schema_version": {
+      "default": "1.2.0",
+      "title": "Schema Version",
+      "type": "string"
+    },
+    "request_id": {
+      "pattern": "^REQ-[A-Z0-9-]+$",
+      "title": "Request Id",
+      "type": "string"
+    },
+    "case_id": {
+      "title": "Case Id",
+      "type": "string"
+    },
+    "text": {
+      "minLength": 1,
+      "title": "Text",
+      "type": "string"
+    },
+    "language": {
+      "default": "en-US",
+      "title": "Language",
+      "type": "string"
+    },
+    "source": {
+      "$ref": "#/$defs/RequestSource"
+    },
+    "labels": {
+      "$ref": "#/$defs/RequestLabels"
+    },
+    "validation": {
+      "$ref": "#/$defs/RequestValidation"
+    },
+    "provenance": {
+      "$ref": "#/$defs/Provenance"
+    },
+    "audio_uri": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Audio Uri"
+    },
+    "transcript_kind": {
+      "anyOf": [
+        {
+          "enum": [
+            "typed",
+            "human_transcript",
+            "asr_transcript"
+          ],
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Transcript Kind"
+    }
+  },
+  "required": [
+    "request_id",
+    "case_id",
+    "text",
+    "source",
+    "labels",
+    "validation",
+    "provenance"
+  ],
+  "title": "NLRequest",
+  "type": "object"
+}

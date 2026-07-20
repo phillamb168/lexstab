@@ -1,0 +1,22 @@
+PROMPT_ID: code-modification.v1
+PURPOSE: Modify an existing program under an exact behavioral requirement.
+REQUIRED_VARIABLES: language, requirement, code
+RESPONSE_SCHEMA: source_code
+
+---
+
+Modify the {language} code below.
+
+REQUIREMENT
+{requirement}
+
+CONSTRAINTS
+
+- Change only behavior required by the requirement.
+- Do not rename existing classes, functions, parameters, fields, or variables.
+- Preserve the public API.
+- Do not add a dependency.
+- Return the complete modified source code and no explanation.
+
+CODE
+{code}

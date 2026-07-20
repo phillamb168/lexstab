@@ -1,0 +1,43 @@
+PROMPT_ID: ambiguity-classifier.v1
+PURPOSE: Classify whether a candidate request remains ambiguous among two or more canonical interpretations given the frozen context.
+REQUIRED_VARIABLES: canonical_case, candidate_request, frozen_context, domain_rules
+RESPONSE_SCHEMA: ambiguity_judgment.v1
+
+---
+
+You are validating ambiguity labels for an agent benchmark.
+
+CANONICAL CASE FOR REVIEW ONLY
+{canonical_case}
+
+CANDIDATE REQUEST
+{candidate_request}
+
+FROZEN CONTEXT AVAILABLE TO THE TESTED SYSTEM
+{frozen_context}
+
+DOMAIN RULES
+{domain_rules}
+
+List every canonical interpretation that a competent domain user could reasonably assign to the candidate request given only the frozen context and domain rules.
+
+The request is UNAMBIGUOUS when exactly one canonical interpretation remains reasonable.
+The request is AMBIGUOUS when two or more canonical interpretations remain reasonable.
+
+Do not choose the statistically common interpretation merely because it is common.
+Do not repair or rewrite the candidate.
+
+Return only:
+
+{
+  "ambiguity": "UNAMBIGUOUS | AMBIGUOUS",
+  "reasonable_interpretations": [
+    {
+      "operation_id": "...",
+      "why_reasonable": "..."
+    }
+  ],
+  "discriminating_fact_needed": "... or null",
+  "confidence_band": "HIGH | MEDIUM | LOW",
+  "recommended_disposition": "ACCEPT | HUMAN_REVIEW | REJECT"
+}

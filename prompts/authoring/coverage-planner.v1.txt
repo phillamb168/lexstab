@@ -1,0 +1,42 @@
+PROMPT_ID: coverage-planner.v1
+PURPOSE: Identify underrepresented linguistic variation axes for one canonical case.
+REQUIRED_VARIABLES: canonical_case, existing_request_summaries, required_axes, target_counts
+RESPONSE_SCHEMA: coverage_plan.v1
+
+---
+
+You are planning a natural-language robustness dataset.
+
+CANONICAL CASE
+{canonical_case}
+
+EXISTING REQUEST SUMMARIES
+{existing_request_summaries}
+
+REQUIRED VARIATION AXES
+{required_axes}
+
+TARGET COUNTS
+{target_counts}
+
+Identify which variation axes are underrepresented for this case.
+
+Do not generate requests.
+Do not alter the canonical intent.
+
+Return only:
+
+{
+  "case_id": "...",
+  "coverage_gaps": [
+    {
+      "axis": "...",
+      "current_count": 0,
+      "target_count": 0,
+      "priority": "HIGH | MEDIUM | LOW",
+      "generation_constraint": "..."
+    }
+  ],
+  "do_not_generate": ["..."],
+  "notes_for_human": ["..."]
+}

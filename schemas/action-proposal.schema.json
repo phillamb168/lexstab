@@ -1,0 +1,68 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://lexstab.invalid/schemas/action-proposal.schema.json",
+  "$defs": {
+    "GoldDecision": {
+      "enum": [
+        "ACT",
+        "CLARIFY",
+        "REFUSE"
+      ],
+      "title": "GoldDecision",
+      "type": "string"
+    }
+  },
+  "additionalProperties": false,
+  "description": "generic-action-proposal.v1 output contract (spec \u00a715.5).",
+  "properties": {
+    "decision": {
+      "$ref": "#/$defs/GoldDecision"
+    },
+    "operation_id": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Operation Id"
+    },
+    "arguments": {
+      "additionalProperties": true,
+      "title": "Arguments",
+      "type": "object"
+    },
+    "question": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Question"
+    },
+    "reason_code": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Reason Code"
+    }
+  },
+  "required": [
+    "decision"
+  ],
+  "title": "ActionProposal",
+  "type": "object"
+}

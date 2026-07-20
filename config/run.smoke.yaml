@@ -1,0 +1,114 @@
+schema_version: "1.2.0"
+run_name: "support-smoke-mock"
+benchmark_manifest: "dataset/manifests/benchmark-v0.1.0.json"
+model_config: "config/models.mock.yaml"
+
+tracks:
+  boundary:
+    enabled: true
+    architectures:
+      - "A0_DIRECT"
+      - "A1_DIRECT_CLARIFY"
+      - "B_RUNTIME"
+      - "C_RUNTIME"
+  intent_elicitation:
+    enabled: true
+    architectures:
+      - "A0_DIRECT"
+      - "A1_DIRECT_CLARIFY"
+      - "B_EXTERNAL_GATE"
+      - "B_EXTERNAL_GATE_GOLD"
+  memory_ablation:
+    enabled: false
+    architectures:
+      - "M0_NO_MEMORY"
+      - "M1_STATIC_GLOSSARY"
+      - "M2_RETRIEVED_MEMORY"
+      - "M3_CANONICAL_RESOLVER"
+      - "M4_PERSONALIZED_MEMORY"
+  progressive_formalization:
+    enabled: true
+    conditions:
+      - "P0_RAW_PROPOSAL"
+      - "P1_CLARIFY_PROPOSAL"
+      - "P2_CANONICAL_PROPOSAL"
+      - "P3_CANONICAL_PROCEDURE_PROPOSAL"
+      - "P4_CANONICAL_PROCEDURE_TOOL"
+    persistence_conditions:
+      - "LP0_LANGUAGE_THROUGHOUT"
+      - "LP0G_GOLD_START_LANGUAGE"
+      - "LP1_CANONICAL_ONCE"
+      - "LP2_CANONICAL_PROCEDURE"
+      - "LP3_CANONICAL_PROCEDURE_TOOL"
+    procedure_registry: "dataset/procedures/frozen/support-v0.1.0.jsonl"
+    generic_action_interface: "dataset/interfaces/generic-action-proposal.json"
+    typed_action_interfaces: "dataset/interfaces/typed-tools/support.jsonl"
+    run_cumulative_ladder: true
+    run_component_ablations: true
+    run_language_persistence_ablation: true
+  post_canonical:
+    enabled: true
+    architectures:
+      - "B_GOLD"
+      - "C_GOLD"
+      - "D_DEFINITION_ONLY"
+      - "E_ORGANIZATION_TERM"
+  agent_loop:
+    enabled: false
+    conditions:
+      - "AL_RAW"
+      - "AL_CANONICAL"
+      - "AL_RENDERED"
+      - "AL_DRIFT"
+    case_ids: ["REFUND_001"]
+
+selection:
+  split: "development"
+  case_ids: []
+  request_ids: []
+  variation_axes: []
+  adequacy: []
+  ambiguity: []
+  expected_behavior: []
+
+execution:
+  repetitions: 1
+  concurrency: 1
+  randomize_matrix_order: true
+  random_seed: 104729
+  transport_retries: 3
+  semantic_retries: 0
+  cache_responses: false
+  run_clock: "2026-07-20T12:00:00Z"
+
+evaluation:
+  deterministic_first: true
+  optional_llm_judge: true
+  human_review_on_judge_disagreement: true
+  blind_condition_labels: true
+  bootstrap_samples: 500
+  confidence_level: 0.95
+  multiple_comparison_method: "benjamini-hochberg"
+  practical_equivalence:
+    baseline_architecture: "A1_DIRECT_CLARIFY"
+    success_margin: 0.01
+    false_action_margin: 0.0
+    operational_invariance_margin: 0.02
+  complexity_accounting:
+    enabled: true
+    include_model_calls: true
+    include_external_services: true
+    include_persisted_state: true
+    include_operator_runbook_steps: true
+  formalization_accounting:
+    record_representation_ledger: true
+    record_procedure_adherence: true
+    record_action_boundary_errors: true
+    require_information_parity_check: true
+
+tracing:
+  local_jsonl: true
+  langsmith: false
+  redact_secrets: true
+  include_prompts: true
+  include_raw_responses: true

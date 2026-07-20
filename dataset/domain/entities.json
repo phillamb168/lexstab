@@ -1,0 +1,220 @@
+{
+  "domain": "support",
+  "entities": [
+    {
+      "collection": "incidents",
+      "description": "A support incident with status, severity, support tier, assigned team, and information completeness.",
+      "entity_type": "INCIDENT",
+      "id_pattern": "^INC-[0-9]{4}$",
+      "required_state": {
+        "assigned_team": {
+          "required": true,
+          "type": "string"
+        },
+        "escalation_count": {
+          "minimum": 0,
+          "required": true,
+          "type": "integer"
+        },
+        "information_complete": {
+          "required": true,
+          "type": "boolean"
+        },
+        "severity": {
+          "enum": [
+            "SEV-1",
+            "SEV-2",
+            "SEV-3"
+          ],
+          "required": true,
+          "type": "string"
+        },
+        "status": {
+          "enum": [
+            "OPEN",
+            "CLOSED",
+            "PENDING_INFO"
+          ],
+          "required": true,
+          "type": "string"
+        },
+        "support_tier": {
+          "maximum": 4,
+          "minimum": 1,
+          "required": true,
+          "type": "integer"
+        },
+        "updated_at": {
+          "required": false,
+          "type": "string"
+        }
+      },
+      "schema_version": "1.2.0",
+      "state_alias": "incident"
+    },
+    {
+      "collection": "customers",
+      "description": "A customer with status, risk flag, and linked accounts.",
+      "entity_type": "CUSTOMER",
+      "id_pattern": "^CUS-[0-9]{4}$",
+      "required_state": {
+        "linked_accounts": {
+          "required": true,
+          "type": "array"
+        },
+        "risk_flag": {
+          "required": true,
+          "type": "boolean"
+        },
+        "status": {
+          "enum": [
+            "ACTIVE",
+            "AT_RISK",
+            "CHURNED"
+          ],
+          "required": true,
+          "type": "string"
+        }
+      },
+      "schema_version": "1.2.0",
+      "state_alias": "customer"
+    },
+    {
+      "collection": "orders",
+      "description": "An order with charge records, payment state, and fulfillment state.",
+      "entity_type": "ORDER",
+      "id_pattern": "^ORD-[0-9]{4}$",
+      "required_state": {
+        "charge_count": {
+          "minimum": 0,
+          "required": true,
+          "type": "integer"
+        },
+        "duplicate_charge_amount_usd": {
+          "minimum": 0,
+          "required": false,
+          "type": "number"
+        },
+        "duplicate_charge_confirmed": {
+          "required": true,
+          "type": "boolean"
+        },
+        "fulfillment_state": {
+          "enum": [
+            "PENDING",
+            "SHIPPED",
+            "DELIVERED"
+          ],
+          "required": true,
+          "type": "string"
+        },
+        "payment_state": {
+          "enum": [
+            "PAID",
+            "PARTIAL_REFUND",
+            "REFUNDED"
+          ],
+          "required": true,
+          "type": "string"
+        },
+        "refund_state": {
+          "enum": [
+            "NONE",
+            "REFUNDED",
+            "PENDING_REVIEW"
+          ],
+          "required": true,
+          "type": "string"
+        },
+        "refunded_amount_usd": {
+          "minimum": 0,
+          "required": false,
+          "type": "number"
+        },
+        "updated_at": {
+          "required": false,
+          "type": "string"
+        }
+      },
+      "schema_version": "1.2.0",
+      "state_alias": "order"
+    },
+    {
+      "collection": "accounts",
+      "description": "An account with status, suspension state, and owner.",
+      "entity_type": "ACCOUNT",
+      "id_pattern": "^ACC-[0-9]{4}$",
+      "required_state": {
+        "owner": {
+          "required": true,
+          "type": "string"
+        },
+        "status": {
+          "enum": [
+            "ACTIVE",
+            "SUSPENDED",
+            "CLOSED"
+          ],
+          "required": true,
+          "type": "string"
+        },
+        "suspension_reason": {
+          "required": false,
+          "type": "string"
+        },
+        "suspension_state": {
+          "enum": [
+            "NONE",
+            "SUSPENDED"
+          ],
+          "required": true,
+          "type": "string"
+        },
+        "updated_at": {
+          "required": false,
+          "type": "string"
+        }
+      },
+      "schema_version": "1.2.0",
+      "state_alias": "account"
+    },
+    {
+      "collection": "approvals",
+      "description": "An approval request with the operation requested, amount, status, and approver role.",
+      "entity_type": "APPROVAL_REQUEST",
+      "id_pattern": "^APR-[0-9]{4}$",
+      "required_state": {
+        "amount_usd": {
+          "minimum": 0,
+          "required": true,
+          "type": "number"
+        },
+        "approver_role": {
+          "required": false,
+          "type": "string"
+        },
+        "operation_requested": {
+          "required": true,
+          "type": "string"
+        },
+        "status": {
+          "enum": [
+            "PENDING",
+            "ROUTED",
+            "APPROVED",
+            "DENIED"
+          ],
+          "required": true,
+          "type": "string"
+        },
+        "updated_at": {
+          "required": false,
+          "type": "string"
+        }
+      },
+      "schema_version": "1.2.0",
+      "state_alias": "approval"
+    }
+  ],
+  "schema_version": "1.2.0"
+}

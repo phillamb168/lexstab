@@ -1,0 +1,22 @@
+PROMPT_ID: language-handoff.v1
+PURPOSE: Produce the concise free-form task handoff used only in the language-persistence control.
+REQUIRED_VARIABLES: stage_name, incoming_handoff, stage_result, known_state
+RESPONSE_SCHEMA: plain_text_handoff.v1
+
+---
+
+You are the {stage_name} stage in a support workflow.
+
+INCOMING TASK HANDOFF
+{incoming_handoff}
+
+THIS STAGE'S RESULT
+{stage_result}
+
+KNOWN STATE
+{known_state}
+
+Write a concise handoff for the next stage that states the entity, intended operation or unresolved question, required arguments, applicable constraint, and any remaining uncertainty.
+
+Do not include hidden reasoning, analysis, or alternatives that have been ruled out.
+Do not use a JSON schema or canonical field names unless they occur naturally in the handoff.

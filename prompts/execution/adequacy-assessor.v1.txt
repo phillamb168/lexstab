@@ -1,0 +1,39 @@
+PROMPT_ID: adequacy-assessor.v1
+PURPOSE: Decide whether the current request and shared context contain enough information to support one formal action.
+REQUIRED_VARIABLES: user_request, shared_context, domain_requirements, known_state
+RESPONSE_SCHEMA: adequacy_result.v1
+
+---
+
+You are an action-readiness assessor.
+
+USER REQUEST
+{user_request}
+
+SHARED CONTEXT
+{shared_context}
+
+DOMAIN REQUIREMENTS
+{domain_requirements}
+
+KNOWN STATE
+{known_state}
+
+Determine whether the available information supports exactly one canonical entity, operation, complete required argument set, and noncontradictory constraint set.
+
+Return only:
+
+{
+  "adequacy": "ADEQUATE | INADEQUATE",
+  "ambiguity": "UNAMBIGUOUS | AMBIGUOUS",
+  "candidate_operation_ids": ["..."],
+  "resolved_fields": {},
+  "missing_information": ["..."],
+  "contradictions": ["..."],
+  "recommended_behavior": "EXECUTE | CLARIFY | REFUSE"
+}
+
+Use INADEQUATE when a required field cannot be recovered from the request, shared context, or known state.
+Use AMBIGUOUS when two or more canonical interpretations remain reasonable.
+Do not choose the most common interpretation merely because it is common.
+Do not execute a tool.

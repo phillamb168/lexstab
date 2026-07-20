@@ -1,0 +1,61 @@
+name: ci
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+jobs:
+  offline-checks:
+    # Spec §45.1: every PR check runs without paid model calls.
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v4
+        with:
+          python-version: "3.13"
+      - name: Sync dependencies (frozen lockfile)
+        run: uv sync --frozen
+      - name: Schema validation (JSON Schema <-> Pydantic sync)
+        run: uv run lexstab schema validate
+      - name: Prompt template variable validation
+        run: uv run python -c "from lexstab.prompts import PromptLibrary; errs = PromptLibrary('prompts').validate_all(); assert not errs, errs"
+      - name: Domain, case, and artifact validation
+        run: |
+          uv run lexstab domain validate
+          uv run lexstab cases validate
+          uv run lexstab requests validate
+          uv run lexstab contexts validate
+          uv run lexstab renderings validate
+          uv run lexstab memory validate
+          uv run lexstab procedures validate
+          uv run lexstab interfaces validate
+      - name: Referential integrity
+        run: uv run lexstab integrity
+      - name: Interface contract equivalence
+        run: uv run lexstab interfaces compare
+      - name: Benchmark manifest hash verification (no silent frozen mutation)
+        run: uv run lexstab benchmark verify --manifest dataset/manifests/benchmark-v0.1.0.json
+      - name: Unit, contract, integration, and regression tests (mocked providers)
+        run: uv run pytest tests/ -q
+      - name: Mocked smoke check (end-to-end wiring)
+        run: |
+          uv run lexstab run --config config/run.smoke.yaml --track boundary --limit-cases 2 --run-id ci-smoke
+          uv run lexstab evaluate --run runs/ci-smoke --bootstrap-samples 200
+          uv run lexstab report --run runs/ci-smoke
+      - name: No-secret scan
+        run: |
+          ! grep -rInE "(sk-ant-|sk-proj-|sk-or-v1-)[A-Za-z0-9]" \
+            --include="*.py" --include="*.yaml" --include="*.json" --include="*.jsonl" \
+            src config dataset prompts tests
+
+  acceptance-demo:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v4
+        with:
+          python-version: "3.13"
+      - run: uv sync --frozen
+      - name: Full §49.16 acceptance demonstration (mocked, offline)
+        run: uv run python scripts/acceptance_demo.py

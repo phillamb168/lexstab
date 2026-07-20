@@ -1,0 +1,117 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://lexstab.invalid/schemas/complexity-profile.schema.json",
+  "additionalProperties": false,
+  "properties": {
+    "schema_version": {
+      "default": "1.2.0",
+      "title": "Schema Version",
+      "type": "string"
+    },
+    "architecture": {
+      "title": "Architecture",
+      "type": "string"
+    },
+    "model_invocations_per_task": {
+      "title": "Model Invocations Per Task",
+      "type": "number"
+    },
+    "retrieval_invocations_per_task": {
+      "default": 0.0,
+      "title": "Retrieval Invocations Per Task",
+      "type": "number"
+    },
+    "external_services": {
+      "items": {
+        "type": "string"
+      },
+      "title": "External Services",
+      "type": "array"
+    },
+    "persisted_stores": {
+      "items": {
+        "type": "string"
+      },
+      "title": "Persisted Stores",
+      "type": "array"
+    },
+    "mutable_model_stages": {
+      "default": 0,
+      "title": "Mutable Model Stages",
+      "type": "integer"
+    },
+    "schema_count": {
+      "default": 0,
+      "title": "Schema Count",
+      "type": "integer"
+    },
+    "prompt_count": {
+      "default": 0,
+      "title": "Prompt Count",
+      "type": "integer"
+    },
+    "monitoring_surfaces": {
+      "items": {
+        "type": "string"
+      },
+      "title": "Monitoring Surfaces",
+      "type": "array"
+    },
+    "distinct_failure_modes": {
+      "items": {
+        "type": "string"
+      },
+      "title": "Distinct Failure Modes",
+      "type": "array"
+    },
+    "human_review_steps": {
+      "items": {
+        "type": "string"
+      },
+      "title": "Human Review Steps",
+      "type": "array"
+    },
+    "invalidation_procedures": {
+      "items": {
+        "type": "string"
+      },
+      "title": "Invalidation Procedures",
+      "type": "array"
+    },
+    "procedure_count": {
+      "default": 0,
+      "title": "Procedure Count",
+      "type": "integer"
+    },
+    "interface_dependencies": {
+      "items": {
+        "type": "string"
+      },
+      "title": "Interface Dependencies",
+      "type": "array"
+    },
+    "nl_handoff_count": {
+      "default": 0,
+      "title": "Nl Handoff Count",
+      "type": "integer"
+    },
+    "typed_handoff_count": {
+      "default": 0,
+      "title": "Typed Handoff Count",
+      "type": "integer"
+    },
+    "operator_runbook_steps": {
+      "items": {
+        "type": "string"
+      },
+      "title": "Operator Runbook Steps",
+      "type": "array"
+    }
+  },
+  "required": [
+    "architecture",
+    "model_invocations_per_task"
+  ],
+  "title": "ComplexityProfile",
+  "type": "object"
+}

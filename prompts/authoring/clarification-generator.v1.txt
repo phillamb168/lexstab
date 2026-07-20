@@ -1,0 +1,30 @@
+PROMPT_ID: clarification-generator.v1
+PURPOSE: Propose requests with exactly two reasonable canonical interpretations.
+REQUIRED_VARIABLES: domain_rules, operation_pair, shared_context, count
+RESPONSE_SCHEMA: generated_clarification_requests.v1
+
+---
+
+Generate {count} candidate user requests that are genuinely ambiguous between the two canonical operations below.
+
+OPERATION PAIR
+{operation_pair}
+
+SHARED CONTEXT
+{shared_context}
+
+DOMAIN RULES
+{domain_rules}
+
+Each request must:
+
+- plausibly support both operations
+- identify the relevant entity when the ambiguity is about the operation
+- omit only the fact required to distinguish the operations
+- be natural enough that a user might say it
+- require a short targeted clarification question
+
+Do not make the request vague about everything.
+Do not include the answer to the clarification question.
+
+Return each request with the two candidate mappings and the missing discriminating fact.

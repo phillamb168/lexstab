@@ -1,0 +1,257 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://lexstab.invalid/schemas/rendering.schema.json",
+  "$defs": {
+    "Provenance": {
+      "additionalProperties": false,
+      "properties": {
+        "created_at": {
+          "title": "Created At",
+          "type": "string"
+        },
+        "source_run_id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Source Run Id"
+        },
+        "parent_request_id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Parent Request Id"
+        },
+        "content_hash": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Content Hash"
+        }
+      },
+      "required": [
+        "created_at"
+      ],
+      "title": "Provenance",
+      "type": "object"
+    },
+    "RenderingCategory": {
+      "enum": [
+        "CANONICAL_LABEL",
+        "MODEL_DISCOVERED",
+        "ORGANIZATION_PREFERRED",
+        "HUMAN_ALTERNATIVE",
+        "DEFINITION_ONLY",
+        "OPAQUE_ID_ONLY"
+      ],
+      "title": "RenderingCategory",
+      "type": "string"
+    },
+    "RenderingDiscovery": {
+      "additionalProperties": false,
+      "properties": {
+        "provider": {
+          "title": "Provider",
+          "type": "string"
+        },
+        "model_id": {
+          "title": "Model Id",
+          "type": "string"
+        },
+        "prompt_id": {
+          "title": "Prompt Id",
+          "type": "string"
+        },
+        "sample_count": {
+          "title": "Sample Count",
+          "type": "integer"
+        },
+        "normalized_label_count": {
+          "title": "Normalized Label Count",
+          "type": "integer"
+        },
+        "convergence_rate": {
+          "title": "Convergence Rate",
+          "type": "number"
+        },
+        "seed_policy": {
+          "title": "Seed Policy",
+          "type": "string"
+        },
+        "term_entropy": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Term Entropy"
+        },
+        "discovered_on_split": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": "development",
+          "title": "Discovered On Split"
+        }
+      },
+      "required": [
+        "provider",
+        "model_id",
+        "prompt_id",
+        "sample_count",
+        "normalized_label_count",
+        "convergence_rate",
+        "seed_policy"
+      ],
+      "title": "RenderingDiscovery",
+      "type": "object"
+    },
+    "RenderingValidation": {
+      "additionalProperties": false,
+      "properties": {
+        "status": {
+          "$ref": "#/$defs/ValidationStatus"
+        },
+        "reviewed_by": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Reviewed By",
+          "type": "array"
+        },
+        "approved_at": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Approved At"
+        }
+      },
+      "required": [
+        "status"
+      ],
+      "title": "RenderingValidation",
+      "type": "object"
+    },
+    "ValidationStatus": {
+      "enum": [
+        "CANDIDATE",
+        "NEEDS_REVIEW",
+        "APPROVED",
+        "FROZEN",
+        "REJECTED",
+        "SUPERSEDED"
+      ],
+      "title": "ValidationStatus",
+      "type": "string"
+    }
+  },
+  "additionalProperties": false,
+  "properties": {
+    "schema_version": {
+      "default": "1.2.0",
+      "title": "Schema Version",
+      "type": "string"
+    },
+    "rendering_id": {
+      "pattern": "^REN-[A-Z0-9-]+$",
+      "title": "Rendering Id",
+      "type": "string"
+    },
+    "operation_id": {
+      "pattern": "^[A-Z][A-Z0-9_]+$",
+      "title": "Operation Id",
+      "type": "string"
+    },
+    "entity_type": {
+      "pattern": "^[A-Z][A-Z0-9_]+$",
+      "title": "Entity Type",
+      "type": "string"
+    },
+    "category": {
+      "$ref": "#/$defs/RenderingCategory"
+    },
+    "label": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Label"
+    },
+    "template": {
+      "minLength": 1,
+      "title": "Template",
+      "type": "string"
+    },
+    "definition": {
+      "minLength": 1,
+      "title": "Definition",
+      "type": "string"
+    },
+    "discovery": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/RenderingDiscovery"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null
+    },
+    "validation": {
+      "$ref": "#/$defs/RenderingValidation"
+    },
+    "provenance": {
+      "$ref": "#/$defs/Provenance"
+    }
+  },
+  "required": [
+    "rendering_id",
+    "operation_id",
+    "entity_type",
+    "category",
+    "template",
+    "definition",
+    "validation",
+    "provenance"
+  ],
+  "title": "Rendering",
+  "type": "object"
+}

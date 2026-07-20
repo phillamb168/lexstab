@@ -1,0 +1,192 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://lexstab.invalid/schemas/run-manifest.schema.json",
+  "additionalProperties": false,
+  "properties": {
+    "schema_version": {
+      "default": "1.2.0",
+      "title": "Schema Version",
+      "type": "string"
+    },
+    "run_id": {
+      "title": "Run Id",
+      "type": "string"
+    },
+    "run_name": {
+      "title": "Run Name",
+      "type": "string"
+    },
+    "created_at": {
+      "title": "Created At",
+      "type": "string"
+    },
+    "benchmark_manifest_path": {
+      "title": "Benchmark Manifest Path",
+      "type": "string"
+    },
+    "benchmark_root_hash": {
+      "title": "Benchmark Root Hash",
+      "type": "string"
+    },
+    "code_revision": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "title": "Code Revision"
+    },
+    "lockfile_hash": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "title": "Lockfile Hash"
+    },
+    "resolved_roles": {
+      "additionalProperties": true,
+      "title": "Resolved Roles",
+      "type": "object"
+    },
+    "prompt_hashes": {
+      "additionalProperties": {
+        "type": "string"
+      },
+      "title": "Prompt Hashes",
+      "type": "object"
+    },
+    "procedure_hashes": {
+      "additionalProperties": {
+        "type": "string"
+      },
+      "title": "Procedure Hashes",
+      "type": "object"
+    },
+    "interface_hashes": {
+      "additionalProperties": {
+        "type": "string"
+      },
+      "title": "Interface Hashes",
+      "type": "object"
+    },
+    "provider_adapter_versions": {
+      "additionalProperties": {
+        "type": "string"
+      },
+      "title": "Provider Adapter Versions",
+      "type": "object"
+    },
+    "run_clock": {
+      "title": "Run Clock",
+      "type": "string"
+    },
+    "matrix_seed": {
+      "title": "Matrix Seed",
+      "type": "integer"
+    },
+    "matrix_cell_count": {
+      "title": "Matrix Cell Count",
+      "type": "integer"
+    },
+    "matrix_hash": {
+      "title": "Matrix Hash",
+      "type": "string"
+    },
+    "tracks": {
+      "additionalProperties": true,
+      "title": "Tracks",
+      "type": "object"
+    },
+    "formalization_conditions": {
+      "items": {
+        "type": "string"
+      },
+      "title": "Formalization Conditions",
+      "type": "array"
+    },
+    "persistence_conditions": {
+      "items": {
+        "type": "string"
+      },
+      "title": "Persistence Conditions",
+      "type": "array"
+    },
+    "repetitions": {
+      "title": "Repetitions",
+      "type": "integer"
+    },
+    "concurrency": {
+      "title": "Concurrency",
+      "type": "integer"
+    },
+    "tracing": {
+      "additionalProperties": true,
+      "title": "Tracing",
+      "type": "object"
+    },
+    "environment": {
+      "additionalProperties": {
+        "type": "string"
+      },
+      "title": "Environment",
+      "type": "object"
+    },
+    "research_overrides": {
+      "additionalProperties": true,
+      "title": "Research Overrides",
+      "type": "object"
+    },
+    "analysis_plan_hash": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Analysis Plan Hash"
+    },
+    "baseline_eligible": {
+      "default": true,
+      "title": "Baseline Eligible",
+      "type": "boolean"
+    },
+    "mocked": {
+      "default": false,
+      "title": "Mocked",
+      "type": "boolean"
+    }
+  },
+  "required": [
+    "run_id",
+    "run_name",
+    "created_at",
+    "benchmark_manifest_path",
+    "benchmark_root_hash",
+    "code_revision",
+    "lockfile_hash",
+    "resolved_roles",
+    "prompt_hashes",
+    "provider_adapter_versions",
+    "run_clock",
+    "matrix_seed",
+    "matrix_cell_count",
+    "matrix_hash",
+    "tracks",
+    "repetitions",
+    "concurrency",
+    "tracing",
+    "environment"
+  ],
+  "title": "RunManifest",
+  "type": "object"
+}

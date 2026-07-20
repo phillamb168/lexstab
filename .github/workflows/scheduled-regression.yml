@@ -1,0 +1,59 @@
+# Spec §45.2: scheduled regression check against a pinned production-candidate
+# model. Requires provider credentials as repository secrets; without them the
+# job stops at the guard step. Paid calls happen ONLY here, never on PRs.
+name: scheduled-regression
+
+on:
+  schedule:
+    - cron: "0 6 * * 1"  # weekly, Monday 06:00 UTC
+  workflow_dispatch:
+    inputs:
+      manifest:
+        description: Regression suite manifest path
+        default: dataset/manifests/regression-v0.1.0.json
+      repetitions:
+        description: Repetitions
+        default: "3"
+
+jobs:
+  regression:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v4
+        with:
+          python-version: "3.13"
+      - run: uv sync --frozen
+      - name: Guard - require configured credentials
+        id: guard
+        run: |
+          if [ -z "${{ secrets.EXECUTION_MODEL_ID }}" ]; then
+            echo "configured=false" >> "$GITHUB_OUTPUT"
+            echo "No EXECUTION_MODEL_ID secret configured; skipping paid regression run."
+          else
+            echo "configured=true" >> "$GITHUB_OUTPUT"
+          fi
+      - name: Regression tests (deterministic subset)
+        run: uv run pytest tests/regression -q
+      - name: Paid regression run against pinned model
+        if: steps.guard.outputs.configured == 'true'
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
+          EXECUTION_MODEL_ID: ${{ secrets.EXECUTION_MODEL_ID }}
+          CANONICALIZER_MODEL_ID: ${{ secrets.CANONICALIZER_MODEL_ID }}
+          ADEQUACY_ASSESSOR_MODEL_ID: ${{ secrets.ADEQUACY_ASSESSOR_MODEL_ID }}
+        run: |
+          uv run lexstab doctor --models config/models.example.yaml --run config/run.example.yaml
+          uv run lexstab run --config config/run.example.yaml \
+            --track boundary --split validation \
+            --repetitions ${{ github.event.inputs.repetitions || 3 }} \
+            --run-id scheduled-${{ github.run_id }}
+          uv run lexstab evaluate --run runs/scheduled-${{ github.run_id }}
+          uv run lexstab report --run runs/scheduled-${{ github.run_id }}
+      - name: Upload run artifacts
+        if: steps.guard.outputs.configured == 'true'
+        uses: actions/upload-artifact@v4
+        with:
+          name: regression-run-${{ github.run_id }}
+          path: runs/scheduled-${{ github.run_id }}

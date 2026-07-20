@@ -1,0 +1,265 @@
+{
+  "domain": "support",
+  "operations": [
+    {
+      "arguments": {
+        "destination_tier": {
+          "maximum": 4,
+          "minimum": 2,
+          "required": true,
+          "type": "integer"
+        },
+        "incident_id": {
+          "pattern": "^INC-[0-9]{4}$",
+          "required": true,
+          "type": "string"
+        }
+      },
+      "description": "Transfer responsibility for an open incident to a higher support tier.",
+      "display_name": "Escalate incident",
+      "effects": [
+        "incident.support_tier = destination_tier",
+        "incident.escalation_count += 1",
+        "incident.updated_at = run_clock"
+      ],
+      "entity_type": "INCIDENT",
+      "invalid_when": [
+        "incident.status == 'CLOSED'"
+      ],
+      "operation_id": "ESCALATE_INCIDENT",
+      "preconditions": [
+        "incident.status == 'OPEN'",
+        "destination_tier > incident.support_tier"
+      ],
+      "primary_contrast": "REASSIGN_INCIDENT",
+      "schema_version": "1.2.0",
+      "tool": "escalate_incident"
+    },
+    {
+      "arguments": {
+        "destination_team": {
+          "enum": [
+            "SERVICE_DESK",
+            "BILLING",
+            "SECURITY",
+            "PAYMENTS",
+            "FRAUD"
+          ],
+          "required": true,
+          "type": "string"
+        },
+        "incident_id": {
+          "pattern": "^INC-[0-9]{4}$",
+          "required": true,
+          "type": "string"
+        }
+      },
+      "description": "Move an open incident to a different owning team without changing its support tier.",
+      "display_name": "Reassign incident",
+      "effects": [
+        "incident.assigned_team = destination_team",
+        "incident.updated_at = run_clock"
+      ],
+      "entity_type": "INCIDENT",
+      "invalid_when": [
+        "incident.status == 'CLOSED'"
+      ],
+      "operation_id": "REASSIGN_INCIDENT",
+      "preconditions": [
+        "incident.status == 'OPEN'"
+      ],
+      "primary_contrast": "ESCALATE_INCIDENT",
+      "schema_version": "1.2.0",
+      "tool": "reassign_incident"
+    },
+    {
+      "arguments": {
+        "incident_id": {
+          "pattern": "^INC-[0-9]{4}$",
+          "required": true,
+          "type": "string"
+        }
+      },
+      "description": "Close an open incident whose information is complete.",
+      "display_name": "Close incident",
+      "effects": [
+        "incident.status = 'CLOSED'",
+        "incident.updated_at = run_clock"
+      ],
+      "entity_type": "INCIDENT",
+      "invalid_when": [],
+      "operation_id": "CLOSE_INCIDENT",
+      "preconditions": [
+        "incident.status == 'OPEN'",
+        "incident.information_complete == true"
+      ],
+      "primary_contrast": "REQUEST_MORE_INFORMATION",
+      "schema_version": "1.2.0",
+      "tool": "close_incident"
+    },
+    {
+      "arguments": {
+        "incident_id": {
+          "pattern": "^INC-[0-9]{4}$",
+          "required": true,
+          "type": "string"
+        },
+        "topic": {
+          "required": false,
+          "type": "string"
+        }
+      },
+      "description": "Ask the reporter of an open incident for additional information.",
+      "display_name": "Request more information",
+      "effects": [
+        "incident.status = 'PENDING_INFO'",
+        "incident.updated_at = run_clock"
+      ],
+      "entity_type": "INCIDENT",
+      "invalid_when": [],
+      "operation_id": "REQUEST_MORE_INFORMATION",
+      "preconditions": [
+        "incident.status == 'OPEN'"
+      ],
+      "primary_contrast": "CLOSE_INCIDENT",
+      "schema_version": "1.2.0",
+      "tool": "request_more_information"
+    },
+    {
+      "arguments": {
+        "approval_id": {
+          "pattern": "^APR-[0-9]{4}$",
+          "required": true,
+          "type": "string"
+        },
+        "approver_role": {
+          "enum": [
+            "MANAGER",
+            "DIRECTOR",
+            "FINANCE"
+          ],
+          "required": true,
+          "type": "string"
+        }
+      },
+      "description": "Route a pending approval request to the named approver role.",
+      "display_name": "Request approval",
+      "effects": [
+        "approval.status = 'ROUTED'",
+        "approval.approver_role = approver_role",
+        "approval.updated_at = run_clock"
+      ],
+      "entity_type": "APPROVAL_REQUEST",
+      "invalid_when": [],
+      "operation_id": "REQUEST_APPROVAL",
+      "preconditions": [
+        "approval.status == 'PENDING'"
+      ],
+      "primary_contrast": null,
+      "schema_version": "1.2.0",
+      "tool": "request_approval"
+    },
+    {
+      "arguments": {
+        "amount_usd": {
+          "maximum": 499.99,
+          "minimum": 0.01,
+          "required": true,
+          "type": "number"
+        },
+        "order_id": {
+          "pattern": "^ORD-[0-9]{4}$",
+          "required": true,
+          "type": "string"
+        }
+      },
+      "description": "Refund a confirmed duplicate charge below 500 USD on an order.",
+      "display_name": "Refund duplicate charge",
+      "effects": [
+        "order.refund_state = 'REFUNDED'",
+        "order.refunded_amount_usd = amount_usd",
+        "order.payment_state = 'PARTIAL_REFUND'",
+        "order.updated_at = run_clock"
+      ],
+      "entity_type": "ORDER",
+      "invalid_when": [],
+      "operation_id": "REFUND_DUPLICATE_CHARGE",
+      "preconditions": [
+        "order.duplicate_charge_confirmed == true",
+        "order.refund_state == 'NONE'"
+      ],
+      "primary_contrast": "REQUEST_MANAGER_REVIEW",
+      "schema_version": "1.2.0",
+      "tool": "refund_duplicate_charge"
+    },
+    {
+      "arguments": {
+        "order_id": {
+          "pattern": "^ORD-[0-9]{4}$",
+          "required": true,
+          "type": "string"
+        },
+        "reason_code": {
+          "enum": [
+            "DISPUTED_CHARGE",
+            "HIGH_VALUE",
+            "OTHER"
+          ],
+          "required": true,
+          "type": "string"
+        }
+      },
+      "description": "Send an order charge issue to a manager for review instead of acting directly.",
+      "display_name": "Request manager review",
+      "effects": [
+        "order.refund_state = 'PENDING_REVIEW'",
+        "order.updated_at = run_clock"
+      ],
+      "entity_type": "ORDER",
+      "invalid_when": [],
+      "operation_id": "REQUEST_MANAGER_REVIEW",
+      "preconditions": [
+        "order.refund_state == 'NONE'"
+      ],
+      "primary_contrast": "REFUND_DUPLICATE_CHARGE",
+      "schema_version": "1.2.0",
+      "tool": "request_manager_review"
+    },
+    {
+      "arguments": {
+        "account_id": {
+          "pattern": "^ACC-[0-9]{4}$",
+          "required": true,
+          "type": "string"
+        },
+        "reason_code": {
+          "enum": [
+            "FRAUD",
+            "ABUSE",
+            "NON_PAYMENT"
+          ],
+          "required": true,
+          "type": "string"
+        }
+      },
+      "description": "Suspend an active account for a fraud, abuse, or non-payment reason.",
+      "display_name": "Suspend account",
+      "effects": [
+        "account.status = 'SUSPENDED'",
+        "account.suspension_state = 'SUSPENDED'",
+        "account.suspension_reason = reason_code",
+        "account.updated_at = run_clock"
+      ],
+      "entity_type": "ACCOUNT",
+      "invalid_when": [],
+      "operation_id": "SUSPEND_ACCOUNT",
+      "preconditions": [
+        "account.status == 'ACTIVE'"
+      ],
+      "primary_contrast": "CLOSE_INCIDENT",
+      "schema_version": "1.2.0",
+      "tool": "suspend_account"
+    }
+  ],
+  "schema_version": "1.2.0"
+}

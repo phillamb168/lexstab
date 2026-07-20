@@ -1,0 +1,295 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://lexstab.invalid/schemas/score.schema.json",
+  "additionalProperties": false,
+  "properties": {
+    "run_id": {
+      "title": "Run Id",
+      "type": "string"
+    },
+    "cell_id": {
+      "title": "Cell Id",
+      "type": "string"
+    },
+    "case_id": {
+      "title": "Case Id",
+      "type": "string"
+    },
+    "request_id": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "title": "Request Id"
+    },
+    "architecture": {
+      "title": "Architecture",
+      "type": "string"
+    },
+    "track": {
+      "title": "Track",
+      "type": "string"
+    },
+    "repetition": {
+      "title": "Repetition",
+      "type": "integer"
+    },
+    "rendering_id": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Rendering Id"
+    },
+    "procedure_id": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Procedure Id"
+    },
+    "interface_id": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Interface Id"
+    },
+    "model_id": {
+      "title": "Model Id",
+      "type": "string"
+    },
+    "schema_valid": {
+      "title": "Schema Valid",
+      "type": "boolean"
+    },
+    "decision": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "title": "Decision"
+    },
+    "decision_correct": {
+      "title": "Decision Correct",
+      "type": "boolean"
+    },
+    "tool_correct": {
+      "anyOf": [
+        {
+          "type": "boolean"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "title": "Tool Correct"
+    },
+    "argument_field_results": {
+      "additionalProperties": {
+        "type": "boolean"
+      },
+      "title": "Argument Field Results",
+      "type": "object"
+    },
+    "arguments_all_correct": {
+      "anyOf": [
+        {
+          "type": "boolean"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "title": "Arguments All Correct"
+    },
+    "full_call_correct": {
+      "title": "Full Call Correct",
+      "type": "boolean"
+    },
+    "final_state_correct": {
+      "anyOf": [
+        {
+          "type": "boolean"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "title": "Final State Correct"
+    },
+    "raw_score": {
+      "additionalProperties": true,
+      "title": "Raw Score",
+      "type": "object"
+    },
+    "normalized_score": {
+      "additionalProperties": true,
+      "title": "Normalized Score",
+      "type": "object"
+    },
+    "clarification_outcome": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Clarification Outcome"
+    },
+    "false_action": {
+      "default": false,
+      "title": "False Action",
+      "type": "boolean"
+    },
+    "refusal_correct": {
+      "anyOf": [
+        {
+          "type": "boolean"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Refusal Correct"
+    },
+    "contrast_correct": {
+      "anyOf": [
+        {
+          "type": "boolean"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Contrast Correct"
+    },
+    "error_category": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Error Category"
+    },
+    "procedure_adherence": {
+      "anyOf": [
+        {
+          "additionalProperties": true,
+          "type": "object"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Procedure Adherence"
+    },
+    "interface_errors": {
+      "items": {
+        "type": "string"
+      },
+      "title": "Interface Errors",
+      "type": "array"
+    },
+    "persistence": {
+      "anyOf": [
+        {
+          "additionalProperties": true,
+          "type": "object"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Persistence"
+    },
+    "judge": {
+      "anyOf": [
+        {
+          "additionalProperties": true,
+          "type": "object"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Judge"
+    },
+    "latency_ms": {
+      "anyOf": [
+        {
+          "type": "number"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Latency Ms"
+    },
+    "usage": {
+      "additionalProperties": true,
+      "title": "Usage",
+      "type": "object"
+    },
+    "metadata": {
+      "additionalProperties": true,
+      "title": "Metadata",
+      "type": "object"
+    }
+  },
+  "required": [
+    "run_id",
+    "cell_id",
+    "case_id",
+    "request_id",
+    "architecture",
+    "track",
+    "repetition",
+    "model_id",
+    "schema_valid",
+    "decision",
+    "decision_correct",
+    "tool_correct",
+    "arguments_all_correct",
+    "full_call_correct",
+    "final_state_correct"
+  ],
+  "title": "ScoreRecord",
+  "type": "object"
+}

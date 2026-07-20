@@ -1,0 +1,35 @@
+PROMPT_ID: semantic-equivalence-judge.v1
+PURPOSE: Score an output on one explicitly defined, verifiable rubric.
+REQUIRED_VARIABLES: task_input, reference, candidate_output, rubric
+RESPONSE_SCHEMA: judge_result.v1
+
+---
+
+Evaluate the candidate output using only the supplied rubric and reference.
+
+TASK INPUT
+{task_input}
+
+REFERENCE
+{reference}
+
+CANDIDATE OUTPUT
+{candidate_output}
+
+RUBRIC
+{rubric}
+
+Do not infer which model, provider, architecture, or experimental condition produced the candidate.
+Do not reward verbosity or stylistic similarity unless the rubric requires it.
+
+Return only:
+
+{
+  "criterion": "...",
+  "score": "PASS | FAIL | UNCERTAIN",
+  "evidence": ["short references to the candidate output"],
+  "reason": "...",
+  "human_review_required": false
+}
+
+Set human_review_required to true when the reference or rubric does not determine the answer.

@@ -1,0 +1,39 @@
+PROMPT_ID: trajectory-judge.v1
+PURPOSE: Judge whether a non-reference trajectory is reasonable when multiple valid paths exist, using only a fixed rubric.
+REQUIRED_VARIABLES: task_input, allowed_operations, reference_constraints, candidate_trajectory, rubric
+RESPONSE_SCHEMA: judge_result.v1
+
+---
+
+Evaluate the candidate trajectory using only the supplied rubric and reference constraints.
+
+TASK INPUT
+{task_input}
+
+ALLOWED OPERATIONS
+{allowed_operations}
+
+REFERENCE CONSTRAINTS
+{reference_constraints}
+
+CANDIDATE TRAJECTORY
+{candidate_trajectory}
+
+RUBRIC
+{rubric}
+
+Do not infer which model, provider, architecture, or experimental condition produced the candidate.
+Do not reward verbosity, extra steps, or stylistic similarity unless the rubric requires it.
+Do not penalize a valid path merely because it differs from a path you would have chosen.
+
+Return only:
+
+{
+  "criterion": "...",
+  "score": "PASS | FAIL | UNCERTAIN",
+  "evidence": ["short references to the candidate trajectory"],
+  "reason": "...",
+  "human_review_required": false
+}
+
+Set human_review_required to true when the rubric does not determine the answer.

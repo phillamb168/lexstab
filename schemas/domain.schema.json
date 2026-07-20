@@ -1,0 +1,325 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://lexstab.invalid/schemas/domain.schema.json",
+  "$defs": {
+    "ArgumentSpec": {
+      "additionalProperties": false,
+      "properties": {
+        "type": {
+          "enum": [
+            "string",
+            "integer",
+            "number",
+            "boolean",
+            "array",
+            "object"
+          ],
+          "title": "Type",
+          "type": "string"
+        },
+        "required": {
+          "title": "Required",
+          "type": "boolean"
+        },
+        "pattern": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Pattern"
+        },
+        "minimum": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Minimum"
+        },
+        "maximum": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Maximum"
+        },
+        "enum": {
+          "anyOf": [
+            {
+              "items": {},
+              "type": "array"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Enum"
+        },
+        "description": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Description"
+        }
+      },
+      "required": [
+        "type",
+        "required"
+      ],
+      "title": "ArgumentSpec",
+      "type": "object"
+    },
+    "EntityType": {
+      "additionalProperties": false,
+      "properties": {
+        "schema_version": {
+          "default": "1.2.0",
+          "title": "Schema Version",
+          "type": "string"
+        },
+        "entity_type": {
+          "pattern": "^[A-Z][A-Z0-9_]+$",
+          "title": "Entity Type",
+          "type": "string"
+        },
+        "id_pattern": {
+          "title": "Id Pattern",
+          "type": "string"
+        },
+        "state_alias": {
+          "pattern": "^[a-z][a-z0-9_]*$",
+          "title": "State Alias",
+          "type": "string"
+        },
+        "collection": {
+          "pattern": "^[a-z][a-z0-9_]*$",
+          "title": "Collection",
+          "type": "string"
+        },
+        "required_state": {
+          "additionalProperties": {
+            "$ref": "#/$defs/ArgumentSpec"
+          },
+          "title": "Required State",
+          "type": "object"
+        },
+        "description": {
+          "default": "",
+          "title": "Description",
+          "type": "string"
+        }
+      },
+      "required": [
+        "entity_type",
+        "id_pattern",
+        "state_alias",
+        "collection",
+        "required_state"
+      ],
+      "title": "EntityType",
+      "type": "object"
+    },
+    "Operation": {
+      "additionalProperties": false,
+      "properties": {
+        "schema_version": {
+          "default": "1.2.0",
+          "title": "Schema Version",
+          "type": "string"
+        },
+        "operation_id": {
+          "pattern": "^[A-Z][A-Z0-9_]+$",
+          "title": "Operation Id",
+          "type": "string"
+        },
+        "display_name": {
+          "minLength": 1,
+          "title": "Display Name",
+          "type": "string"
+        },
+        "entity_type": {
+          "pattern": "^[A-Z][A-Z0-9_]+$",
+          "title": "Entity Type",
+          "type": "string"
+        },
+        "tool": {
+          "pattern": "^[a-z][a-z0-9_]+$",
+          "title": "Tool",
+          "type": "string"
+        },
+        "arguments": {
+          "additionalProperties": {
+            "$ref": "#/$defs/ArgumentSpec"
+          },
+          "title": "Arguments",
+          "type": "object"
+        },
+        "preconditions": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Preconditions",
+          "type": "array"
+        },
+        "effects": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Effects",
+          "type": "array"
+        },
+        "invalid_when": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Invalid When",
+          "type": "array"
+        },
+        "primary_contrast": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Primary Contrast"
+        },
+        "description": {
+          "default": "",
+          "title": "Description",
+          "type": "string"
+        }
+      },
+      "required": [
+        "operation_id",
+        "display_name",
+        "entity_type",
+        "tool",
+        "arguments",
+        "preconditions",
+        "effects"
+      ],
+      "title": "Operation",
+      "type": "object"
+    },
+    "Policy": {
+      "additionalProperties": false,
+      "properties": {
+        "schema_version": {
+          "default": "1.2.0",
+          "title": "Schema Version",
+          "type": "string"
+        },
+        "policy_id": {
+          "pattern": "^P-[0-9]+$",
+          "title": "Policy Id",
+          "type": "string"
+        },
+        "text": {
+          "minLength": 1,
+          "title": "Text",
+          "type": "string"
+        },
+        "applies_to_operation_ids": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Applies To Operation Ids",
+          "type": "array"
+        }
+      },
+      "required": [
+        "policy_id",
+        "text"
+      ],
+      "title": "Policy",
+      "type": "object"
+    }
+  },
+  "additionalProperties": false,
+  "properties": {
+    "schema_version": {
+      "default": "1.2.0",
+      "title": "Schema Version",
+      "type": "string"
+    },
+    "domain": {
+      "title": "Domain",
+      "type": "string"
+    },
+    "entities": {
+      "anyOf": [
+        {
+          "items": {
+            "$ref": "#/$defs/EntityType"
+          },
+          "type": "array"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Entities"
+    },
+    "operations": {
+      "anyOf": [
+        {
+          "items": {
+            "$ref": "#/$defs/Operation"
+          },
+          "type": "array"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Operations"
+    },
+    "policies": {
+      "anyOf": [
+        {
+          "items": {
+            "$ref": "#/$defs/Policy"
+          },
+          "type": "array"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Policies"
+    }
+  },
+  "required": [
+    "domain"
+  ],
+  "title": "DomainFile",
+  "type": "object"
+}

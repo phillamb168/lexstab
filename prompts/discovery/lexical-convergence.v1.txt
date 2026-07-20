@@ -1,0 +1,30 @@
+PROMPT_ID: lexical-convergence.v1
+PURPOSE: Discover the concise term a model naturally uses for a defined phenomenon.
+REQUIRED_VARIABLES: definition, positive_examples, negative_examples
+RESPONSE_SCHEMA: lexical_name.v1
+
+---
+
+Consider the editorial phenomenon defined below.
+
+DEFINITION
+{definition}
+
+POSITIVE EXAMPLES THAT CONTAIN THE PHENOMENON
+{positive_examples}
+
+NEGATIVE EXAMPLES THAT DO NOT CONTAIN THE PHENOMENON
+{negative_examples}
+
+What is the most precise concise grammatical or editorial term you would naturally use for this phenomenon?
+
+Return only:
+
+{
+  "preferred_term": "...",
+  "alternative_terms": ["...", "..."],
+  "one_sentence_definition": "..."
+}
+
+Do not edit the examples.
+Do not invent a named term if no established concise term fits. In that case set preferred_term to "DEFINITION_ONLY".
