@@ -1,10 +1,56 @@
-.venv/
-__pycache__/
-*.pyc
-.pytest_cache/
-.coverage
+# Secrets and machine-local configuration
 .env
-runs/*
-!runs/.gitkeep
-.cache/
+.env.*
+!.env.example
+config/*.local.yaml
+config/*.local.yml
+
+# Python virtual environments and bytecode
+.venv/
+venv/
+env/
+ENV/
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Test, type-checker, and linter caches
+.pytest_cache/
+.hypothesis/
+.mypy_cache/
+.pyright/
+.ruff_cache/
+.tox/
+.nox/
+
+# Coverage and profiling output
+.coverage
+.coverage.*
+coverage.xml
+htmlcov/
+*.prof
+
+# Package and build output
+build/
 dist/
+*.egg-info/
+.eggs/
+wheelhouse/
+
+# Generated benchmark runs and reports
+/runs/*
+!/runs/.gitkeep
+
+# Application and tool caches
+.cache/
+*.log
+*.tmp
+
+# Editors and operating systems
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
