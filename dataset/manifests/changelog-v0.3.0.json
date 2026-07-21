@@ -1,0 +1,12 @@
+[
+  {
+    "approved_by": "phillip",
+    "change": "Added eight independent REQUEST_MORE_INFORMATION persistence-replication cases and a versioned validation split. Existing benchmark versions are unchanged.",
+    "version": "0.3.0"
+  },
+  {
+    "approved_by": "phillip",
+    "change": "The replication holds each case's exact public message constant across canonical, natural, and high-lexical-distance user requests.",
+    "version": "0.3.0"
+  }
+]

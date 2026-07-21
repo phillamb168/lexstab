@@ -1,0 +1,67 @@
+{
+  "canonical": {
+    "arguments": {
+      "message": "Which deployment version introduced the behavior, and what is the related change ticket?"
+    },
+    "entity_id": "INC-3208",
+    "entity_type": "INCIDENT",
+    "operation_id": "REQUEST_MORE_INFORMATION"
+  },
+  "case_id": "RMI_REP_008",
+  "created_at": "2026-07-21T00:00:00Z",
+  "created_by": "phillip",
+  "difficulty": "advanced",
+  "domain": "support",
+  "family_id": "RMI_REPLICATION",
+  "gold": {
+    "arguments": {
+      "incident_id": "INC-3208",
+      "message": "Which deployment version introduced the behavior, and what is the related change ticket?"
+    },
+    "clarification_targets": null,
+    "decision": "ACT",
+    "refusal_policy_id": null,
+    "refusal_reason_code": null,
+    "resulting_state": {
+      "incidents": {
+        "INC-3208": {
+          "assigned_team": "SECURITY_OPERATIONS",
+          "awaiting_party": "REPORTER",
+          "escalation_count": 2,
+          "information_complete": false,
+          "last_public_comment": "Which deployment version introduced the behavior, and what is the related change ticket?",
+          "reporter_id": "USR-3208",
+          "reporter_notification_sent": true,
+          "severity": "SEV-3",
+          "status": "PENDING_INFO",
+          "support_tier": 3,
+          "updated_at": "<run_clock>"
+        }
+      }
+    },
+    "tool": "request_more_information"
+  },
+  "initial_state": {
+    "incidents": {
+      "INC-3208": {
+        "assigned_team": "SECURITY_OPERATIONS",
+        "awaiting_party": "NONE",
+        "escalation_count": 2,
+        "information_complete": false,
+        "reporter_id": "USR-3208",
+        "reporter_notification_sent": false,
+        "severity": "SEV-3",
+        "status": "OPEN",
+        "support_tier": 3
+      }
+    }
+  },
+  "schema_version": "1.2.0",
+  "tags": [
+    "single_turn",
+    "tool_selection",
+    "rmi_replication",
+    "protected_argument"
+  ],
+  "title": "Ask for deployment and change-ticket identifiers"
+}

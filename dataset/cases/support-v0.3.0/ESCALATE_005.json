@@ -1,0 +1,42 @@
+{
+  "canonical": {
+    "arguments": {
+      "destination_tier": 2
+    },
+    "entity_id": "INC-1047",
+    "entity_type": "INCIDENT",
+    "operation_id": "ESCALATE_INCIDENT"
+  },
+  "case_id": "ESCALATE_005",
+  "created_at": "2026-07-20T00:00:00Z",
+  "created_by": "human",
+  "difficulty": "intermediate",
+  "domain": "support",
+  "family_id": "ESCALATE",
+  "gold": {
+    "clarification_targets": [
+      "operation_choice",
+      "destination_tier"
+    ],
+    "decision": "CLARIFY"
+  },
+  "initial_state": {
+    "incidents": {
+      "INC-1047": {
+        "assigned_team": "SERVICE_DESK",
+        "escalation_count": 0,
+        "information_complete": true,
+        "severity": "SEV-2",
+        "status": "OPEN",
+        "support_tier": 1
+      }
+    }
+  },
+  "schema_version": "1.2.0",
+  "tags": [
+    "single_turn",
+    "clarification",
+    "ambiguity"
+  ],
+  "title": "Ambiguous upward move must trigger clarification"
+}

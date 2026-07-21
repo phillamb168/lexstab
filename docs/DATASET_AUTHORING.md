@@ -347,3 +347,103 @@ Each version records a changelog (added/removed/changed artifacts, reasons, revi
 comparability impact; spec §41.1). **No retroactive score replacement** (spec §41.2): when a
 benchmark error is found, publish a corrected version, mark old results as affected, recompute or
 re-run under the new version, and never replace the old artifact while keeping its version number.
+
+## 13. Guarded RMI replication authoring
+
+The focused v0.3.0 replication has a dedicated two-command workflow. It exists to prevent manual
+case, request-ID, split, and run-config edits from accidentally changing a manifest or protected
+public message. Neither command invokes a model or writes a benchmark manifest.
+
+### 13.1 Review and scaffold eight independent cases
+
+The versioned seed at `dataset/replication/seeds/rmi-v0.3.0.json` proposes eight independent
+REQUEST_MORE_INFORMATION case cards. Each card has a unique incident, reporter, support team,
+state, title, and exact public message. Run:
+
+```bash
+uv run lexstab replication scaffold-rmi \
+  --seed dataset/replication/seeds/rmi-v0.3.0.json \
+  --creator phillip
+```
+
+For every card the command shows the proposed initial state and public message. Choose accept,
+edit the message, or quit. All edits remain in memory until every card has been reviewed and the
+operator types `CREATE` exactly. Any other final response exits without writing an artifact.
+
+On confirmation, the command validates and atomically creates:
+
+```text
+dataset/domain/v0.3.0/
+dataset/cases/support-v0.3.0/
+dataset/interfaces/v0.3.0/
+dataset/splits/v0.3.0/
+dataset/elicitation/approved-v0.3.0.jsonl
+dataset/manifests/changelog-v0.3.0.json
+dataset/replication/rmi-v0.3.0.json
+```
+
+The new validation split contains all eight replication cases. Existing v0.1.0, v0.2.0, and
+v0.2.1 artifacts are copied only into new versioned source paths and are never modified. The
+builder refuses to run if any target path, v0.3.0 manifest, or v0.3.0 frozen artifact already
+exists. It recomputes every gold transition through the deterministic support simulator before
+committing the staged files.
+
+The action contract is identical for all eight cases: retain the current support team and tier,
+write the exact reviewed public message, notify the reporter, set `awaiting_party` to `REPORTER`,
+and set the incident status to `PENDING_INFO`. The exact message is the protected `VERBATIM`
+argument under test.
+
+### 13.2 Author three human-language variants per case
+
+After the cases exist, run:
+
+```bash
+uv run lexstab replication author-rmi-variants \
+  --version 0.3.0 \
+  --creator phillip
+```
+
+The command presents a suggested wording for each of three categories on every case:
+
+1. `canonical`: explicitly uses `request more information` and `incident`.
+2. `natural`: conversational wording that avoids the canonical operation phrase.
+3. `high_lexical_distance`: indirect wording that avoids both the canonical operation phrase and
+   the canonical entity term outside the protected message.
+
+Press Enter to accept a suggestion or replace it with a human-authored wording. Every accepted
+wording must contain the exact incident ID and exact public message once. Natural and high-distance
+requests must clearly identify reporter feedback, a response, or a public comment. Invalid text is
+shown with a specific error and is not accepted. The command also rejects normalized duplicates
+across the complete 24-request batch.
+
+All 24 wordings remain in memory until the operator reviews the final summary and types `WRITE`
+exactly. The command then creates only:
+
+```text
+dataset/requests/candidate/rmi-replication-v0.3.0.jsonl
+config/run.v0.3.0-rmi-replication-1x.yaml
+```
+
+The focused config selects only the eight replication cases and 24 request IDs. It includes LP0B,
+LP0BV, and LP1 in gold-intent mode so the persistence comparison does not accidentally add LP1
+runtime cells. Add `--include-lp3` before authoring if the typed-procedure upper bound is required.
+The command refuses to overwrite either output.
+
+`--accept-proposals` exists only for automated tests and reproducible fixture construction. Human
+benchmark construction should use the interactive default.
+
+### 13.3 Human approval remains a separate gate
+
+Creating candidates does not approve them. Review all 24 independently:
+
+```bash
+uv run lexstab review requests \
+  --input dataset/requests/candidate/rmi-replication-v0.3.0.jsonl \
+  --reviewer phillip \
+  --interactive
+```
+
+Approve a row only if it is an adequate, unambiguous invariant for its linked case and preserves
+the exact protected message. Reject or defer anything that changes the requested operation,
+ownership semantics, public message, or required resulting state. Freezing remains a later,
+explicit operator action using `--split-config dataset/splits/v0.3.0`.

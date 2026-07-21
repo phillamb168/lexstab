@@ -368,7 +368,22 @@ def expand_matrix(bench: FrozenBenchmark, config: RunConfig, model_role: str = "
                             skipped.append({"reason": "no procedure", "architecture": condition, "case_id": case_id})
                             continue
                         interface = typed_id if condition == "LP3_CANONICAL_PROCEDURE_TOOL" else generic_id
-                        if condition == "LP0_LANGUAGE_THROUGHOUT":
+                        configured_modes = formal.get(
+                            "persistence_intent_modes", {}
+                        ).get(condition)
+                        if configured_modes is not None:
+                            modes = list(configured_modes)
+                            invalid_modes = sorted(
+                                set(modes) - {"gold", "runtime", "none"}
+                            )
+                            if not modes or invalid_modes:
+                                raise MatrixSelectionError(
+                                    "tracks.progressive_formalization."
+                                    f"persistence_intent_modes.{condition} must contain "
+                                    "one or more of gold, runtime, or none; got "
+                                    f"{configured_modes!r}"
+                                )
+                        elif condition == "LP0_LANGUAGE_THROUGHOUT":
                             modes = ["runtime"]
                         elif condition in (
                             "LP0G_GOLD_START_LANGUAGE",

@@ -536,6 +536,30 @@ Primary outcomes:
 Only after this replication should the project proceed to a broad one-repetition real run, inspect
 that report, and then consider a five-repetition run.
 
+### 7.1 Guarded v0.3.0 scaffolding status
+
+The operator-facing scaffolding is implemented and tested. No real v0.3.0 source corpus or
+manifest has been created yet. Phillip retains both human approval gates.
+
+- [x] Add eight distinct RMI case-card proposals in a versioned seed.
+- [x] Add an interactive case-card review command with a final exact `CREATE` confirmation.
+- [x] Recompute every proposed gold transition in the deterministic simulator.
+- [x] Copy the base corpus only into new v0.3.0 source paths.
+- [x] Create a versioned validation split without changing the global historical splits.
+- [x] Add an interactive request-authoring command for canonical, natural, and
+  high-lexical-distance variants.
+- [x] Protect the exact incident ID and `VERBATIM` public message in every request.
+- [x] Generate deterministic request IDs and a focused gold-only persistence config.
+- [x] Ensure neither authoring command creates or edits a benchmark manifest.
+- [x] Add temporary-repository tests covering scaffold, authoring, approval, freeze, and
+  historical manifest separation.
+- [ ] Phillip reviews and creates the eight case cards.
+- [ ] Phillip authors the 24 language variants.
+- [ ] Phillip reviews the candidate requests separately.
+- [ ] Freeze and verify benchmark v0.3.0.
+- [ ] Dry-run and inspect the focused matrix before any provider calls.
+- [ ] Run, evaluate, and report the focused one-repetition replication.
+
 ## 8. Phase-two research program
 
 Phase two is additional research rather than a prerequisite for the first article. It can provide
@@ -701,10 +725,11 @@ mutual research deliverable rather than access to private prompts alone.
 
 ## 11. Immediate next action
 
-Build and human-review the focused RMI replication corpus described in Section 7 before spending on
-the full frozen matrix. The immediate target is 8 to 12 independent RMI cases with distinct public
-messages and at least three language variants per case. Freeze that replication as a new benchmark
-version rather than modifying v0.2.1. Do not begin Phase Two or the five-repetition benchmark yet.
+Run the two guarded interactive construction commands described in Section 7 and
+`docs/RUNBOOK.md` Section 19. First review and create the eight v0.3.0 RMI case cards. Then author
+one canonical, one natural, and one high-lexical-distance request for each case. Both commands stop
+before manifest creation, and the resulting 24 candidates still require a separate interactive
+human review. Do not begin Phase Two or the five-repetition benchmark yet.
 
 The project should not yet:
 

@@ -1,0 +1,105 @@
+{
+  "base_benchmark_version": "0.2.1",
+  "benchmark_version": "0.3.0",
+  "cases": [
+    {
+      "assigned_team": "SERVICE_DESK",
+      "case_id": "RMI_REP_001",
+      "difficulty": "basic",
+      "escalation_count": 0,
+      "incident_id": "INC-3201",
+      "public_message": "Which version of the desktop client was installed when the incident occurred?",
+      "reporter_id": "USR-3201",
+      "severity": "SEV-2",
+      "support_tier": 1,
+      "title": "Ask for the installed desktop client version"
+    },
+    {
+      "assigned_team": "DESKTOP_SUPPORT",
+      "case_id": "RMI_REP_002",
+      "difficulty": "basic",
+      "escalation_count": 1,
+      "incident_id": "INC-3202",
+      "public_message": "What was the exact local time of the failure, including the time zone?",
+      "reporter_id": "USR-3202",
+      "severity": "SEV-3",
+      "support_tier": 2,
+      "title": "Ask for the failure time and time zone"
+    },
+    {
+      "assigned_team": "APPLICATION_SUPPORT",
+      "case_id": "RMI_REP_003",
+      "difficulty": "intermediate",
+      "escalation_count": 0,
+      "incident_id": "INC-3203",
+      "public_message": "Please attach the application.log and launcher.log files from the affected device.",
+      "reporter_id": "USR-3203",
+      "severity": "SEV-2",
+      "support_tier": 1,
+      "title": "Ask for two named diagnostic log files"
+    },
+    {
+      "assigned_team": "PLATFORM_SUPPORT",
+      "case_id": "RMI_REP_004",
+      "difficulty": "intermediate",
+      "escalation_count": 0,
+      "incident_id": "INC-3204",
+      "public_message": "List the steps that reproduce the problem, starting from sign-in.",
+      "reporter_id": "USR-3204",
+      "severity": "SEV-3",
+      "support_tier": 2,
+      "title": "Ask for ordered reproduction steps"
+    },
+    {
+      "assigned_team": "ENDPOINT_SUPPORT",
+      "case_id": "RMI_REP_005",
+      "difficulty": "intermediate",
+      "escalation_count": 2,
+      "incident_id": "INC-3205",
+      "public_message": "Please provide a screenshot that includes the complete error code and message.",
+      "reporter_id": "USR-3205",
+      "severity": "SEV-2",
+      "support_tier": 3,
+      "title": "Ask for a screenshot with the complete error"
+    },
+    {
+      "assigned_team": "IDENTITY_ACCESS",
+      "case_id": "RMI_REP_006",
+      "difficulty": "advanced",
+      "escalation_count": 0,
+      "incident_id": "INC-3206",
+      "public_message": "How many users are affected, and which usernames can we use for testing?",
+      "reporter_id": "USR-3206",
+      "severity": "SEV-1",
+      "support_tier": 1,
+      "title": "Ask for an affected-user count and test usernames"
+    },
+    {
+      "assigned_team": "NETWORK_OPERATIONS",
+      "case_id": "RMI_REP_007",
+      "difficulty": "intermediate",
+      "escalation_count": 1,
+      "incident_id": "INC-3207",
+      "public_message": "Were you connected through the corporate VPN, and from which office or network?",
+      "reporter_id": "USR-3207",
+      "severity": "SEV-2",
+      "support_tier": 2,
+      "title": "Ask for VPN and network-location details"
+    },
+    {
+      "assigned_team": "SECURITY_OPERATIONS",
+      "case_id": "RMI_REP_008",
+      "difficulty": "advanced",
+      "escalation_count": 2,
+      "incident_id": "INC-3208",
+      "public_message": "Which deployment version introduced the behavior, and what is the related change ticket?",
+      "reporter_id": "USR-3208",
+      "severity": "SEV-3",
+      "support_tier": 3,
+      "title": "Ask for deployment and change-ticket identifiers"
+    }
+  ],
+  "created_at": "2026-07-21T00:00:00Z",
+  "replication_id": "RMI-PERSISTENCE-REPLICATION-001",
+  "schema_version": "1.2.0"
+}

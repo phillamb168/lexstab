@@ -1,0 +1,15 @@
+{
+  "case_ids": [
+    "CLOSE_001",
+    "RMI_001",
+    "RMI_REP_001",
+    "RMI_REP_002",
+    "RMI_REP_003",
+    "RMI_REP_004",
+    "RMI_REP_005",
+    "RMI_REP_006",
+    "RMI_REP_007",
+    "RMI_REP_008"
+  ],
+  "split": "validation"
+}

@@ -1,0 +1,30 @@
+{
+  "base_benchmark_version": "0.2.1",
+  "benchmark_version": "0.3.0",
+  "case_ids": [
+    "RMI_REP_001",
+    "RMI_REP_002",
+    "RMI_REP_003",
+    "RMI_REP_004",
+    "RMI_REP_005",
+    "RMI_REP_006",
+    "RMI_REP_007",
+    "RMI_REP_008"
+  ],
+  "created_at": "2026-07-21T00:00:00Z",
+  "created_by": "phillip",
+  "public_message_hashes": {
+    "RMI_REP_001": "sha256:2385ff740f9dbab384c82c9c21675c53ef7e91ee6ea758d43c8c6f94a26b84c5",
+    "RMI_REP_002": "sha256:131cde120b802c9179c18deaae74dcd5813dffcedfc6b51a6d5b367acdad3c6e",
+    "RMI_REP_003": "sha256:ea0d79bbfcbfc44a1b7fa5e55330146b82942d51ac5f95d994fd1324bbbe6f39",
+    "RMI_REP_004": "sha256:be599c4df78ba5089cb7dc52c081df1c087caecb44432014c5cf40182bed8447",
+    "RMI_REP_005": "sha256:e3000c75e5801ce4dc563e2e5507c2e63df2c67f0dd1ae94f5158bd6600b4c8d",
+    "RMI_REP_006": "sha256:96d68070ee2a1ef9577b716f75fc39de51077b11363ea6ed28418e24a9879a0f",
+    "RMI_REP_007": "sha256:55eb3f1f619dd9639323ffda2dcaa31e2a5baee621ae3202ba2016bb780560a7",
+    "RMI_REP_008": "sha256:92734d261a00437cf9c81bf124a1b79b9b292056da6f50f017ebbaf82641c058"
+  },
+  "replication_id": "RMI-PERSISTENCE-REPLICATION-001",
+  "schema_version": "1.2.0",
+  "seed_hash": "sha256:fa72630e0c9fcd7546cb8969cae1932567badd96fbf563fab5e8cc5fce7083ae",
+  "status": "CASES_SCAFFOLDED"
+}

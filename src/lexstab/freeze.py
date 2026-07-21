@@ -182,6 +182,7 @@ def freeze_benchmark(
     dev_overwrite: bool = False,
     created_at: str | None = None,
     changelog: list[dict[str, Any]] | None = None,
+    split_config: str | Path = "dataset/splits",
 ) -> Path:
     manifest_path = root / "dataset" / "manifests" / f"benchmark-v{version}.json"
     if manifest_path.exists() and not dev_overwrite:
@@ -292,8 +293,11 @@ def freeze_benchmark(
     # Confirm splits reference known cases and split at family level (§37.3).
     splits: dict[str, list[str]] = {}
     family_to_split: dict[str, str] = {}
+    split_root = Path(split_config)
+    if not split_root.is_absolute():
+        split_root = root / split_root
     for split_name in ("development", "validation", "test"):
-        split_doc = json_read(root / "dataset" / "splits" / f"{split_name}.json")
+        split_doc = json_read(split_root / f"{split_name}.json")
         ids = split_doc["case_ids"]
         for case_id in ids:
             if case_id not in cases:

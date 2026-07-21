@@ -735,3 +735,120 @@ uv run lexstab run \
   --config config/run.v0.2.1-frozen-5x.yaml \
   --run-id run-v0.2.1-frozen-5x
 ```
+
+## 19. Focused RMI replication release sequence
+
+The focused replication is benchmark v0.3.0. It adds eight independent RMI cases and 24
+human-reviewed request variants without changing any historical benchmark. The construction steps
+make zero provider calls. Do not run the focused real-provider matrix until the review, freeze,
+verification, and dry-run gates below pass.
+
+### 19.1 Interactively review and scaffold case cards
+
+```bash
+uv run lexstab replication scaffold-rmi \
+  --seed dataset/replication/seeds/rmi-v0.3.0.json \
+  --creator phillip
+```
+
+Review the unique state and exact public message on each of eight cards. Accept or edit each
+message, then type `CREATE`. The command stages and validates everything before writing versioned
+source artifacts. It does not create a manifest and refuses to overwrite any v0.3.0 source or
+frozen target.
+
+### 19.2 Interactively author the 24 language variants
+
+```bash
+uv run lexstab replication author-rmi-variants \
+  --version 0.3.0 \
+  --creator phillip
+```
+
+For each case, enter or accept one canonical, one natural, and one high-lexical-distance request.
+The incident ID and exact public message are protected. Type `WRITE` after reviewing the full
+summary. This creates the candidate JSONL and focused one-repetition run config, but still no
+manifest.
+
+### 19.3 Review candidates and validate source artifacts
+
+```bash
+uv run lexstab review requests \
+  --input dataset/requests/candidate/rmi-replication-v0.3.0.jsonl \
+  --reviewer phillip \
+  --interactive
+
+uv run lexstab schema generate
+uv run lexstab schema validate --all
+uv run pytest -q
+
+uv run lexstab domain validate --root dataset/domain/v0.3.0
+uv run lexstab cases validate \
+  --root dataset/cases/support-v0.3.0 \
+  --domain-root dataset/domain/v0.3.0
+uv run lexstab interfaces compare \
+  --domain-root dataset/domain/v0.3.0 \
+  --generic dataset/interfaces/v0.3.0/generic-action-proposal.json \
+  --typed dataset/interfaces/v0.3.0/typed-tools/support.jsonl
+```
+
+All 24 requests must be approved or deliberately excluded before freeze. Approval must be based on
+the frozen case meaning and protected message, not on any model result.
+
+### 19.4 Freeze and verify v0.3.0
+
+```bash
+uv run lexstab benchmark freeze \
+  --version 0.3.0 \
+  --split-config dataset/splits/v0.3.0 \
+  --changelog-file dataset/manifests/changelog-v0.3.0.json
+
+uv run lexstab benchmark verify \
+  --manifest dataset/manifests/benchmark-v0.1.0.json
+uv run lexstab benchmark verify \
+  --manifest dataset/manifests/benchmark-v0.2.0.json
+uv run lexstab benchmark verify \
+  --manifest dataset/manifests/benchmark-v0.2.1.json
+uv run lexstab benchmark verify \
+  --manifest dataset/manifests/benchmark-v0.3.0.json
+```
+
+Never use `--dev-overwrite`. The explicit split path is required because the eight new cases live
+in the versioned v0.3.0 validation split.
+
+### 19.5 Dry run before any paid execution
+
+```bash
+uv run lexstab doctor \
+  --models config/models.local.yaml \
+  --run config/run.v0.3.0-rmi-replication-1x.yaml
+
+uv run lexstab run \
+  --config config/run.v0.3.0-rmi-replication-1x.yaml \
+  --dry-run
+```
+
+Confirm that the selected set contains exactly eight cases and 24 request IDs. Confirm that LP0B,
+LP0BV, and LP1 each use only `intent_mode: gold`. Review the estimated call and token counts before
+assigning a real run ID. The focused matrix uses deterministic evaluation and the configured
+execution model; it does not require an LLM judge.
+
+Only after those checks should the operator run, evaluate, and report:
+
+```bash
+uv run lexstab run \
+  --config config/run.v0.3.0-rmi-replication-1x.yaml \
+  --run-id run-v0.3.0-rmi-replication-1x
+
+jq '{status,healthy,baseline_eligible,provider_error_calls,length_terminated_calls,aborted_cells}' \
+  runs/run-v0.3.0-rmi-replication-1x/run-summary.json
+
+uv run lexstab evaluate --run runs/run-v0.3.0-rmi-replication-1x
+uv run lexstab report \
+  --run runs/run-v0.3.0-rmi-replication-1x \
+  --formats markdown,html,csv,parquet
+```
+
+Stop on any provider error, length termination, aborted cell, or schema-invalid output. Read the
+paired LP0B versus LP1 and LP0BV versus LP1 comparisons at the canonical-case level. Eight
+independent canonical cases permit a bounded RMI-family interpretation if the quality gates pass.
+One operation family does not permit generalization across the broader ontology.

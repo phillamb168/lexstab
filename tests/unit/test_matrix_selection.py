@@ -38,3 +38,26 @@ def test_validation_rmi_config_selects_every_explicit_request():
     selected = {cell.request_id for cell in matrix.cells if cell.request_id}
     assert set(config.selection["request_ids"]) <= selected
     assert {cell.case_id for cell in matrix.cells} == {"RMI_001", "CLOSE_001"}
+
+
+def test_persistence_intent_modes_can_restrict_lp1_to_gold():
+    config = _config()
+    formal = config.tracks["progressive_formalization"]
+    formal["enabled"] = True
+    formal["conditions"] = []
+    formal["persistence_conditions"] = ["LP1_CANONICAL_ONCE"]
+    formal["persistence_intent_modes"] = {"LP1_CANONICAL_ONCE": ["gold"]}
+    formal["run_cumulative_ladder"] = False
+    formal["run_component_ablations"] = False
+    formal["run_language_persistence_ablation"] = True
+    for track_name, track in config.tracks.items():
+        if track_name != "progressive_formalization":
+            track["enabled"] = False
+
+    matrix = expand_matrix(BENCH, config)
+    cells = [
+        cell for cell in matrix.cells
+        if cell.architecture == "LP1_CANONICAL_ONCE"
+    ]
+    assert cells
+    assert {cell.intent_mode for cell in cells} == {"gold"}

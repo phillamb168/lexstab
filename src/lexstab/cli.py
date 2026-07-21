@@ -53,6 +53,9 @@ procedure_app = typer.Typer(help="Reusable procedure management")
 interfaces_app = typer.Typer(help="Action-interface artifacts")
 regression_app = typer.Typer(help="Regression suite management")
 experiment_app = typer.Typer(help="Auxiliary experiments (grammar, code, modality)")
+replication_app = typer.Typer(
+    help="Guarded construction of focused replication datasets"
+)
 app.add_typer(schema_app, name="schema")
 app.add_typer(benchmark_app, name="benchmark")
 app.add_typer(request_app, name="request")
@@ -63,6 +66,7 @@ app.add_typer(procedure_app, name="procedure")
 app.add_typer(interfaces_app, name="interfaces")
 app.add_typer(regression_app, name="regression")
 app.add_typer(experiment_app, name="experiment")
+app.add_typer(replication_app, name="replication")
 
 
 def _root() -> Path:
@@ -83,6 +87,235 @@ def _fail(message: str) -> None:
 
 def _ok(message: str) -> None:
     typer.secho(message, fg=typer.colors.GREEN)
+
+
+# --------------------------------------------------------- focused replication
+
+
+@replication_app.command("scaffold-rmi")
+def scaffold_rmi_replication_cmd(
+    seed_path: str = typer.Option(
+        "dataset/replication/seeds/rmi-v0.3.0.json",
+        "--seed",
+        help="Versioned RMI case-card seed",
+    ),
+    creator: str = typer.Option("operator", "--creator"),
+    accept_proposals: bool = typer.Option(
+        False,
+        "--accept-proposals",
+        help="Noninteractive test/automation mode; accept every proposed message",
+    ),
+) -> None:
+    """Review RMI case cards, then create versioned source artifacts safely."""
+    root = _root()
+    from lexstab.replication import (
+        ReplicationError,
+        load_rmi_replication_seed,
+        scaffold_rmi_replication,
+    )
+
+    source = root / seed_path
+    if not source.exists():
+        _fail(f"no replication seed at {seed_path}")
+        return
+    try:
+        seed = load_rmi_replication_seed(source)
+    except Exception as exc:
+        _fail(f"invalid replication seed: {exc}")
+        return
+
+    reviewed_messages: dict[str, str] = {}
+    if not accept_proposals:
+        typer.echo(
+            f"\nReviewing {len(seed.cases)} proposed REQUEST_MORE_INFORMATION "
+            f"case cards for benchmark v{seed.benchmark_version}."
+        )
+        typer.echo(
+            "Only the exact public message is editable here. No artifact is written "
+            "until every card is reviewed and you type CREATE."
+        )
+    for card in seed.cases:
+        message = card.public_message
+        if not accept_proposals:
+            typer.echo(f"\n[{card.case_id}] {card.title}")
+            typer.echo(f"  incident: {card.incident_id}")
+            typer.echo(
+                f"  state: team={card.assigned_team}, tier={card.support_tier}, "
+                f"severity={card.severity}, reporter={card.reporter_id}"
+            )
+            typer.echo(f"  proposed exact public message: {message}")
+            while True:
+                answer = typer.prompt(
+                    "  decision [a]ccept / [e]dit message / [q]uit",
+                    default="a",
+                ).strip().lower()
+                if answer in ("a", "accept", ""):
+                    break
+                if answer in ("e", "edit"):
+                    message = typer.prompt(
+                        "  exact public message",
+                        default=message,
+                        show_default=False,
+                    ).strip()
+                    if not message:
+                        typer.secho("  The message cannot be empty.", fg=typer.colors.RED)
+                        continue
+                    break
+                if answer in ("q", "quit"):
+                    typer.echo("Cancelled. No artifacts were written.")
+                    return
+                typer.secho("  Enter a, e, or q.", fg=typer.colors.YELLOW)
+        reviewed_messages[card.case_id] = message
+
+    if not accept_proposals:
+        typer.echo("\nReview summary:")
+        for card in seed.cases:
+            typer.echo(f"  {card.case_id}: {reviewed_messages[card.case_id]}")
+        confirmation = typer.prompt(
+            f"Type CREATE to create the v{seed.benchmark_version} source artifacts",
+            default="CANCEL",
+            show_default=False,
+        )
+        if confirmation.strip() != "CREATE":
+            typer.echo("Cancelled. No artifacts were written.")
+            return
+
+    try:
+        result = scaffold_rmi_replication(
+            root,
+            seed,
+            reviewed_messages=reviewed_messages,
+            creator=creator,
+        )
+    except ReplicationError as exc:
+        _fail(str(exc))
+        return
+    _ok(
+        f"scaffolded {result['case_count']} RMI replication cases for "
+        f"v{result['version']}"
+    )
+    for name, path in result["paths"].items():
+        typer.echo(f"  {name}: {path}")
+    typer.echo("  benchmark manifest: not created")
+
+
+@replication_app.command("author-rmi-variants")
+def author_rmi_variants_cmd(
+    version: str = typer.Option("0.3.0", "--version"),
+    creator: str = typer.Option("operator", "--creator"),
+    include_lp3: bool = typer.Option(
+        False,
+        "--include-lp3",
+        help="Include the typed procedure condition in the focused run config",
+    ),
+    accept_proposals: bool = typer.Option(
+        False,
+        "--accept-proposals",
+        help="Noninteractive test/automation mode; accept all suggested wordings",
+    ),
+) -> None:
+    """Collect three guarded human-language variants per scaffolded RMI case."""
+    root = _root()
+    from lexstab.replication import (
+        ReplicationError,
+        VARIANT_CATEGORIES,
+        author_rmi_variants,
+        suggested_variant_texts,
+        validate_variant_text,
+    )
+
+    receipt_path = root / "dataset" / "replication" / f"rmi-v{version}.json"
+    cases_path = root / "dataset" / "cases" / f"support-v{version}"
+    if not receipt_path.exists() or not cases_path.exists():
+        _fail(
+            f"v{version} RMI cases are not scaffolded; run "
+            "'lexstab replication scaffold-rmi' first"
+        )
+        return
+    try:
+        receipt = json_read(receipt_path)
+        cases = load_cases(root, cases_path)
+        selected = [cases[case_id] for case_id in receipt["case_ids"]]
+    except Exception as exc:
+        _fail(f"cannot load scaffolded RMI cases: {exc}")
+        return
+
+    authored: dict[str, dict[str, str]] = {}
+    if not accept_proposals:
+        typer.echo(
+            f"\nAuthoring exactly three requests for each of {len(selected)} cases: "
+            "canonical, natural, and high lexical distance."
+        )
+        typer.echo(
+            "The incident ID and exact public message are protected. The prompt will "
+            "reject a wording that changes or omits either one."
+        )
+        typer.echo(
+            "No candidate requests or run config are written until all wordings pass "
+            "validation and you type WRITE."
+        )
+    for case in selected:
+        suggestions = suggested_variant_texts(case)
+        message = str(case.canonical.arguments["message"])
+        typer.echo(f"\n[{case.case_id}] {case.title}")
+        typer.echo(f"  protected entity: {case.canonical.entity_id}")
+        typer.echo(f"  protected public message: {message}")
+        authored[case.case_id] = {}
+        for category in VARIANT_CATEGORIES:
+            suggestion = suggestions[category]
+            if accept_proposals:
+                text = suggestion
+            else:
+                typer.echo(f"\n  {category.replace('_', ' ')}")
+                typer.echo(f"  suggestion: {suggestion}")
+                while True:
+                    text = typer.prompt(
+                        "  wording (press Enter to accept the suggestion)",
+                        default=suggestion,
+                        show_default=False,
+                    ).strip()
+                    errors = validate_variant_text(case, category, text)
+                    if not errors:
+                        break
+                    typer.secho("  Wording was not accepted:", fg=typer.colors.RED)
+                    for error in errors:
+                        typer.echo(f"    - {error}")
+            authored[case.case_id][category] = text
+
+    if not accept_proposals:
+        typer.echo("\nFinal candidate summary:")
+        for case in selected:
+            typer.echo(f"\n  {case.case_id}")
+            for category in VARIANT_CATEGORIES:
+                typer.echo(f"    {category}: {authored[case.case_id][category]}")
+        confirmation = typer.prompt(
+            "Type WRITE to create the candidate JSONL and focused run config",
+            default="CANCEL",
+            show_default=False,
+        )
+        if confirmation.strip() != "WRITE":
+            typer.echo("Cancelled. No artifacts were written.")
+            return
+
+    try:
+        result = author_rmi_variants(
+            root,
+            version=version,
+            variant_texts=authored,
+            creator=creator,
+            include_lp3=include_lp3,
+        )
+    except ReplicationError as exc:
+        _fail(str(exc))
+        return
+    _ok(
+        f"wrote {result['request_count']} guarded human request candidates "
+        f"across {result['case_count']} cases"
+    )
+    typer.echo(f"  candidates: {result['candidate_path']}")
+    typer.echo(f"  focused run config: {result['run_config_path']}")
+    typer.echo("  benchmark manifest: not created")
+    typer.echo("  next: review the candidate JSONL before freezing any benchmark")
 
 
 @app.command("prompt-size-report")
@@ -921,7 +1154,11 @@ def benchmark_freeze(
         if changelog is not None and not isinstance(changelog, list):
             raise FreezeError("changelog file must contain a JSON list")
         path = freeze_benchmark(
-            root, version, dev_overwrite=dev_overwrite, changelog=changelog
+            root,
+            version,
+            dev_overwrite=dev_overwrite,
+            changelog=changelog,
+            split_config=split_config,
         )
     except (FreezeError, ArtifactError) as exc:
         _fail(str(exc))
