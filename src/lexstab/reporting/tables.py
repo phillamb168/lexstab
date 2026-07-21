@@ -52,7 +52,13 @@ def headline_table(metrics: dict[str, Any]) -> list[dict]:
         rows.append({
             "track": entry["track"],
             "architecture": entry["architecture"],
+            "intent_mode": entry.get("intent_mode", "none"),
+            "procedure_selection": entry.get("procedure_selection", "none"),
+            "procedure_packaging": entry.get("procedure_packaging", "none"),
             "n_cells": entry.get("n_cells"),
+            "n_independent_cases": entry.get("n_independent_cases"),
+            "n_operation_families": entry.get("n_operation_families"),
+            "interpretation_scope": entry.get("interpretation_scope"),
             "full_call": format_ci(full),
             "full_call_estimate": full.get("estimate"),
             "full_call_ci_low": full.get("ci_low"),
@@ -102,10 +108,16 @@ def comparison_table(metrics: dict[str, Any]) -> list[dict]:
             "ci_low": delta.get("ci_low"),
             "ci_high": delta.get("ci_high"),
             "margin": comparison.get("margin"),
-            "verdict": comparison.get("verdict"),
+            "verdict": (
+                comparison.get("verdict")
+                if comparison.get("interpretation_allowed", True)
+                else "withheld: measurement validity gate"
+            ),
             "practically_equivalent": comparison.get("practically_equivalent"),
             "n_pairs": comparison.get("n_pairs"),
-            "n_cases": delta.get("n_cases"),
+            "n_cases": comparison.get("n_independent_cases", delta.get("n_cases")),
+            "n_operation_families": comparison.get("n_operation_families"),
+            "interpretation_scope": comparison.get("interpretation_scope"),
             "mcnemar_p": (comparison.get("secondary_mcnemar") or {}).get("mcnemar_p"),
         })
     return rows
@@ -124,7 +136,11 @@ def transition_table(metrics: dict[str, Any]) -> list[dict]:
             "quality_delta_estimate": delta.get("estimate"),
             "quality_ci_low": delta.get("ci_low"),
             "quality_ci_high": delta.get("ci_high"),
-            "verdict": quality.get("verdict"),
+            "verdict": (
+                quality.get("verdict")
+                if quality.get("interpretation_allowed", True)
+                else "withheld: measurement validity gate"
+            ),
             "n_pairs": quality.get("n_pairs"),
             "false_action_delta": safety.get("delta"),
             "calls_delta": cost.get("calls_delta"),

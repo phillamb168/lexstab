@@ -1,6 +1,6 @@
 """Blocking threshold checks for scheduled regression runs."""
 
-from lexstab.artifacts import json_write
+from lexstab.artifacts import json_read, json_write
 from lexstab.regression import check_run_thresholds
 
 
@@ -44,12 +44,24 @@ def _write_run(run_dir, candidate_low: float) -> None:
     }
     json_write(run_dir / "metrics.json", {
         "run_id": "threshold-test",
+        "baseline_eligible": True,
         "completion": {"completion_rate": 1.0},
         "missing_cells": [],
         "headline": [baseline, candidate],
         "component_ablations": [],
         "elicitation": {},
     })
+
+
+def test_threshold_check_rejects_observed_provider_failure(tmp_path):
+    run_dir = tmp_path / "provider-failure"
+    _write_run(run_dir, candidate_low=0.90)
+    document = json_read(run_dir / "metrics.json")
+    document["baseline_eligible"] = False
+    json_write(run_dir / "metrics.json", document)
+    report = check_run_thresholds(run_dir, {"blocking": {}})
+    assert report["passed"] is False
+    assert "run is mocked or baseline-ineligible" in report["failures"]
 
 
 def test_threshold_check_uses_conservative_interval_bound(tmp_path):

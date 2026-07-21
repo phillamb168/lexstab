@@ -1,0 +1,26 @@
+{
+  "adapter_version": "1",
+  "argument_schema_hash": "sha256:791281d333032c985cd05cfbc866e57b11889418e599f82949a084f3e5ac9c7a",
+  "discovery_behavior": null,
+  "interface_id": "GENERIC_ACTION_PROPOSAL_V1",
+  "interface_version": "1.0.0",
+  "kind": "GENERIC_PROPOSAL",
+  "operation_ids": [
+    "CLOSE_INCIDENT",
+    "ESCALATE_INCIDENT",
+    "REASSIGN_INCIDENT",
+    "REFUND_DUPLICATE_CHARGE",
+    "REQUEST_APPROVAL",
+    "REQUEST_MANAGER_REVIEW",
+    "REQUEST_MORE_INFORMATION",
+    "SUSPEND_ACCOUNT"
+  ],
+  "provenance": {
+    "source": "generated_from_operation_registry"
+  },
+  "schema_version": "1.2.0",
+  "tool_description_hash": null,
+  "tools": [],
+  "transport": "inline_json",
+  "validation_behavior": "reject_invalid"
+}

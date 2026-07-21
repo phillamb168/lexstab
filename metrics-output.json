@@ -1,0 +1,2346 @@
+{
+  "run_id": "run-frozen-1x-20260720-153331",
+  "baseline_eligible": true,
+  "run_health": {
+    "aborted_cells": 0,
+    "baseline_eligible": true,
+    "configured_baseline_eligible": true,
+    "harness_error_cells": 0,
+    "healthy": true,
+    "http_error_calls": 0,
+    "length_terminated_calls": 0,
+    "provider_error_calls": 0,
+    "provider_error_cells": 0,
+    "status": "complete",
+    "transport_error_calls": 0
+  },
+  "completion": {
+    "completion_rate": 1.0,
+    "matrix_cells": 738,
+    "scored_cells": 738
+  },
+  "headline": [
+    {
+      "architecture": "A0_DIRECT",
+      "clarification": {
+        "f1": null,
+        "false_action_rate": 0.6666666666666666,
+        "fn": 12,
+        "fp": 0,
+        "precision": null,
+        "recall": 0.0,
+        "refusal_false_action_rate": 0.0,
+        "tn": 24,
+        "tp": 0,
+        "unnecessary_clarification_rate": 0.0
+      },
+      "contrast_accuracy": {
+        "ci_high": 1.0,
+        "ci_low": 1.0,
+        "estimate": 1.0,
+        "n_cases": 5,
+        "n_observations": 5
+      },
+      "decision_accuracy": {
+        "ci_high": 0.72,
+        "ci_low": 0.46153846153846156,
+        "estimate": 0.631578947368421,
+        "n_cases": 7,
+        "n_observations": 38
+      },
+      "false_action_interval": {
+        "ci_high": 0.9166666666666666,
+        "ci_low": 0.3333333333333333,
+        "estimate": 0.6666666666666666,
+        "n_cases": 6,
+        "n_observations": 12
+      },
+      "false_action_rate": 0.6666666666666666,
+      "final_state_accuracy": {
+        "ci_high": 1.0,
+        "ci_low": 1.0,
+        "estimate": 1.0,
+        "n_cases": 5,
+        "n_observations": 19
+      },
+      "full_call_accuracy": {
+        "ci_high": 1.0,
+        "ci_low": 1.0,
+        "estimate": 1.0,
+        "n_cases": 5,
+        "n_observations": 19
+      },
+      "n_cells": 38,
+      "operational_invariance": {
+        "ci_high": 1.0,
+        "ci_low": 1.0,
+        "estimate": 1.0,
+        "n_cases": 5,
+        "n_observations": 5
+      },
+      "refusal_correctness": {
+        "ci_high": 0.0,
+        "ci_low": 0.0,
+        "estimate": 0.0,
+        "n_cases": 1,
+        "n_observations": 2
+      },
+      "schema_validity": {
+        "ci_high": 0.96,
+        "ci_low": 0.6333333333333333,
+        "estimate": 0.8421052631578947,
+        "n_cases": 7,
+        "n_observations": 38
+      },
+      "track": "boundary",
+      "unnecessary_clarification_interval": {
+        "ci_high": 0.0,
+        "ci_low": 0.0,
+        "estimate": 0.0,
+        "n_cases": 5,
+        "n_observations": 24
+      },
+      "usage": {
+        "latency_p50_ms": 2547.264707973227,
+        "latency_p95_ms": 4609.938542009331,
+        "mean_latency_ms": 2752.800920037675,
+        "mean_model_calls": 1.0,
+        "mean_total_tokens": 2842.0526315789475,
+        "transport_error_cells": 0
+      }
+    },
+    {
+      "architecture": "A1_DIRECT_CLARIFY",
+      "clarification": {
+        "f1": 0.7000000000000001,
+        "false_action_rate": 0.4166666666666667,
+        "fn": 5,
+        "fp": 1,
+        "precision": 0.875,
+        "recall": 0.5833333333333334,
+        "refusal_false_action_rate": 0.0,
+        "tn": 23,
+        "tp": 7,
+        "unnecessary_clarification_rate": 0.041666666666666664
+      },
+      "contrast_accuracy": {
+        "ci_high": 1.0,
+        "ci_low": 0.4,
+        "estimate": 0.8,
+        "n_cases": 5,
+        "n_observations": 5
+      },
+      "decision_accuracy": {
+        "ci_high": 0.9210526315789473,
+        "ci_low": 0.7333333333333333,
+        "estimate": 0.8421052631578947,
+        "n_cases": 7,
+        "n_observations": 38
+      },
+      "false_action_interval": {
+        "ci_high": 0.6666666666666666,
+        "ci_low": 0.16666666666666666,
+        "estimate": 0.4166666666666667,
+        "n_cases": 6,
+        "n_observations": 12
+      },
+      "false_action_rate": 0.4166666666666667,
+      "final_state_accuracy": {
+        "ci_high": 1.0,
+        "ci_low": 0.8888888888888888,
+        "estimate": 0.9473684210526315,
+        "n_cases": 5,
+        "n_observations": 19
+      },
+      "full_call_accuracy": {
+        "ci_high": 1.0,
+        "ci_low": 0.8888888888888888,
+        "estimate": 0.9473684210526315,
+        "n_cases": 5,
+        "n_observations": 19
+      },
+      "n_cells": 38,
+      "operational_invariance": {
+        "ci_high": 1.0,
+        "ci_low": 0.4,
+        "estimate": 0.8,
+        "n_cases": 5,
+        "n_observations": 5
+      },
+      "refusal_correctness": {
+        "ci_high": 1.0,
+        "ci_low": 1.0,
+        "estimate": 1.0,
+        "n_cases": 1,
+        "n_observations": 2
+      },
+      "schema_validity": {
+        "ci_high": 1.0,
+        "ci_low": 1.0,
+        "estimate": 1.0,
+        "n_cases": 7,
+        "n_observations": 38
+      },
+      "track": "boundary",
+      "unnecessary_clarification_interval": {
+        "ci_high": 0.09375,
+        "ci_low": 0.0,
+        "estimate": 0.041666666666666664,
+        "n_cases": 5,
+        "n_observations": 24
+      },
+      "usage": {
+        "latency_p50_ms": 2516.482833074406,
+        "latency_p95_ms": 3867.4477079184726,
+        "mean_latency_ms": 2643.025207287313,
+        "mean_model_calls": 1.0,
+        "mean_total_tokens": 3076.342105263158,
+        "transport_error_cells": 0
+      }
+    },
+    {
+      "architecture": "B_RUNTIME",
+      "clarification": {
+        "f1": 0.8695652173913043,
+        "false_action_rate": 0.16666666666666666,
+        "fn": 2,
+        "fp": 1,
+        "precision": 0.9090909090909091,
+        "recall": 0.8333333333333334,
+        "refusal_false_action_rate": 0.0,
+        "tn": 23,
+        "tp": 10,
+        "unnecessary_clarification_rate": 0.041666666666666664
+      },
+      "contrast_accuracy": {
+        "ci_high": 1.0,
+        "ci_low": 0.4,
+        "estimate": 0.8,
+        "n_cases": 5,
+        "n_observations": 5
+      },
+      "decision_accuracy": {
+        "ci_high": 1.0,
+        "ci_low": 0.7352941176470589,
+        "estimate": 0.9210526315789473,
+        "n_cases": 7,
+        "n_observations": 38
+      },
+      "false_action_interval": {
+        "ci_high": 0.5,
+        "ci_low": 0.0,
+        "estimate": 0.16666666666666666,
+        "n_cases": 6,
+        "n_observations": 12
+      },
+      "false_action_rate": 0.16666666666666666,
+      "final_state_accuracy": {
+        "ci_high": 1.0,
+        "ci_low": 1.0,
+        "estimate": 1.0,
+        "n_cases": 5,
+        "n_observations": 19
+      },
+      "full_call_accuracy": {
+        "ci_high": 1.0,
+        "ci_low": 1.0,
+        "estimate": 1.0,
+        "n_cases": 5,
+        "n_observations": 19
+      },
+      "n_cells": 38,
+      "operational_invariance": {
+        "ci_high": 1.0,
+        "ci_low": 1.0,
+        "estimate": 1.0,
+        "n_cases": 5,
+        "n_observations": 5
+      },
+      "refusal_correctness": {
+        "ci_high": 1.0,
+        "ci_low": 1.0,
+        "estimate": 1.0,
+        "n_cases": 1,
+        "n_observations": 2
+      },
+      "schema_validity": {
+        "ci_high": 1.0,
+        "ci_low": 1.0,
+        "estimate": 1.0,
+        "n_cases": 7,
+        "n_observations": 38
+      },
+      "track": "boundary",
+      "unnecessary_clarification_interval": {
+        "ci_high": 0.15,
+        "ci_low": 0.0,
+        "estimate": 0.041666666666666664,
+        "n_cases": 5,
+        "n_observations": 24
+      },
+      "usage": {
+        "latency_p50_ms": 6932.93758307118,
+        "latency_p95_ms": 11821.282249991782,
+        "mean_latency_ms": 7382.79187274288,
+        "mean_model_calls": 1.7105263157894737,
+        "mean_total_tokens": 4207.736842105263,
+        "transport_error_cells": 0
+      }
+    },
+    {
+      "architecture": "C_RUNTIME",
+      "clarification": {
+        "f1": 0.8181818181818182,
+        "false_action_rate": 0.25,
+        "fn": 3,
+        "fp": 1,
+        "precision": 0.9,
+        "recall": 0.75,
+        "refusal_false_action_rate": 0.0,
+        "tn": 23,
+        "tp": 9,
+        "unnecessary_clarification_rate": 0.041666666666666664
+      },
+      "contrast_accuracy": {
+        "ci_high": 1.0,
+        "ci_low": 0.4,
+        "estimate": 0.8,
+        "n_cases": 5,
+        "n_observations": 5
+      },
+      "decision_accuracy": {
+        "ci_high": 1.0,
+        "ci_low": 0.7058823529411765,
+        "estimate": 0.8947368421052632,
+        "n_cases": 7,
+        "n_observations": 38
+      },
+      "false_action_interval": {
+        "ci_high": 0.5833333333333334,
+        "ci_low": 0.0,
+        "estimate": 0.25,
+        "n_cases": 6,
+        "n_observations": 12
+      },
+      "false_action_rate": 0.25,
+      "final_state_accuracy": {
+        "ci_high": 1.0,
+        "ci_low": 1.0,
+        "estimate": 1.0,
+        "n_cases": 5,
+        "n_observations": 19
+      },
+      "full_call_accuracy": {
+        "ci_high": 1.0,
+        "ci_low": 1.0,
+        "estimate": 1.0,
+        "n_cases": 5,
+        "n_observations": 19
+      },
+      "n_cells": 38,
+      "operational_invariance": {
+        "ci_high": 1.0,
+        "ci_low": 1.0,
+        "estimate": 1.0,
+        "n_cases": 5,
+        "n_observations": 5
+      },
+      "refusal_correctness": {
+        "ci_high": 1.0,
+        "ci_low": 1.0,
+        "estimate": 1.0,
+        "n_cases": 1,
+        "n_observations": 2
+      },
+      "schema_validity": {
+        "ci_high": 1.0,
+        "ci_low": 1.0,
+        "estimate": 1.0,
+        "n_cases": 7,
+        "n_observations": 38
+      },
+      "track": "boundary",
+      "unnecessary_clarification_interval": {
+        "ci_high": 0.15,
+        "ci_low": 0.0,
+        "estimate": 0.041666666666666664,
+        "n_cases": 5,
+        "n_observations": 24
+      },
+      "usage": {
+        "latency_p50_ms": 7198.257957003079,
+        "latency_p95_ms": 10615.47299893573,
+        "mean_latency_ms": 7226.331013089389,
+        "mean_model_calls": 1.736842105263158,
+        "mean_total_tokens": 4317.0,
+        "transport_error_cells": 0
+      }
+    },
+    {
+      "architecture": "A0_DIRECT",
+      "clarification": {
+        "f1": null,
+        "false_action_rate": 0.0,
+        "fn": 1,
+        "fp": 0,
+        "precision": null,
+        "recall": 0.0,
+        "refusal_false_action_rate": null,
+        "tn": 1,
+        "tp": 0,
+        "unnecessary_clarification_rate": 0.0
+      },
+      "contrast_accuracy": {
+        "ci_high": null,
+        "ci_low": null,
+        "estimate": null,
+        "n_cases": 0,
+        "n_observations": 0
+      },
+      "decision_accuracy": {
+        "ci_high": 1.0,
+        "ci_low": 0.0,
+        "estimate": 0.5,
+        "n_cases": 2,
+        "n_observations": 2
+      },
+      "false_action_interval": {
+        "ci_high": 0.0,
+        "ci_low": 0.0,
+        "estimate": 0.0,
+        "n_cases": 1,
+        "n_observations": 1
+      },
+      "false_action_rate": 0.0,
+      "final_state_accuracy": {
+        "ci_high": 1.0,
+        "ci_low": 1.0,
+        "estimate": 1.0,
+        "n_cases": 2,
+        "n_observations": 2
+      },
+      "full_call_accuracy": {
+        "ci_high": 1.0,
+        "ci_low": 0.0,
+        "estimate": 0.5,
+        "n_cases": 2,
+        "n_observations": 2
+      },
+      "n_cells": 2,
+      "operational_invariance": {
+        "ci_high": null,
+        "ci_low": null,
+        "estimate": null,
+        "n_cases": 0,
+        "n_observations": 0
+      },
+      "refusal_correctness": {
+        "ci_high": null,
+        "ci_low": null,
+        "estimate": null,
+        "n_cases": 0,
+        "n_observations": 0
+      },
+      "schema_validity": {
+        "ci_high": 1.0,
+        "ci_low": 1.0,
+        "estimate": 1.0,
+        "n_cases": 2,
+        "n_observations": 2
+      },
+      "track": "intent_elicitation",
+      "unnecessary_clarification_interval": {
+        "ci_high": 0.0,
+        "ci_low": 0.0,
+        "estimate": 0.0,
+        "n_cases": 1,
+        "n_observations": 1
+      },
+      "usage": {
+        "latency_p50_ms": 2510.8813339611515,
+        "latency_p95_ms": 2510.8813339611515,
+        "mean_latency_ms": 2409.0118129970506,
+        "mean_model_calls": 1.0,
+        "mean_total_tokens": 2794.0,
+        "transport_error_cells": 0
+      }
+    },
+    {
+      "architecture": "A1_DIRECT_CLARIFY",
+      "clarification": {
+        "f1": null,
+        "false_action_rate": null,
+        "fn": 0,
+        "fp": 0,
+        "precision": null,
+        "recall": null,
+        "refusal_false_action_rate": null,
+        "tn": 2,
+        "tp": 0,
+        "unnecessary_clarification_rate": 0.0
+      },
+      "contrast_accuracy": {
+        "ci_high": null,
+        "ci_low": null,
+        "estimate": null,
+        "n_cases": 0,
+        "n_observations": 0
+      },
+      "decision_accuracy": {
+        "ci_high": 1.0,
+        "ci_low": 1.0,
+        "estimate": 1.0,
+        "n_cases": 2,
+        "n_observations": 2
+      },
+      "false_action_interval": {
+        "ci_high": null,
+        "ci_low": null,
+        "estimate": null,
+        "n_cases": 0,
+        "n_observations": 0
+      },
+      "false_action_rate": null,
+      "final_state_accuracy": {
+        "ci_high": 1.0,
+        "ci_low": 1.0,
+        "estimate": 1.0,
+        "n_cases": 2,
+        "n_observations": 2
+      },
+      "full_call_accuracy": {
+        "ci_high": 1.0,
+        "ci_low": 1.0,
+        "estimate": 1.0,
+        "n_cases": 2,
+        "n_observations": 2
+      },
+      "n_cells": 2,
+      "operational_invariance": {
+        "ci_high": null,
+        "ci_low": null,
+        "estimate": null,
+        "n_cases": 0,
+        "n_observations": 0
+      },
+      "refusal_correctness": {
+        "ci_high": null,
+        "ci_low": null,
+        "estimate": null,
+        "n_cases": 0,
+        "n_observations": 0
+      },
+      "schema_validity": {
+        "ci_high": 1.0,
+        "ci_low": 1.0,
+        "estimate": 1.0,
+        "n_cases": 2,
+        "n_observations": 2
+      },
+      "track": "intent_elicitation",
+      "unnecessary_clarification_interval": {
+        "ci_high": 0.0,
+        "ci_low": 0.0,
+        "estimate": 0.0,
+        "n_cases": 2,
+        "n_observations": 2
+      },
+      "usage": {
+        "latency_p50_ms": 4140.798833104782,
+        "latency_p95_ms": 4140.798833104782,
+        "mean_latency_ms": 4063.4375625522807,
+        "mean_model_calls": 2.0,
+        "mean_total_tokens": 6102.5,
+        "transport_error_cells": 0
+      }
+    },
+    {
+      "architecture": "B_EXTERNAL_GATE",
+      "clarification": {
+        "f1": null,
+        "false_action_rate": null,
+        "fn": 0,
+        "fp": 0,
+        "precision": null,
+        "recall": null,
+        "refusal_false_action_rate": null,
+        "tn": 2,
+        "tp": 0,
+        "unnecessary_clarification_rate": 0.0
+      },
+      "contrast_accuracy": {
+        "ci_high": null,
+        "ci_low": null,
+        "estimate": null,
+        "n_cases": 0,
+        "n_observations": 0
+      },
+      "decision_accuracy": {
+        "ci_high": 1.0,
+        "ci_low": 1.0,
+        "estimate": 1.0,
+        "n_cases": 2,
+        "n_observations": 2
+      },
+      "false_action_interval": {
+        "ci_high": null,
+        "ci_low": null,
+        "estimate": null,
+        "n_cases": 0,
+        "n_observations": 0
+      },
+      "false_action_rate": null,
+      "final_state_accuracy": {
+        "ci_high": 1.0,
+        "ci_low": 1.0,
+        "estimate": 1.0,
+        "n_cases": 2,
+        "n_observations": 2
+      },
+      "full_call_accuracy": {
+        "ci_high": 1.0,
+        "ci_low": 1.0,
+        "estimate": 1.0,
+        "n_cases": 2,
+        "n_observations": 2
+      },
+      "n_cells": 2,
+      "operational_invariance": {
+        "ci_high": null,
+        "ci_low": null,
+        "estimate": null,
+        "n_cases": 0,
+        "n_observations": 0
+      },
+      "refusal_correctness": {
+        "ci_high": null,
+        "ci_low": null,
+        "estimate": null,
+        "n_cases": 0,
+        "n_observations": 0
+      },
+      "schema_validity": {
+        "ci_high": 1.0,
+        "ci_low": 1.0,
+        "estimate": 1.0,
+        "n_cases": 2,
+        "n_observations": 2
+      },
+      "track": "intent_elicitation",
+      "unnecessary_clarification_interval": {
+        "ci_high": 0.0,
+        "ci_low": 0.0,
+        "estimate": 0.0,
+        "n_cases": 2,
+        "n_observations": 2
+      },
+      "usage": {
+        "latency_p50_ms": 59131.41433196142,
+        "latency_p95_ms": 59131.41433196142,
+        "mean_latency_ms": 40321.69841649011,
+        "mean_model_calls": 5.0,
+        "mean_total_tokens": 8255.0,
+        "transport_error_cells": 0
+      }
+    },
+    {
+      "architecture": "B_EXTERNAL_GATE_GOLD",
+      "clarification": {
+        "f1": null,
+        "false_action_rate": null,
+        "fn": 0,
+        "fp": 0,
+        "precision": null,
+        "recall": null,
+        "refusal_false_action_rate": null,
+        "tn": 2,
+        "tp": 0,
+        "unnecessary_clarification_rate": 0.0
+      },
+      "contrast_accuracy": {
+        "ci_high": null,
+        "ci_low": null,
+        "estimate": null,
+        "n_cases": 0,
+        "n_observations": 0
+      },
+      "decision_accuracy": {
+        "ci_high": 1.0,
+        "ci_low": 1.0,
+        "estimate": 1.0,
+        "n_cases": 2,
+        "n_observations": 2
+      },
+      "false_action_interval": {
+        "ci_high": null,
+        "ci_low": null,
+        "estimate": null,
+        "n_cases": 0,
+        "n_observations": 0
+      },
+      "false_action_rate": null,
+      "final_state_accuracy": {
+        "ci_high": 1.0,
+        "ci_low": 1.0,
+        "estimate": 1.0,
+        "n_cases": 2,
+        "n_observations": 2
+      },
+      "full_call_accuracy": {
+        "ci_high": 1.0,
+        "ci_low": 1.0,
+        "estimate": 1.0,
+        "n_cases": 2,
+        "n_observations": 2
+      },
+      "n_cells": 2,
+      "operational_invariance": {
+        "ci_high": null,
+        "ci_low": null,
+        "estimate": null,
+        "n_cases": 0,
+        "n_observations": 0
+      },
+      "refusal_correctness": {
+        "ci_high": null,
+        "ci_low": null,
+        "estimate": null,
+        "n_cases": 0,
+        "n_observations": 0
+      },
+      "schema_validity": {
+        "ci_high": 1.0,
+        "ci_low": 1.0,
+        "estimate": 1.0,
+        "n_cases": 2,
+        "n_observations": 2
+      },
+      "track": "intent_elicitation",
+      "unnecessary_clarification_interval": {
+        "ci_high": 0.0,
+        "ci_low": 0.0,
+        "estimate": 0.0,
+        "n_cases": 2,
+        "n_observations": 2
+      },
+      "usage": {
+        "latency_p50_ms": 19147.573083871976,
+        "latency_p95_ms": 19147.573083871976,
+        "mean_latency_ms": 17926.2011879473,
+        "mean_model_calls": 4.0,
+        "mean_total_tokens": 7222.5,
+        "transport_error_cells": 0
+      }
+    },
+    {
+      "architecture": "B_GOLD",
+      "clarification": {
+        "f1": null,
+        "false_action_rate": null,
+        "fn": 0,
+        "fp": 0,
+        "precision": null,
+        "recall": null,
+        "refusal_false_action_rate": null,
+        "tn": 5,
+        "tp": 0,
+        "unnecessary_clarification_rate": 0.0
+      },
+      "contrast_accuracy": {
+        "ci_high": null,
+        "ci_low": null,
+        "estimate": null,
+        "n_cases": 0,
+        "n_observations": 0
+      },
+      "decision_accuracy": {
+        "ci_high": 1.0,
+        "ci_low": 1.0,
+        "estimate": 1.0,
+        "n_cases": 5,
+        "n_observations": 5
+      },
+      "false_action_interval": {
+        "ci_high": null,
+        "ci_low": null,
+        "estimate": null,
+        "n_cases": 0,
+        "n_observations": 0
+      },
+      "false_action_rate": null,
+      "final_state_accuracy": {
+        "ci_high": 1.0,
+        "ci_low": 1.0,
+        "estimate": 1.0,
+        "n_cases": 5,
+        "n_observations": 5
+      },
+      "full_call_accuracy": {
+        "ci_high": 1.0,
+        "ci_low": 1.0,
+        "estimate": 1.0,
+        "n_cases": 5,
+        "n_observations": 5
+      },
+      "n_cells": 5,
+      "operational_invariance": {
+        "ci_high": null,
+        "ci_low": null,
+        "estimate": null,
+        "n_cases": 0,
+        "n_observations": 0
+      },
+      "refusal_correctness": {
+        "ci_high": null,
+        "ci_low": null,
+        "estimate": null,
+        "n_cases": 0,
+        "n_observations": 0
+      },
+      "schema_validity": {
+        "ci_high": 1.0,
+        "ci_low": 1.0,
+        "estimate": 1.0,
+        "n_cases": 5,
+        "n_observations": 5
+      },
+      "track": "post_canonical",
+      "unnecessary_clarification_interval": {
+        "ci_high": 0.0,
+        "ci_low": 0.0,
+        "estimate": 0.0,
+        "n_cases": 5,
+        "n_observations": 5
+      },
+      "usage": {
+        "latency_p50_ms": 2169.38391700387,
+        "latency_p95_ms": 2942.6252499688417,
+        "mean_latency_ms": 2351.4073001686484,
+        "mean_model_calls": 1.0,
+        "mean_total_tokens": 2980.8,
+        "transport_error_cells": 0
+      }
+    },
+    {
+      "architecture": "C_GOLD",
+      "clarification": {
+        "f1": null,
+        "false_action_rate": null,
+        "fn": 0,
+        "fp": 0,
+        "precision": null,
+        "recall": null,
+        "refusal_false_action_rate": null,
+        "tn": 5,
+        "tp": 0,
+        "unnecessary_clarification_rate": 0.0
+      },
+      "contrast_accuracy": {
+        "ci_high": null,
+        "ci_low": null,
+        "estimate": null,
+        "n_cases": 0,
+        "n_observations": 0
+      },
+      "decision_accuracy": {
+        "ci_high": 1.0,
+        "ci_low": 1.0,
+        "estimate": 1.0,
+        "n_cases": 5,
+        "n_observations": 5
+      },
+      "false_action_interval": {
+        "ci_high": null,
+        "ci_low": null,
+        "estimate": null,
+        "n_cases": 0,
+        "n_observations": 0
+      },
+      "false_action_rate": null,
+      "final_state_accuracy": {
+        "ci_high": 1.0,
+        "ci_low": 1.0,
+        "estimate": 1.0,
+        "n_cases": 5,
+        "n_observations": 5
+      },
+      "full_call_accuracy": {
+        "ci_high": 1.0,
+        "ci_low": 1.0,
+        "estimate": 1.0,
+        "n_cases": 5,
+        "n_observations": 5
+      },
+      "n_cells": 5,
+      "operational_invariance": {
+        "ci_high": null,
+        "ci_low": null,
+        "estimate": null,
+        "n_cases": 0,
+        "n_observations": 0
+      },
+      "refusal_correctness": {
+        "ci_high": null,
+        "ci_low": null,
+        "estimate": null,
+        "n_cases": 0,
+        "n_observations": 0
+      },
+      "schema_validity": {
+        "ci_high": 1.0,
+        "ci_low": 1.0,
+        "estimate": 1.0,
+        "n_cases": 5,
+        "n_observations": 5
+      },
+      "track": "post_canonical",
+      "unnecessary_clarification_interval": {
+        "ci_high": 0.0,
+        "ci_low": 0.0,
+        "estimate": 0.0,
+        "n_cases": 5,
+        "n_observations": 5
+      },
+      "usage": {
+        "latency_p50_ms": 2040.0991670321673,
+        "latency_p95_ms": 2672.4209170788527,
+        "mean_latency_ms": 2129.327408201061,
+        "mean_model_calls": 1.0,
+        "mean_total_tokens": 3062.4,
+        "transport_error_cells": 0
+      }
+    },
+    {
+      "architecture": "D_DEFINITION_ONLY",
+      "clarification": {
+        "f1": null,
+        "false_action_rate": null,
+        "fn": 0,
+        "fp": 0,
+        "precision": null,
+        "recall": null,
+        "refusal_false_action_rate": null,
+        "tn": 3,
+        "tp": 0,
+        "unnecessary_clarification_rate": 0.0
+      },
+      "contrast_accuracy": {
+        "ci_high": null,
+        "ci_low": null,
+        "estimate": null,
+        "n_cases": 0,
+        "n_observations": 0
+      },
+      "decision_accuracy": {
+        "ci_high": 1.0,
+        "ci_low": 1.0,
+        "estimate": 1.0,
+        "n_cases": 3,
+        "n_observations": 3
+      },
+      "false_action_interval": {
+        "ci_high": null,
+        "ci_low": null,
+        "estimate": null,
+        "n_cases": 0,
+        "n_observations": 0
+      },
+      "false_action_rate": null,
+      "final_state_accuracy": {
+        "ci_high": 1.0,
+        "ci_low": 1.0,
+        "estimate": 1.0,
+        "n_cases": 3,
+        "n_observations": 3
+      },
+      "full_call_accuracy": {
+        "ci_high": 1.0,
+        "ci_low": 1.0,
+        "estimate": 1.0,
+        "n_cases": 3,
+        "n_observations": 3
+      },
+      "n_cells": 3,
+      "operational_invariance": {
+        "ci_high": null,
+        "ci_low": null,
+        "estimate": null,
+        "n_cases": 0,
+        "n_observations": 0
+      },
+      "refusal_correctness": {
+        "ci_high": null,
+        "ci_low": null,
+        "estimate": null,
+        "n_cases": 0,
+        "n_observations": 0
+      },
+      "schema_validity": {
+        "ci_high": 1.0,
+        "ci_low": 1.0,
+        "estimate": 1.0,
+        "n_cases": 3,
+        "n_observations": 3
+      },
+      "track": "post_canonical",
+      "unnecessary_clarification_interval": {
+        "ci_high": 0.0,
+        "ci_low": 0.0,
+        "estimate": 0.0,
+        "n_cases": 3,
+        "n_observations": 3
+      },
+      "usage": {
+        "latency_p50_ms": 2695.891125011258,
+        "latency_p95_ms": 2753.49679205101,
+        "mean_latency_ms": 2480.7133610205105,
+        "mean_model_calls": 1.0,
+        "mean_total_tokens": 3062.0,
+        "transport_error_cells": 0
+      }
+    },
+    {
+      "architecture": "E_ORGANIZATION_TERM",
+      "clarification": {
+        "f1": null,
+        "false_action_rate": null,
+        "fn": 0,
+        "fp": 0,
+        "precision": null,
+        "recall": null,
+        "refusal_false_action_rate": null,
+        "tn": 3,
+        "tp": 0,
+        "unnecessary_clarification_rate": 0.0
+      },
+      "contrast_accuracy": {
+        "ci_high": null,
+        "ci_low": null,
+        "estimate": null,
+        "n_cases": 0,
+        "n_observations": 0
+      },
+      "decision_accuracy": {
+        "ci_high": 1.0,
+        "ci_low": 1.0,
+        "estimate": 1.0,
+        "n_cases": 3,
+        "n_observations": 3
+      },
+      "false_action_interval": {
+        "ci_high": null,
+        "ci_low": null,
+        "estimate": null,
+        "n_cases": 0,
+        "n_observations": 0
+      },
+      "false_action_rate": null,
+      "final_state_accuracy": {
+        "ci_high": 1.0,
+        "ci_low": 1.0,
+        "estimate": 1.0,
+        "n_cases": 3,
+        "n_observations": 3
+      },
+      "full_call_accuracy": {
+        "ci_high": 1.0,
+        "ci_low": 1.0,
+        "estimate": 1.0,
+        "n_cases": 3,
+        "n_observations": 3
+      },
+      "n_cells": 3,
+      "operational_invariance": {
+        "ci_high": null,
+        "ci_low": null,
+        "estimate": null,
+        "n_cases": 0,
+        "n_observations": 0
+      },
+      "refusal_correctness": {
+        "ci_high": null,
+        "ci_low": null,
+        "estimate": null,
+        "n_cases": 0,
+        "n_observations": 0
+      },
+      "schema_validity": {
+        "ci_high": 1.0,
+        "ci_low": 1.0,
+        "estimate": 1.0,
+        "n_cases": 3,
+        "n_observations": 3
+      },
+      "track": "post_canonical",
+      "unnecessary_clarification_interval": {
+        "ci_high": 0.0,
+        "ci_low": 0.0,
+        "estimate": 0.0,
+        "n_cases": 3,
+        "n_observations": 3
+      },
+      "usage": {
+        "latency_p50_ms": 3940.1452919701114,
+        "latency_p95_ms": 5047.321749967523,
+        "mean_latency_ms": 3921.360847346174,
+        "mean_model_calls": 1.0,
+        "mean_total_tokens": 3108.3333333333335,
+        "transport_error_cells": 0
+      }
+    },
+    {
+      "architecture": "LP0G_GOLD_START_LANGUAGE",
+      "clarification": {
+        "f1": null,
+        "false_action_rate": null,
+        "fn": 0,
+        "fp": 9,
+        "precision": 0.0,
+        "recall": null,
+        "refusal_false_action_rate": null,
+        "tn": 15,
+        "tp": 0,
+        "unnecessary_clarification_rate": 0.375
+      },
+      "contrast_accuracy": {
+        "ci_high": 0.0,
+        "ci_low": 0.0,
+        "estimate": 0.0,
+        "n_cases": 5,
+        "n_observations": 5
+      },
+      "decision_accuracy": {
+        "ci_high": 0.8333333333333334,
+        "ci_low": 0.3,
+        "estimate": 0.5833333333333334,
+        "n_cases": 5,
+        "n_observations": 24
+      },
+      "false_action_interval": {
+        "ci_high": null,
+        "ci_low": null,
+        "estimate": null,
+        "n_cases": 0,
+        "n_observations": 0
+      },
+      "false_action_rate": null,
+      "final_state_accuracy": {
+        "ci_high": 0.8421052631578947,
+        "ci_low": 0.3333333333333333,
+        "estimate": 0.631578947368421,
+        "n_cases": 5,
+        "n_observations": 19
+      },
+      "full_call_accuracy": {
+        "ci_high": 0.8421052631578947,
+        "ci_low": 0.3333333333333333,
+        "estimate": 0.631578947368421,
+        "n_cases": 5,
+        "n_observations": 19
+      },
+      "n_cells": 24,
+      "operational_invariance": {
+        "ci_high": 0.6,
+        "ci_low": 0.0,
+        "estimate": 0.2,
+        "n_cases": 5,
+        "n_observations": 5
+      },
+      "refusal_correctness": {
+        "ci_high": null,
+        "ci_low": null,
+        "estimate": null,
+        "n_cases": 0,
+        "n_observations": 0
+      },
+      "schema_validity": {
+        "ci_high": 1.0,
+        "ci_low": 1.0,
+        "estimate": 1.0,
+        "n_cases": 5,
+        "n_observations": 24
+      },
+      "track": "progressive_formalization",
+      "unnecessary_clarification_interval": {
+        "ci_high": 0.7,
+        "ci_low": 0.1,
+        "estimate": 0.375,
+        "n_cases": 5,
+        "n_observations": 24
+      },
+      "usage": {
+        "latency_p50_ms": 26448.218749952503,
+        "latency_p95_ms": 30973.20875013247,
+        "mean_latency_ms": 26482.25883852865,
+        "mean_model_calls": 7.0,
+        "mean_total_tokens": 9458.291666666666,
+        "transport_error_cells": 0
+      }
+    },
+    {
+      "architecture": "LP0_LANGUAGE_THROUGHOUT",
+      "clarification": {
+        "f1": null,
+        "false_action_rate": null,
+        "fn": 0,
+        "fp": 15,
+        "precision": 0.0,
+        "recall": null,
+        "refusal_false_action_rate": null,
+        "tn": 9,
+        "tp": 0,
+        "unnecessary_clarification_rate": 0.625
+      },
+      "contrast_accuracy": {
+        "ci_high": 0.8,
+        "ci_low": 0.0,
+        "estimate": 0.4,
+        "n_cases": 5,
+        "n_observations": 5
+      },
+      "decision_accuracy": {
+        "ci_high": 0.65,
+        "ci_low": 0.17857142857142858,
+        "estimate": 0.375,
+        "n_cases": 5,
+        "n_observations": 24
+      },
+      "false_action_interval": {
+        "ci_high": null,
+        "ci_low": null,
+        "estimate": null,
+        "n_cases": 0,
+        "n_observations": 0
+      },
+      "false_action_rate": null,
+      "final_state_accuracy": {
+        "ci_high": 0.7333333333333333,
+        "ci_low": 0.13043478260869565,
+        "estimate": 0.3684210526315789,
+        "n_cases": 5,
+        "n_observations": 19
+      },
+      "full_call_accuracy": {
+        "ci_high": 0.7333333333333333,
+        "ci_low": 0.13043478260869565,
+        "estimate": 0.3684210526315789,
+        "n_cases": 5,
+        "n_observations": 19
+      },
+      "n_cells": 24,
+      "operational_invariance": {
+        "ci_high": 0.6,
+        "ci_low": 0.0,
+        "estimate": 0.2,
+        "n_cases": 5,
+        "n_observations": 5
+      },
+      "refusal_correctness": {
+        "ci_high": null,
+        "ci_low": null,
+        "estimate": null,
+        "n_cases": 0,
+        "n_observations": 0
+      },
+      "schema_validity": {
+        "ci_high": 1.0,
+        "ci_low": 1.0,
+        "estimate": 1.0,
+        "n_cases": 5,
+        "n_observations": 24
+      },
+      "track": "progressive_formalization",
+      "unnecessary_clarification_interval": {
+        "ci_high": 0.8214285714285714,
+        "ci_low": 0.35,
+        "estimate": 0.625,
+        "n_cases": 5,
+        "n_observations": 24
+      },
+      "usage": {
+        "latency_p50_ms": 27555.45295914635,
+        "latency_p95_ms": 36839.58324906416,
+        "mean_latency_ms": 28179.694592016556,
+        "mean_model_calls": 7.0,
+        "mean_total_tokens": 9779.208333333334,
+        "transport_error_cells": 0
+      }
+    },
+    {
+      "architecture": "LP1_CANONICAL_ONCE",
+      "clarification": {
+        "f1": null,
+        "false_action_rate": null,
+        "fn": 0,
+        "fp": 3,
+        "precision": 0.0,
+        "recall": null,
+        "refusal_false_action_rate": null,
+        "tn": 45,
+        "tp": 0,
+        "unnecessary_clarification_rate": 0.0625
+      },
+      "contrast_accuracy": {
+        "ci_high": 0.4,
+        "ci_low": 0.0,
+        "estimate": 0.2,
+        "n_cases": 5,
+        "n_observations": 10
+      },
+      "decision_accuracy": {
+        "ci_high": 1.0,
+        "ci_low": 0.78125,
+        "estimate": 0.875,
+        "n_cases": 5,
+        "n_observations": 48
+      },
+      "false_action_interval": {
+        "ci_high": null,
+        "ci_low": null,
+        "estimate": null,
+        "n_cases": 0,
+        "n_observations": 0
+      },
+      "false_action_rate": null,
+      "final_state_accuracy": {
+        "ci_high": 1.0,
+        "ci_low": 0.7,
+        "estimate": 0.868421052631579,
+        "n_cases": 5,
+        "n_observations": 38
+      },
+      "full_call_accuracy": {
+        "ci_high": 1.0,
+        "ci_low": 0.8888888888888888,
+        "estimate": 0.9473684210526315,
+        "n_cases": 5,
+        "n_observations": 38
+      },
+      "n_cells": 48,
+      "operational_invariance": {
+        "ci_high": 1.0,
+        "ci_low": 0.2,
+        "estimate": 0.6,
+        "n_cases": 5,
+        "n_observations": 5
+      },
+      "refusal_correctness": {
+        "ci_high": null,
+        "ci_low": null,
+        "estimate": null,
+        "n_cases": 0,
+        "n_observations": 0
+      },
+      "schema_validity": {
+        "ci_high": 1.0,
+        "ci_low": 1.0,
+        "estimate": 1.0,
+        "n_cases": 5,
+        "n_observations": 48
+      },
+      "track": "progressive_formalization",
+      "unnecessary_clarification_interval": {
+        "ci_high": 0.109375,
+        "ci_low": 0.0,
+        "estimate": 0.0625,
+        "n_cases": 5,
+        "n_observations": 48
+      },
+      "usage": {
+        "latency_p50_ms": 12907.373459078372,
+        "latency_p95_ms": 18866.378707811236,
+        "mean_latency_ms": 13407.437542671687,
+        "mean_model_calls": 4.416666666666667,
+        "mean_total_tokens": 6681.5,
+        "transport_error_cells": 0
+      }
+    },
+    {
+      "architecture": "LP2_CANONICAL_PROCEDURE",
+      "clarification": {
+        "f1": null,
+        "false_action_rate": null,
+        "fn": 0,
+        "fp": 4,
+        "precision": 0.0,
+        "recall": null,
+        "refusal_false_action_rate": null,
+        "tn": 20,
+        "tp": 0,
+        "unnecessary_clarification_rate": 0.16666666666666666
+      },
+      "contrast_accuracy": {
+        "ci_high": 0.0,
+        "ci_low": 0.0,
+        "estimate": 0.0,
+        "n_cases": 5,
+        "n_observations": 5
+      },
+      "decision_accuracy": {
+        "ci_high": 0.9583333333333334,
+        "ci_low": 0.65,
+        "estimate": 0.8333333333333334,
+        "n_cases": 5,
+        "n_observations": 24
+      },
+      "false_action_interval": {
+        "ci_high": null,
+        "ci_low": null,
+        "estimate": null,
+        "n_cases": 0,
+        "n_observations": 0
+      },
+      "false_action_rate": null,
+      "final_state_accuracy": {
+        "ci_high": 1.0,
+        "ci_low": 0.7333333333333333,
+        "estimate": 0.8947368421052632,
+        "n_cases": 5,
+        "n_observations": 19
+      },
+      "full_call_accuracy": {
+        "ci_high": 1.0,
+        "ci_low": 0.7333333333333333,
+        "estimate": 0.8947368421052632,
+        "n_cases": 5,
+        "n_observations": 19
+      },
+      "n_cells": 24,
+      "operational_invariance": {
+        "ci_high": 1.0,
+        "ci_low": 0.2,
+        "estimate": 0.6,
+        "n_cases": 5,
+        "n_observations": 5
+      },
+      "refusal_correctness": {
+        "ci_high": null,
+        "ci_low": null,
+        "estimate": null,
+        "n_cases": 0,
+        "n_observations": 0
+      },
+      "schema_validity": {
+        "ci_high": 1.0,
+        "ci_low": 1.0,
+        "estimate": 1.0,
+        "n_cases": 5,
+        "n_observations": 24
+      },
+      "track": "progressive_formalization",
+      "unnecessary_clarification_interval": {
+        "ci_high": 0.35,
+        "ci_low": 0.041666666666666664,
+        "estimate": 0.16666666666666666,
+        "n_cases": 5,
+        "n_observations": 24
+      },
+      "usage": {
+        "latency_p50_ms": 12121.020168997347,
+        "latency_p95_ms": 15207.271291990764,
+        "mean_latency_ms": 12723.942173916535,
+        "mean_model_calls": 4.0,
+        "mean_total_tokens": 6400.75,
+        "transport_error_cells": 0
+      }
+    },
+    {
+      "architecture": "LP3_CANONICAL_PROCEDURE_TOOL",
+      "clarification": {
+        "f1": null,
+        "false_action_rate": null,
+        "fn": 0,
+        "fp": 0,
+        "precision": null,
+        "recall": null,
+        "refusal_false_action_rate": null,
+        "tn": 24,
+        "tp": 0,
+        "unnecessary_clarification_rate": 0.0
+      },
+      "contrast_accuracy": {
+        "ci_high": 0.0,
+        "ci_low": 0.0,
+        "estimate": 0.0,
+        "n_cases": 5,
+        "n_observations": 5
+      },
+      "decision_accuracy": {
+        "ci_high": 0.0,
+        "ci_low": 0.0,
+        "estimate": 0.0,
+        "n_cases": 5,
+        "n_observations": 24
+      },
+      "false_action_interval": {
+        "ci_high": null,
+        "ci_low": null,
+        "estimate": null,
+        "n_cases": 0,
+        "n_observations": 0
+      },
+      "false_action_rate": null,
+      "final_state_accuracy": {
+        "ci_high": 0.0,
+        "ci_low": 0.0,
+        "estimate": 0.0,
+        "n_cases": 5,
+        "n_observations": 19
+      },
+      "full_call_accuracy": {
+        "ci_high": 0.0,
+        "ci_low": 0.0,
+        "estimate": 0.0,
+        "n_cases": 5,
+        "n_observations": 19
+      },
+      "n_cells": 24,
+      "operational_invariance": {
+        "ci_high": 0.0,
+        "ci_low": 0.0,
+        "estimate": 0.0,
+        "n_cases": 5,
+        "n_observations": 5
+      },
+      "refusal_correctness": {
+        "ci_high": null,
+        "ci_low": null,
+        "estimate": null,
+        "n_cases": 0,
+        "n_observations": 0
+      },
+      "schema_validity": {
+        "ci_high": 0.0,
+        "ci_low": 0.0,
+        "estimate": 0.0,
+        "n_cases": 5,
+        "n_observations": 24
+      },
+      "track": "progressive_formalization",
+      "unnecessary_clarification_interval": {
+        "ci_high": 0.0,
+        "ci_low": 0.0,
+        "estimate": 0.0,
+        "n_cases": 5,
+        "n_observations": 24
+      },
+      "usage": {
+        "latency_p50_ms": 11795.104793040082,
+        "latency_p95_ms": 18730.04158202093,
+        "mean_latency_ms": 12781.512194342213,
+        "mean_model_calls": 4.0,
+        "mean_total_tokens": 7578.541666666667,
+        "transport_error_cells": 0
+      }
+    },
+    {
+      "architecture": "P0_RAW_PROPOSAL",
+      "clarification": {
+        "f1": 0.4,
+        "false_action_rate": 0.75,
+        "fn": 9,
+        "fp": 0,
+        "precision": 1.0,
+        "recall": 0.25,
+        "refusal_false_action_rate": 0.0,
+        "tn": 24,
+        "tp": 3,
+        "unnecessary_clarification_rate": 0.0
+      },
+      "contrast_accuracy": {
+        "ci_high": 1.0,
+        "ci_low": 0.2,
+        "estimate": 0.6,
+        "n_cases": 5,
+        "n_observations": 5
+      },
+      "decision_accuracy": {
+        "ci_high": 0.868421052631579,
+        "ci_low": 0.6666666666666666,
+        "estimate": 0.7631578947368421,
+        "n_cases": 7,
+        "n_observations": 38
+      },
+      "false_action_interval": {
+        "ci_high": 1.0,
+        "ci_low": 0.4166666666666667,
+        "estimate": 0.75,
+        "n_cases": 6,
+        "n_observations": 12
+      },
+      "false_action_rate": 0.75,
+      "final_state_accuracy": {
+        "ci_high": 1.0,
+        "ci_low": 0.6,
+        "estimate": 0.8421052631578947,
+        "n_cases": 5,
+        "n_observations": 19
+      },
+      "full_call_accuracy": {
+        "ci_high": 1.0,
+        "ci_low": 1.0,
+        "estimate": 1.0,
+        "n_cases": 5,
+        "n_observations": 19
+      },
+      "n_cells": 38,
+      "operational_invariance": {
+        "ci_high": 1.0,
+        "ci_low": 0.2,
+        "estimate": 0.6,
+        "n_cases": 5,
+        "n_observations": 5
+      },
+      "refusal_correctness": {
+        "ci_high": 1.0,
+        "ci_low": 1.0,
+        "estimate": 1.0,
+        "n_cases": 1,
+        "n_observations": 2
+      },
+      "schema_validity": {
+        "ci_high": 1.0,
+        "ci_low": 1.0,
+        "estimate": 1.0,
+        "n_cases": 7,
+        "n_observations": 38
+      },
+      "track": "progressive_formalization",
+      "unnecessary_clarification_interval": {
+        "ci_high": 0.0,
+        "ci_low": 0.0,
+        "estimate": 0.0,
+        "n_cases": 5,
+        "n_observations": 24
+      },
+      "usage": {
+        "latency_p50_ms": 2043.7335419701412,
+        "latency_p95_ms": 5185.1952919969335,
+        "mean_latency_ms": 2386.001195127488,
+        "mean_model_calls": 1.0,
+        "mean_total_tokens": 1467.5,
+        "transport_error_cells": 0
+      }
+    },
+    {
+      "architecture": "P1_CLARIFY_PROPOSAL",
+      "clarification": {
+        "f1": 0.7000000000000001,
+        "false_action_rate": 0.4166666666666667,
+        "fn": 5,
+        "fp": 1,
+        "precision": 0.875,
+        "recall": 0.5833333333333334,
+        "refusal_false_action_rate": 0.0,
+        "tn": 23,
+        "tp": 7,
+        "unnecessary_clarification_rate": 0.041666666666666664
+      },
+      "contrast_accuracy": {
+        "ci_high": 0.8,
+        "ci_low": 0.0,
+        "estimate": 0.4,
+        "n_cases": 5,
+        "n_observations": 5
+      },
+      "decision_accuracy": {
+        "ci_high": 0.9473684210526315,
+        "ci_low": 0.7352941176470589,
+        "estimate": 0.8421052631578947,
+        "n_cases": 7,
+        "n_observations": 38
+      },
+      "false_action_interval": {
+        "ci_high": 0.75,
+        "ci_low": 0.08333333333333333,
+        "estimate": 0.4166666666666667,
+        "n_cases": 6,
+        "n_observations": 12
+      },
+      "false_action_rate": 0.4166666666666667,
+      "final_state_accuracy": {
+        "ci_high": 1.0,
+        "ci_low": 0.7333333333333333,
+        "estimate": 0.8947368421052632,
+        "n_cases": 5,
+        "n_observations": 19
+      },
+      "full_call_accuracy": {
+        "ci_high": 1.0,
+        "ci_low": 0.8,
+        "estimate": 0.9473684210526315,
+        "n_cases": 5,
+        "n_observations": 19
+      },
+      "n_cells": 38,
+      "operational_invariance": {
+        "ci_high": 1.0,
+        "ci_low": 0.2,
+        "estimate": 0.6,
+        "n_cases": 5,
+        "n_observations": 5
+      },
+      "refusal_correctness": {
+        "ci_high": 1.0,
+        "ci_low": 1.0,
+        "estimate": 1.0,
+        "n_cases": 1,
+        "n_observations": 2
+      },
+      "schema_validity": {
+        "ci_high": 1.0,
+        "ci_low": 1.0,
+        "estimate": 1.0,
+        "n_cases": 7,
+        "n_observations": 38
+      },
+      "track": "progressive_formalization",
+      "unnecessary_clarification_interval": {
+        "ci_high": 0.15,
+        "ci_low": 0.0,
+        "estimate": 0.041666666666666664,
+        "n_cases": 5,
+        "n_observations": 24
+      },
+      "usage": {
+        "latency_p50_ms": 2180.5272499332204,
+        "latency_p95_ms": 3373.4118749853224,
+        "mean_latency_ms": 2365.94510744142,
+        "mean_model_calls": 1.0,
+        "mean_total_tokens": 1543.8157894736842,
+        "transport_error_cells": 0
+      }
+    },
+    {
+      "architecture": "P2F_CANONICAL_FACTS_PROPOSAL",
+      "clarification": {
+        "f1": null,
+        "false_action_rate": 1.0,
+        "fn": 12,
+        "fp": 0,
+        "precision": null,
+        "recall": 0.0,
+        "refusal_false_action_rate": 0.0,
+        "tn": 24,
+        "tp": 0,
+        "unnecessary_clarification_rate": 0.0
+      },
+      "contrast_accuracy": {
+        "ci_high": 0.0,
+        "ci_low": 0.0,
+        "estimate": 0.0,
+        "n_cases": 5,
+        "n_observations": 5
+      },
+      "decision_accuracy": {
+        "ci_high": 0.7647058823529411,
+        "ci_low": 0.5384615384615384,
+        "estimate": 0.6842105263157895,
+        "n_cases": 7,
+        "n_observations": 38
+      },
+      "false_action_interval": {
+        "ci_high": 1.0,
+        "ci_low": 1.0,
+        "estimate": 1.0,
+        "n_cases": 6,
+        "n_observations": 12
+      },
+      "false_action_rate": 1.0,
+      "final_state_accuracy": {
+        "ci_high": 1.0,
+        "ci_low": 1.0,
+        "estimate": 1.0,
+        "n_cases": 5,
+        "n_observations": 19
+      },
+      "full_call_accuracy": {
+        "ci_high": 1.0,
+        "ci_low": 1.0,
+        "estimate": 1.0,
+        "n_cases": 5,
+        "n_observations": 19
+      },
+      "n_cells": 38,
+      "operational_invariance": {
+        "ci_high": 1.0,
+        "ci_low": 1.0,
+        "estimate": 1.0,
+        "n_cases": 5,
+        "n_observations": 5
+      },
+      "refusal_correctness": {
+        "ci_high": 1.0,
+        "ci_low": 1.0,
+        "estimate": 1.0,
+        "n_cases": 1,
+        "n_observations": 2
+      },
+      "schema_validity": {
+        "ci_high": 1.0,
+        "ci_low": 1.0,
+        "estimate": 1.0,
+        "n_cases": 7,
+        "n_observations": 38
+      },
+      "track": "progressive_formalization",
+      "unnecessary_clarification_interval": {
+        "ci_high": 0.0,
+        "ci_low": 0.0,
+        "estimate": 0.0,
+        "n_cases": 5,
+        "n_observations": 24
+      },
+      "usage": {
+        "latency_p50_ms": 3652.7740829624236,
+        "latency_p95_ms": 4867.615708033554,
+        "mean_latency_ms": 3332.8132302359386,
+        "mean_model_calls": 1.0,
+        "mean_total_tokens": 1978.578947368421,
+        "transport_error_cells": 0
+      }
+    },
+    {
+      "architecture": "P2_CANONICAL_PROPOSAL",
+      "clarification": {
+        "f1": 0.5714285714285715,
+        "false_action_rate": 0.4583333333333333,
+        "fn": 14,
+        "fp": 1,
+        "precision": 0.9090909090909091,
+        "recall": 0.4166666666666667,
+        "refusal_false_action_rate": 0.0,
+        "tn": 47,
+        "tp": 10,
+        "unnecessary_clarification_rate": 0.020833333333333332
+      },
+      "contrast_accuracy": {
+        "ci_high": 0.3,
+        "ci_low": 0.0,
+        "estimate": 0.1,
+        "n_cases": 5,
+        "n_observations": 10
+      },
+      "decision_accuracy": {
+        "ci_high": 0.7647058823529411,
+        "ci_low": 0.47058823529411764,
+        "estimate": 0.631578947368421,
+        "n_cases": 7,
+        "n_observations": 76
+      },
+      "false_action_interval": {
+        "ci_high": 0.7083333333333334,
+        "ci_low": 0.20833333333333334,
+        "estimate": 0.4583333333333333,
+        "n_cases": 6,
+        "n_observations": 24
+      },
+      "false_action_rate": 0.4583333333333333,
+      "final_state_accuracy": {
+        "ci_high": 0.9666666666666667,
+        "ci_low": 0.4,
+        "estimate": 0.7368421052631579,
+        "n_cases": 5,
+        "n_observations": 38
+      },
+      "full_call_accuracy": {
+        "ci_high": 0.9666666666666667,
+        "ci_low": 0.4,
+        "estimate": 0.7368421052631579,
+        "n_cases": 5,
+        "n_observations": 38
+      },
+      "n_cells": 76,
+      "operational_invariance": {
+        "ci_high": 0.8,
+        "ci_low": 0.0,
+        "estimate": 0.4,
+        "n_cases": 5,
+        "n_observations": 5
+      },
+      "refusal_correctness": {
+        "ci_high": 1.0,
+        "ci_low": 1.0,
+        "estimate": 1.0,
+        "n_cases": 1,
+        "n_observations": 4
+      },
+      "schema_validity": {
+        "ci_high": 1.0,
+        "ci_low": 1.0,
+        "estimate": 1.0,
+        "n_cases": 7,
+        "n_observations": 76
+      },
+      "track": "progressive_formalization",
+      "unnecessary_clarification_interval": {
+        "ci_high": 0.075,
+        "ci_low": 0.0,
+        "estimate": 0.020833333333333332,
+        "n_cases": 5,
+        "n_observations": 48
+      },
+      "usage": {
+        "latency_p50_ms": 4880.631625070237,
+        "latency_p95_ms": 9553.385499981232,
+        "mean_latency_ms": 4969.562510919978,
+        "mean_model_calls": 1.355263157894737,
+        "mean_total_tokens": 2442.1710526315787,
+        "transport_error_cells": 0
+      }
+    },
+    {
+      "architecture": "P3_CANONICAL_PROCEDURE_PROPOSAL",
+      "clarification": {
+        "f1": 0.3389830508474576,
+        "false_action_rate": 0.0,
+        "fn": 38,
+        "fp": 1,
+        "precision": 0.9090909090909091,
+        "recall": 0.20833333333333334,
+        "refusal_false_action_rate": 0.0,
+        "tn": 95,
+        "tp": 10,
+        "unnecessary_clarification_rate": 0.010416666666666666
+      },
+      "contrast_accuracy": {
+        "ci_high": 0.0,
+        "ci_low": 0.0,
+        "estimate": 0.0,
+        "n_cases": 5,
+        "n_observations": 20
+      },
+      "decision_accuracy": {
+        "ci_high": 0.10294117647058823,
+        "ci_low": 0.03571428571428571,
+        "estimate": 0.06578947368421052,
+        "n_cases": 7,
+        "n_observations": 152
+      },
+      "false_action_interval": {
+        "ci_high": 0.0,
+        "ci_low": 0.0,
+        "estimate": 0.0,
+        "n_cases": 6,
+        "n_observations": 48
+      },
+      "false_action_rate": 0.0,
+      "final_state_accuracy": {
+        "ci_high": 0.0,
+        "ci_low": 0.0,
+        "estimate": 0.0,
+        "n_cases": 5,
+        "n_observations": 76
+      },
+      "full_call_accuracy": {
+        "ci_high": 0.0,
+        "ci_low": 0.0,
+        "estimate": 0.0,
+        "n_cases": 5,
+        "n_observations": 76
+      },
+      "n_cells": 152,
+      "operational_invariance": {
+        "ci_high": 0.0,
+        "ci_low": 0.0,
+        "estimate": 0.0,
+        "n_cases": 5,
+        "n_observations": 5
+      },
+      "refusal_correctness": {
+        "ci_high": 0.0,
+        "ci_low": 0.0,
+        "estimate": 0.0,
+        "n_cases": 1,
+        "n_observations": 8
+      },
+      "schema_validity": {
+        "ci_high": 0.10576923076923077,
+        "ci_low": 0.05,
+        "estimate": 0.07236842105263158,
+        "n_cases": 7,
+        "n_observations": 152
+      },
+      "track": "progressive_formalization",
+      "unnecessary_clarification_interval": {
+        "ci_high": 0.0375,
+        "ci_low": 0.0,
+        "estimate": 0.010416666666666666,
+        "n_cases": 5,
+        "n_observations": 96
+      },
+      "usage": {
+        "latency_p50_ms": 5769.108457956463,
+        "latency_p95_ms": 11472.69220801536,
+        "mean_latency_ms": 6758.431088543148,
+        "mean_model_calls": 1.4276315789473684,
+        "mean_total_tokens": 2580.6184210526317,
+        "transport_error_cells": 0
+      }
+    },
+    {
+      "architecture": "P4_CANONICAL_PROCEDURE_TOOL",
+      "clarification": {
+        "f1": 0.5294117647058825,
+        "false_action_rate": 0.625,
+        "fn": 15,
+        "fp": 1,
+        "precision": 0.9,
+        "recall": 0.375,
+        "refusal_false_action_rate": 0.0,
+        "tn": 47,
+        "tp": 9,
+        "unnecessary_clarification_rate": 0.020833333333333332
+      },
+      "contrast_accuracy": {
+        "ci_high": 0.5,
+        "ci_low": 0.2,
+        "estimate": 0.4,
+        "n_cases": 5,
+        "n_observations": 10
+      },
+      "decision_accuracy": {
+        "ci_high": 0.8425925925925926,
+        "ci_low": 0.5384615384615384,
+        "estimate": 0.7368421052631579,
+        "n_cases": 7,
+        "n_observations": 76
+      },
+      "false_action_interval": {
+        "ci_high": 0.7916666666666666,
+        "ci_low": 0.5,
+        "estimate": 0.625,
+        "n_cases": 6,
+        "n_observations": 24
+      },
+      "false_action_rate": 0.625,
+      "final_state_accuracy": {
+        "ci_high": 1.0,
+        "ci_low": 1.0,
+        "estimate": 1.0,
+        "n_cases": 5,
+        "n_observations": 38
+      },
+      "full_call_accuracy": {
+        "ci_high": 1.0,
+        "ci_low": 1.0,
+        "estimate": 1.0,
+        "n_cases": 5,
+        "n_observations": 38
+      },
+      "n_cells": 76,
+      "operational_invariance": {
+        "ci_high": 1.0,
+        "ci_low": 1.0,
+        "estimate": 1.0,
+        "n_cases": 5,
+        "n_observations": 5
+      },
+      "refusal_correctness": {
+        "ci_high": 0.0,
+        "ci_low": 0.0,
+        "estimate": 0.0,
+        "n_cases": 1,
+        "n_observations": 4
+      },
+      "schema_validity": {
+        "ci_high": 1.0,
+        "ci_low": 0.7692307692307693,
+        "estimate": 0.9473684210526315,
+        "n_cases": 7,
+        "n_observations": 76
+      },
+      "track": "progressive_formalization",
+      "unnecessary_clarification_interval": {
+        "ci_high": 0.075,
+        "ci_low": 0.0,
+        "estimate": 0.020833333333333332,
+        "n_cases": 5,
+        "n_observations": 48
+      },
+      "usage": {
+        "latency_p50_ms": 4484.74816698581,
+        "latency_p95_ms": 11444.953834055923,
+        "mean_latency_ms": 5733.194205488728,
+        "mean_model_calls": 1.368421052631579,
+        "mean_total_tokens": 4047.7894736842104,
+        "transport_error_cells": 0
+      }
+    }
+  ],
+  "primary_comparisons": [
+    {
+      "comparison": "A1_DIRECT_CLARIFY - A0_DIRECT",
+      "delta": {
+        "ci_high": 0.0,
+        "ci_low": -0.1111111111111111,
+        "estimate": -0.05263157894736842,
+        "n_cases": 5,
+        "n_observations": 19
+      },
+      "exceeds_margin": false,
+      "field": "full_call_correct",
+      "margin": 0.01,
+      "n_pairs": 19,
+      "practically_equivalent": false,
+      "secondary_mcnemar": {
+        "a_only_correct": 1,
+        "b_only_correct": 0,
+        "mcnemar_p": 1.0
+      },
+      "verdict": "inconclusive"
+    },
+    {
+      "comparison": "B_RUNTIME - A1_DIRECT_CLARIFY",
+      "delta": {
+        "ci_high": 0.1111111111111111,
+        "ci_low": 0.0,
+        "estimate": 0.05263157894736842,
+        "n_cases": 5,
+        "n_observations": 19
+      },
+      "exceeds_margin": false,
+      "field": "full_call_correct",
+      "margin": 0.01,
+      "n_pairs": 19,
+      "practically_equivalent": false,
+      "secondary_mcnemar": {
+        "a_only_correct": 0,
+        "b_only_correct": 1,
+        "mcnemar_p": 1.0
+      },
+      "verdict": "inconclusive"
+    },
+    {
+      "comparison": "C_RUNTIME - A1_DIRECT_CLARIFY",
+      "delta": {
+        "ci_high": 0.1111111111111111,
+        "ci_low": 0.0,
+        "estimate": 0.05263157894736842,
+        "n_cases": 5,
+        "n_observations": 19
+      },
+      "exceeds_margin": false,
+      "field": "full_call_correct",
+      "margin": 0.01,
+      "n_pairs": 19,
+      "practically_equivalent": false,
+      "secondary_mcnemar": {
+        "a_only_correct": 0,
+        "b_only_correct": 1,
+        "mcnemar_p": 1.0
+      },
+      "verdict": "inconclusive"
+    },
+    {
+      "comparison": "C_GOLD - B_GOLD",
+      "delta": {
+        "ci_high": 0.0,
+        "ci_low": 0.0,
+        "estimate": 0.0,
+        "n_cases": 5,
+        "n_observations": 5
+      },
+      "exceeds_margin": false,
+      "field": "full_call_correct",
+      "margin": 0.01,
+      "n_pairs": 5,
+      "practically_equivalent": true,
+      "secondary_mcnemar": {
+        "a_only_correct": 0,
+        "b_only_correct": 0,
+        "mcnemar_p": null
+      },
+      "verdict": "practically_equivalent"
+    },
+    {
+      "comparison": "C_GOLD - B_GOLD (final state)",
+      "delta": {
+        "ci_high": 0.0,
+        "ci_low": 0.0,
+        "estimate": 0.0,
+        "n_cases": 5,
+        "n_observations": 5
+      },
+      "exceeds_margin": false,
+      "field": "final_state_correct",
+      "margin": 0.01,
+      "n_pairs": 5,
+      "practically_equivalent": true,
+      "secondary_mcnemar": {
+        "a_only_correct": 0,
+        "b_only_correct": 0,
+        "mcnemar_p": null
+      },
+      "verdict": "practically_equivalent"
+    },
+    {
+      "comparison": "P1 - P0 clarification transition",
+      "delta": {
+        "ci_high": 0.3333333333333333,
+        "ci_low": -0.26666666666666666,
+        "estimate": 0.05263157894736842,
+        "n_cases": 5,
+        "n_observations": 19
+      },
+      "exceeds_margin": false,
+      "field": "final_state_correct",
+      "margin": 0.01,
+      "n_pairs": 19,
+      "practically_equivalent": false,
+      "secondary_mcnemar": {
+        "a_only_correct": 2,
+        "b_only_correct": 3,
+        "mcnemar_p": 1.0
+      },
+      "verdict": "inconclusive"
+    },
+    {
+      "comparison": "P2 - P1 canonical-intent transition",
+      "delta": {
+        "ci_high": 0.0,
+        "ci_low": -0.4,
+        "estimate": -0.15789473684210525,
+        "n_cases": 5,
+        "n_observations": 19
+      },
+      "exceeds_margin": false,
+      "field": "final_state_correct",
+      "margin": 0.01,
+      "n_pairs": 19,
+      "practically_equivalent": false,
+      "secondary_mcnemar": {
+        "a_only_correct": 4,
+        "b_only_correct": 1,
+        "mcnemar_p": 0.375
+      },
+      "verdict": "inconclusive"
+    },
+    {
+      "comparison": "P3 - P2 reusable-procedure transition",
+      "delta": {
+        "ci_high": -0.4,
+        "ci_low": -0.9473684210526315,
+        "estimate": -0.7368421052631579,
+        "n_cases": 5,
+        "n_observations": 19
+      },
+      "exceeds_margin": false,
+      "field": "final_state_correct",
+      "margin": 0.01,
+      "n_pairs": 19,
+      "practically_equivalent": false,
+      "secondary_mcnemar": {
+        "a_only_correct": 14,
+        "b_only_correct": 0,
+        "mcnemar_p": 0.0001220703125
+      },
+      "verdict": "practically_worse"
+    },
+    {
+      "comparison": "P4 - P3 typed-interface transition",
+      "delta": {
+        "ci_high": 1.0,
+        "ci_low": 1.0,
+        "estimate": 1.0,
+        "n_cases": 5,
+        "n_observations": 19
+      },
+      "exceeds_margin": true,
+      "field": "final_state_correct",
+      "margin": 0.01,
+      "n_pairs": 19,
+      "practically_equivalent": false,
+      "secondary_mcnemar": {
+        "a_only_correct": 0,
+        "b_only_correct": 19,
+        "mcnemar_p": 0.000003814697265625
+      },
+      "verdict": "exceeds_practical_margin"
+    },
+    {
+      "comparison": "LP1 canonical once - LP0G gold-start prose",
+      "delta": {
+        "ci_high": 0.6666666666666666,
+        "ci_low": 0.037037037037037035,
+        "estimate": 0.2631578947368421,
+        "n_cases": 5,
+        "n_observations": 19
+      },
+      "exceeds_margin": true,
+      "field": "final_state_correct",
+      "margin": 0.01,
+      "n_pairs": 19,
+      "practically_equivalent": false,
+      "secondary_mcnemar": {
+        "a_only_correct": 2,
+        "b_only_correct": 7,
+        "mcnemar_p": 0.1796875
+      },
+      "verdict": "exceeds_practical_margin"
+    },
+    {
+      "comparison": "LP1 - LP0 practical end-to-end",
+      "delta": {
+        "ci_high": 0.8695652173913043,
+        "ci_low": -0.13333333333333333,
+        "estimate": 0.47368421052631576,
+        "n_cases": 5,
+        "n_observations": 19
+      },
+      "exceeds_margin": false,
+      "field": "final_state_correct",
+      "margin": 0.01,
+      "n_pairs": 19,
+      "practically_equivalent": false,
+      "secondary_mcnemar": {
+        "a_only_correct": 2,
+        "b_only_correct": 11,
+        "mcnemar_p": 0.0224609375
+      },
+      "verdict": "inconclusive"
+    },
+    {
+      "comparison": "LP2 - LP1 procedure",
+      "delta": {
+        "ci_high": 0.18518518518518517,
+        "ci_low": -0.26666666666666666,
+        "estimate": 0.0,
+        "n_cases": 5,
+        "n_observations": 19
+      },
+      "exceeds_margin": false,
+      "field": "final_state_correct",
+      "margin": 0.01,
+      "n_pairs": 19,
+      "practically_equivalent": false,
+      "secondary_mcnemar": {
+        "a_only_correct": 2,
+        "b_only_correct": 2,
+        "mcnemar_p": 1.0
+      },
+      "verdict": "inconclusive"
+    },
+    {
+      "comparison": "LP3 - LP2 typed action",
+      "delta": {
+        "ci_high": -0.7333333333333333,
+        "ci_low": -1.0,
+        "estimate": -0.8947368421052632,
+        "n_cases": 5,
+        "n_observations": 19
+      },
+      "exceeds_margin": false,
+      "field": "final_state_correct",
+      "margin": 0.01,
+      "n_pairs": 19,
+      "practically_equivalent": false,
+      "secondary_mcnemar": {
+        "a_only_correct": 17,
+        "b_only_correct": 0,
+        "mcnemar_p": 0.0000152587890625
+      },
+      "verdict": "practically_worse"
+    }
+  ]
+}

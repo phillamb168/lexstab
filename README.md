@@ -25,7 +25,7 @@ as canonical state (the B-Gold versus C-Gold comparison, spec §47.7). Around th
 - an architecture ladder from a strong direct baseline (A1) through runtime canonicalization and
   stable renderings (spec §9.3);
 - a progressive-formalization ladder (P0–P4) and natural-language-persistence conditions
-  (LP0/LP0G/LP1–LP3) that locate where formalization earns its keep (spec §33);
+  (LP0/LP0B/LP0BV/LP0G/LP1-LP3) that locate where formalization earns its keep (spec §33);
 - semantic-memory ablations, an adaptive red team, and a regression suite (spec §17, §32).
 
 Execution is scored by a deterministic state simulator, not by string match or an LLM judge
@@ -110,8 +110,8 @@ See `docs/RUNBOOK.md` for the complete operator sequence.
 | `src/lexstab/` | Python package: CLI, providers, graphs, simulator, evaluators, metrics, reporting |
 | `schemas/` | JSON Schemas (Draft 2020-12) for every artifact type |
 | `prompts/` | Versioned prompt templates with `PROMPT_ID` headers (spec §22) |
-| `dataset/domain/` | Canonical entities, operations, policies (synthetic support domain) |
-| `dataset/cases/` | Canonical cases with gold state transitions |
+| `dataset/domain/` | Canonical entities, operations, policies, plus versioned ontology sources such as `v0.2.0/` and `v0.2.1/` |
+| `dataset/cases/` | Canonical cases with gold state transitions; corrected benchmark versions may use versioned source directories |
 | `dataset/requests/` | `candidate/`, `approved/`, `frozen/`, `rejected/` request corpora |
 | `dataset/contexts/`, `dataset/renderings/`, `dataset/procedures/`, `dataset/interfaces/` | Frozen contexts, model-facing renderings, reusable procedures, action interfaces |
 | `dataset/memory/`, `dataset/grammar/`, `dataset/code/`, `dataset/modality/`, `dataset/elicitation/` | Memory-ablation and auxiliary-experiment corpora |

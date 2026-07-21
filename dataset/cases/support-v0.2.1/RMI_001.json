@@ -1,0 +1,62 @@
+{
+  "canonical": {
+    "arguments": {
+      "message": "Please attach the missing application logs and the approximate time of the failure."
+    },
+    "entity_id": "INC-3120",
+    "entity_type": "INCIDENT",
+    "operation_id": "REQUEST_MORE_INFORMATION"
+  },
+  "case_id": "RMI_001",
+  "created_at": "2026-07-20T00:00:00Z",
+  "created_by": "human",
+  "difficulty": "basic",
+  "domain": "support",
+  "family_id": "RMI",
+  "gold": {
+    "arguments": {
+      "incident_id": "INC-3120",
+      "message": "Please attach the missing application logs and the approximate time of the failure."
+    },
+    "decision": "ACT",
+    "resulting_state": {
+      "incidents": {
+        "INC-3120": {
+          "assigned_team": "SERVICE_DESK",
+          "awaiting_party": "REPORTER",
+          "escalation_count": 0,
+          "information_complete": false,
+          "last_public_comment": "Please attach the missing application logs and the approximate time of the failure.",
+          "reporter_id": "USR-3120",
+          "reporter_notification_sent": true,
+          "severity": "SEV-2",
+          "status": "PENDING_INFO",
+          "support_tier": 1,
+          "updated_at": "<run_clock>"
+        }
+      }
+    },
+    "tool": "request_more_information"
+  },
+  "initial_state": {
+    "incidents": {
+      "INC-3120": {
+        "assigned_team": "SERVICE_DESK",
+        "awaiting_party": "NONE",
+        "escalation_count": 0,
+        "information_complete": false,
+        "reporter_id": "USR-3120",
+        "reporter_notification_sent": false,
+        "severity": "SEV-2",
+        "status": "OPEN",
+        "support_tier": 1
+      }
+    }
+  },
+  "schema_version": "1.2.0",
+  "tags": [
+    "single_turn",
+    "tool_selection"
+  ],
+  "title": "Notify the reporter and pause an incident pending specified information"
+}

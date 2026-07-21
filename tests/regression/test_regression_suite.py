@@ -46,6 +46,22 @@ class TestKnownFailurePatterns:
         expected = expected_outcome(bench, bench.cases["ESCALATE_001"], None, "T0")
         assert expected["behavior"] == "EXECUTE"
 
+    def test_gold_injection_ignores_source_request_clarification_label(self):
+        from lexstab.evaluators.deterministic import expected_outcome
+        from lexstab.freeze import FrozenBenchmark
+
+        bench = FrozenBenchmark(ROOT, ROOT / "dataset/manifests/benchmark-v0.1.0.json")
+        request = bench.requests["REQ-ESCALATE-001-INADEQUATE-0001"]
+        expected = expected_outcome(
+            bench,
+            bench.cases[request.case_id],
+            request,
+            "T0",
+            gold_injected=True,
+        )
+        assert expected["behavior"] == "EXECUTE"
+        assert expected["tool"] == "escalate_incident"
+
     def test_combined_scripted_answers_match_any_order(self):
         # Original failure: sorted target join produced a key that never matched
         # the scripted 'a_and_b' answer key.

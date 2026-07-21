@@ -15,14 +15,14 @@ from typing import Any
 
 import jsonschema
 
-from lexstab import domaintext, models
+from lexstab import canonical, domaintext, models
 from lexstab.config import ModelsConfig
 from lexstab.freeze import FrozenBenchmark
 from lexstab.hashing import canonical_json, sha256_text
 from lexstab.interfaces import GENERIC_PROPOSAL_SCHEMA
 from lexstab.matrix import MatrixCell
 from lexstab.prompts import PromptLibrary
-from lexstab.providers.base import BaseAdapter, extract_json_object
+from lexstab.providers.base import BaseAdapter, extract_json_object, provider_failure_category
 from lexstab.simulators.support_domain import SupportSimulator
 
 
@@ -66,9 +66,13 @@ class CellResult:
     elicitation_trace: list[dict] = field(default_factory=list)
     turns_used: int = 0
     resolved: bool | None = None
+    actual_rendering_id: str | None = None
+    actual_rendering_category: str | None = None
+    actual_rendering_text: str | None = None
+    actual_procedure_id: str | None = None
 
     def summary(self) -> dict:
-        return {
+        summary = {
             **self.cell.to_dict(),
             "decision": self.decision,
             "tool_call": self.tool_call,
@@ -84,7 +88,23 @@ class CellResult:
             "resolved": self.resolved,
             "elicitation_trace": self.elicitation_trace,
             "stage_outputs": self.stage_outputs,
+            "rendering_id": self.actual_rendering_id or self.cell.rendering_id,
+            "rendering_category": (
+                self.actual_rendering_category or self.cell.rendering_category
+            ),
+            "rendering_text": self.actual_rendering_text,
+            "procedure_id": self.actual_procedure_id or self.cell.procedure_id,
         }
+        return summary
+
+
+class ProviderInvocationFailure(RuntimeError):
+    """A terminal provider failure that retains the partially recorded cell."""
+
+    def __init__(self, result: CellResult, category: str, detail: str):
+        super().__init__(detail)
+        self.result = result
+        self.category = category
 
 
 def _now() -> str:
@@ -113,12 +133,16 @@ def _invoke(
     messages = [{"role": "system", "content": system_text}]
     if user_message is not None:
         messages.append({"role": "user", "content": user_message})
+    response_schema = None
+    schema_path = ctx.root / "schemas" / prompt.response_schema
+    if prompt.response_schema.endswith(".json") and schema_path.is_file():
+        response_schema = json.loads(schema_path.read_text(encoding="utf-8"))
     record = adapter.invoke(
         role=role,
         model_id=model_id,
         messages=messages,
         tools=tools,
-        response_schema=None,
+        response_schema=response_schema,
         parameters=parameters,
         metadata={
             "run_id": ctx.run_id,
@@ -146,12 +170,34 @@ def _invoke(
             output_content_hash=sha256_text(output_payload),
         )
     )
+    failure_category = provider_failure_category(record.finish_reason)
+    if failure_category:
+        result.schema_valid = False
+        result.error_category = failure_category
+        result.stage_outputs.append({
+            "stage_id": stage_id,
+            "status": "PROVIDER_FAILURE",
+            "role": role,
+            "provider": record.provider,
+            "model_id": record.requested_model_id,
+            "finish_reason": record.finish_reason,
+            "error": record.parse_error,
+        })
+        raise ProviderInvocationFailure(
+            result,
+            failure_category,
+            record.parse_error or failure_category,
+        )
     return record
 
 
-def _parse_decision(record: models.InvocationRecord) -> tuple[str | None, dict | None, str | None, str | None, bool]:
+def _parse_decision(
+    record: models.InvocationRecord, *, strict_typed_boundary: bool = False
+) -> tuple[str | None, dict | None, str | None, str | None, bool]:
     """Return (decision, tool_call, question, reason_code, schema_valid)."""
     if record.tool_calls:
+        if strict_typed_boundary and len(record.tool_calls) != 1:
+            return None, None, None, None, False
         return "ACT", record.tool_calls[0], None, None, True
     obj, err = extract_json_object(record.normalized_text)
     if obj is None:
@@ -160,7 +206,20 @@ def _parse_decision(record: models.InvocationRecord) -> tuple[str | None, dict |
     if decision == "ACT" and obj.get("tool"):
         return "ACT", {"tool": obj["tool"], "arguments": obj.get("arguments", {})}, None, None, True
     if decision in ("CLARIFY", "REFUSE"):
-        return decision, None, obj.get("question"), obj.get("reason_code"), True
+        question = obj.get("question")
+        reason = obj.get("reason_code")
+        if strict_typed_boundary:
+            if set(obj) != {"decision", "question", "reason_code"}:
+                return None, None, None, None, False
+            if decision == "CLARIFY" and (
+                not isinstance(question, str) or not question.strip() or reason is not None
+            ):
+                return None, None, None, None, False
+            if decision == "REFUSE" and (
+                question is not None or not isinstance(reason, str) or not reason.strip()
+            ):
+                return None, None, None, None, False
+        return decision, None, question, reason, True
     return None, None, None, None, False
 
 
@@ -230,23 +289,57 @@ def run_direct(ctx: RunContext, cell: MatrixCell, *, clarify_policy: bool,
 # ---------------------------------------------------------------- canonical (B/C/D/E)
 
 
-def _runtime_canonicalize(ctx: RunContext, result: CellResult, case, request, context) -> dict | None:
+def _gold_resolution(case: models.CanonicalCase) -> models.CanonicalResolution:
+    return models.CanonicalResolution.model_validate(domaintext.gold_canonical_resolution(case))
+
+
+def _runtime_canonicalize(
+    ctx: RunContext, result: CellResult, case, request, context, *,
+    user_text: str | None = None,
+    shared_context_text: str | None = None,
+    stage_id: str = "canonicalizer",
+) -> models.CanonicalResolution | None:
+    request_text = user_text if user_text is not None else request.text
+    shared_text = (
+        shared_context_text
+        if shared_context_text is not None
+        else domaintext.context_text(context)
+    )
     record = _invoke(
         ctx, result,
         role="boundary_canonicalizer",
-        prompt_id="canonicalizer.v1",
+        prompt_id="canonicalizer.v2",
         variables={
             "ontology": domaintext.ontology_text(ctx.bench.domain),
-            "user_request": request.text,
+            "user_request": request_text,
+            "shared_context": shared_text,
             "known_state": domaintext.state_json(case.initial_state),
         },
         response_kind="canonical_resolution",
-        stage_id="canonicalizer",
+        stage_id=stage_id,
         representation="FREE_FORM_LANGUAGE",
     )
-    obj, _err = extract_json_object(record.normalized_text)
-    result.canonicalization = obj
-    return obj
+    obj, parse_error = extract_json_object(record.normalized_text)
+    resolution, validation_error = canonical.parse_resolution(obj)
+    if resolution is None:
+        result.canonicalization = obj
+        result.schema_valid = False
+        result.error_category = "invalid_canonical_resolution"
+        result.interface_events.append({
+            "kind": "canonical_resolution",
+            "error": validation_error or parse_error or "invalid canonical resolution",
+        })
+        return None
+    resolution = canonical.enforce_grounding(
+        resolution,
+        domain=ctx.bench.domain,
+        user_request=request_text,
+        shared_context_text=shared_text,
+        visible_state=context.visible_state,
+        known_state=case.initial_state,
+    )
+    result.canonicalization = resolution.model_dump(mode="json")
+    return resolution
 
 
 def run_canonical(ctx: RunContext, cell: MatrixCell) -> CellResult:
@@ -256,32 +349,58 @@ def run_canonical(ctx: RunContext, cell: MatrixCell) -> CellResult:
     arch = cell.architecture
     gold_mode = cell.intent_mode == "gold"
     if gold_mode:
-        resolution = domaintext.gold_canonical_resolution(case)
+        resolution = _gold_resolution(case)
         context = ctx.bench.contexts.get("CTX-EMPTY-001")
         sim = _fresh_simulator(ctx, case)
     else:
         request = ctx.bench.requests[cell.request_id]
         context = ctx.bench.context_for_request(request)
         sim = _fresh_simulator(ctx, case)
-        obj = _runtime_canonicalize(ctx, result, case, request, context)
-        if not obj or obj.get("status") == "CLARIFY":
-            result.decision = "CLARIFY"
-            result.question = (obj or {}).get("question")
-            result.schema_valid = obj is not None
+        resolution = _runtime_canonicalize(ctx, result, case, request, context)
+        if resolution is None:
             result.final_state = sim.snapshot()
             result.simulator_events = [event.to_dict() for event in sim.events]
             return result
-        resolution = obj
+        if resolution.mapping_outcome == models.MappingOutcome.NEEDS_CLARIFICATION:
+            result.decision = "CLARIFY"
+            result.question = resolution.question
+            result.schema_valid = True
+            result.final_state = sim.snapshot()
+            result.simulator_events = [event.to_dict() for event in sim.events]
+            return result
+    intent = canonical.intent_payload(resolution)
 
     variables = {
-        "canonical_resolution": json.dumps(resolution, indent=2, sort_keys=True),
+        "canonical_resolution": json.dumps(intent, indent=2, sort_keys=True),
         "operation_definitions": domaintext.operation_definitions_text(ctx.bench.domain),
         "known_state": domaintext.state_json(case.initial_state),
     }
-    rendered = arch in ("C_RUNTIME", "C_GOLD", "D_DEFINITION_ONLY", "E_ORGANIZATION_TERM")
+    rendered = arch in (
+        "C_RUNTIME",
+        "C_GOLD",
+        "D_DEFINITION_ONLY",
+        "E_ORGANIZATION_TERM",
+        "F_MODEL_DISCOVERED",
+    )
     if rendered:
-        rendering = ctx.bench.renderings[cell.rendering_id]
-        variables["model_facing_rendering"] = domaintext.rendering_text(rendering, resolution)
+        rendering = (
+            ctx.bench.renderings.get(cell.rendering_id or "")
+            if cell.rendering_id
+            else ctx.bench.rendering_for_operation(
+                intent["operation_id"], cell.rendering_category or "CANONICAL_LABEL"
+            )
+        )
+        if rendering is None:
+            result.schema_valid = False
+            result.error_category = "runtime_rendering_not_found"
+            result.final_state = sim.snapshot()
+            result.simulator_events = [event.to_dict() for event in sim.events]
+            return result
+        rendered_text = domaintext.rendering_text(rendering, intent)
+        result.actual_rendering_id = rendering.rendering_id
+        result.actual_rendering_category = rendering.category.value
+        result.actual_rendering_text = rendered_text
+        variables["model_facing_rendering"] = rendered_text
         prompt_id, kind = "rendered-executor.v1", "rendered_executor"
     else:
         prompt_id, kind = "canonical-executor.v1", "canonical_executor"
@@ -424,6 +543,7 @@ def _select_procedure(ctx: RunContext, result: CellResult, case: models.Canonica
     """Gold: deterministic registry lookup. Runtime: procedure_router role (§33.8)."""
     if result.cell.procedure_selection != "runtime":
         procedure = ctx.bench.procedure_for_operation(resolution.get("operation_id", ""))
+        result.actual_procedure_id = procedure.procedure_id if procedure else None
         result.procedure_events.append({
             "mode": "gold", "operation_id": resolution.get("operation_id"),
             "selected": procedure.procedure_id if procedure else None, "correct": procedure is not None,
@@ -446,6 +566,7 @@ def _select_procedure(ctx: RunContext, result: CellResult, case: models.Canonica
     obj, _err = extract_json_object(record.normalized_text)
     selected_id = (obj or {}).get("procedure_id")
     procedure = ctx.bench.procedures.get(selected_id or "")
+    result.actual_procedure_id = procedure.procedure_id if procedure else None
     gold = ctx.bench.procedure_for_operation(resolution.get("operation_id", ""))
     result.procedure_events.append({
         "mode": "runtime", "operation_id": resolution.get("operation_id"),
@@ -504,16 +625,22 @@ def run_formalization(ctx: RunContext, cell: MatrixCell) -> CellResult:
 
     # P2-P4 need canonical intent (runtime or gold).
     if cell.intent_mode == "gold":
-        resolution: dict | None = domaintext.gold_canonical_resolution(case)
+        envelope: models.CanonicalResolution | None = _gold_resolution(case)
     else:
-        resolution = _runtime_canonicalize(ctx, result, case, request, context)
-        if not resolution or resolution.get("status") == "CLARIFY":
-            result.decision = "CLARIFY"
-            result.question = (resolution or {}).get("question")
-            result.schema_valid = resolution is not None
+        envelope = _runtime_canonicalize(ctx, result, case, request, context)
+        if envelope is None:
             result.final_state = sim.snapshot()
             result.simulator_events = [event.to_dict() for event in sim.events]
             return result
+    assert envelope is not None
+    if envelope.mapping_outcome == models.MappingOutcome.NEEDS_CLARIFICATION:
+        result.decision = "CLARIFY"
+        result.question = envelope.question
+        result.schema_valid = True
+        result.final_state = sim.snapshot()
+        result.simulator_events = [event.to_dict() for event in sim.events]
+        return result
+    resolution = canonical.intent_payload(envelope)
 
     if condition == "P2_CANONICAL_PROPOSAL":
         record = _invoke(
@@ -580,13 +707,12 @@ def run_formalization(ctx: RunContext, cell: MatrixCell) -> CellResult:
         record = _invoke(
             ctx, result,
             role=cell.model_role,
-            prompt_id="procedure-executor.v1",
+            prompt_id="procedure-proposal-executor.v2",
             variables={
                 "canonical_intent": json.dumps(resolution, indent=2, sort_keys=True),
                 "frozen_procedure": procedure_content,
                 "domain_rules": domain_rules,
                 "known_state": known_state + "\n\nSHARED CONTEXT\n" + shared_context,
-                "output_boundary": "generic-action-proposal.v1",
             },
             response_kind="generic_action_proposal",
             stage_id="procedure_executor",
@@ -602,13 +728,12 @@ def run_formalization(ctx: RunContext, cell: MatrixCell) -> CellResult:
     record = _invoke(
         ctx, result,
         role=cell.model_role,
-        prompt_id="procedure-executor.v1",
+        prompt_id="procedure-tool-executor.v2",
         variables={
             "canonical_intent": json.dumps(resolution, indent=2, sort_keys=True),
             "frozen_procedure": procedure_content,
             "domain_rules": domain_rules,
             "known_state": known_state + "\n\nSHARED CONTEXT\n" + shared_context,
-            "output_boundary": "registered typed tool interface: call exactly one available tool",
         },
         response_kind="procedure_tool",
         stage_id="procedure_executor",
@@ -618,7 +743,9 @@ def run_formalization(ctx: RunContext, cell: MatrixCell) -> CellResult:
         procedure_id_present=True,
         typed_schema_present=True,
     )
-    decision, tool_call, question, reason, valid = _parse_decision(record)
+    decision, tool_call, question, reason, valid = _parse_decision(
+        record, strict_typed_boundary=True
+    )
     result.decision, result.question, result.reason_code = decision, question, reason
     result.schema_valid = valid
     if decision == "ACT" and tool_call:
@@ -664,10 +791,23 @@ def run_persistence(ctx: RunContext, cell: MatrixCell) -> CellResult:
     condition = cell.architecture
     known_state = domaintext.state_json(case.initial_state)
 
-    prose_mode = condition in ("LP0_LANGUAGE_THROUGHOUT", "LP0G_GOLD_START_LANGUAGE")
+    prose_mode = condition in (
+        "LP0_LANGUAGE_THROUGHOUT",
+        "LP0G_GOLD_START_LANGUAGE",
+        "LP0B_GOLD_START_LANGUAGE_BALANCED",
+        "LP0BV_GOLD_START_LANGUAGE_BALANCED_VERBATIM",
+    )
+    balanced_prose = condition in (
+        "LP0B_GOLD_START_LANGUAGE_BALANCED",
+        "LP0BV_GOLD_START_LANGUAGE_BALANCED_VERBATIM",
+    )
+    visible_verbatim_contract = (
+        condition == "LP0BV_GOLD_START_LANGUAGE_BALANCED_VERBATIM"
+    )
     procedure = None
     if condition in ("LP2_CANONICAL_PROCEDURE", "LP3_CANONICAL_PROCEDURE_TOOL"):
         procedure = ctx.bench.procedure_for_operation(case.canonical.operation_id)
+        result.actual_procedure_id = procedure.procedure_id if procedure else None
         result.procedure_events.append({
             "mode": "gold", "operation_id": case.canonical.operation_id,
             "selected": procedure.procedure_id if procedure else None, "correct": procedure is not None,
@@ -677,26 +817,35 @@ def run_persistence(ctx: RunContext, cell: MatrixCell) -> CellResult:
     if condition == "LP0_LANGUAGE_THROUGHOUT":
         working = request.text  # raw user language stays authoritative
         resolution = None
-    elif condition == "LP0G_GOLD_START_LANGUAGE":
-        resolution = domaintext.gold_canonical_resolution(case)
+    elif condition in (
+        "LP0G_GOLD_START_LANGUAGE",
+        "LP0B_GOLD_START_LANGUAGE_BALANCED",
+        "LP0BV_GOLD_START_LANGUAGE_BALANCED_VERBATIM",
+    ):
+        resolution = None
         op = ctx.bench.domain.operations[case.canonical.operation_id]
         args = ", ".join(f"{k}={v}" for k, v in sorted(case.canonical.arguments.items()))
         working = (
-            f"Please handle the following resolved task: {op.display_name.lower()} for "
+            f"Please perform this task: {op.display_name.lower()} for "
             f"{case.canonical.entity_id}" + (f" with {args}" if args else "") + "."
         )
     else:
         if cell.intent_mode == "gold":
-            resolution = domaintext.gold_canonical_resolution(case)
+            envelope = _gold_resolution(case)
         else:
-            resolution = _runtime_canonicalize(ctx, result, case, request, context)
-            if not resolution or resolution.get("status") == "CLARIFY":
-                result.decision = "CLARIFY"
-                result.question = (resolution or {}).get("question")
-                result.schema_valid = resolution is not None
+            envelope = _runtime_canonicalize(ctx, result, case, request, context)
+            if envelope is None:
                 result.final_state = sim.snapshot()
                 result.simulator_events = [event.to_dict() for event in sim.events]
                 return result
+        if envelope.mapping_outcome == models.MappingOutcome.NEEDS_CLARIFICATION:
+            result.decision = "CLARIFY"
+            result.question = envelope.question
+            result.schema_valid = True
+            result.final_state = sim.snapshot()
+            result.simulator_events = [event.to_dict() for event in sim.events]
+            return result
+        resolution = canonical.intent_payload(envelope)
         working = json.dumps(resolution, indent=2, sort_keys=True)
 
     representation = (
@@ -705,8 +854,11 @@ def run_persistence(ctx: RunContext, cell: MatrixCell) -> CellResult:
     )
 
     stage_kinds = {"triage": "triage_result", "policy": "policy_result", "planner": "plan_result"}
-    stage_prompts = {"triage": "triage.v1", "policy": "policy.v1", "planner": "planner.v1"}
+    stage_prompts = {"triage": "triage.v1", "policy": "policy.v2", "planner": "planner.v2"}
     typed_outputs: dict[str, dict] = {}
+    preservation_contract = domaintext.preservation_contract_text(
+        ctx.bench.domain.operations[case.canonical.operation_id]
+    )
     for stage in STAGES:
         if stage == "triage":
             variables = {
@@ -739,24 +891,66 @@ def run_persistence(ctx: RunContext, cell: MatrixCell) -> CellResult:
                 "triage_result": triage_payload,
                 "policy_result": working if prose_mode else json.dumps(typed_outputs.get("policy", {}), sort_keys=True),
                 "allowed_operations": domaintext.operation_definitions_text(ctx.bench.domain),
+                "known_state": known_state,
             }
             if procedure:
                 variables["allowed_operations"] += "\n\nFROZEN PROCEDURE\n" + domaintext.procedure_text(procedure)
+        selected_prompt = (
+            {
+                "triage": (
+                    "triage-language-handoff-verbatim.v1"
+                    if visible_verbatim_contract else "triage-language-handoff.v1"
+                ),
+                "policy": (
+                    "policy-language-handoff-verbatim.v1"
+                    if visible_verbatim_contract else "policy-language-handoff.v2"
+                ),
+                "planner": (
+                    "planner-language-handoff-verbatim.v1"
+                    if visible_verbatim_contract else "planner-language-handoff.v2"
+                ),
+            }[stage]
+            if balanced_prose
+            else stage_prompts[stage]
+        )
+        if visible_verbatim_contract:
+            variables["preservation_contract"] = preservation_contract
         record = _invoke(
             ctx, result,
             role=cell.model_role,
-            prompt_id=stage_prompts[stage],
+            prompt_id=selected_prompt,
             variables=variables,
-            response_kind=stage_kinds[stage],
+            response_kind="stage_language_handoff" if balanced_prose else stage_kinds[stage],
             stage_id=stage,
             representation=representation,
             canonical_ids_present=not prose_mode,
             procedure_id_present=procedure is not None,
         )
         obj, _err = extract_json_object(record.normalized_text)
-        typed_outputs[stage] = obj or {}
-        result.stage_outputs.append({"stage": stage, "output": obj})
-        if prose_mode:
+        if balanced_prose:
+            envelope_obj = obj or {}
+            stage_result = envelope_obj.get("stage_result")
+            handoff_text = envelope_obj.get("handoff_text")
+            if (
+                set(envelope_obj) != {"stage_result", "handoff_text"}
+                or not isinstance(stage_result, dict)
+                or not isinstance(handoff_text, str)
+                or not handoff_text.strip()
+            ):
+                result.schema_valid = False
+                result.error_category = "invalid_stage_language_handoff"
+                result.stage_outputs.append({"stage": stage, "output": obj})
+                result.final_state = sim.snapshot()
+                result.simulator_events = [event.to_dict() for event in sim.events]
+                return result
+            typed_outputs[stage] = stage_result
+            working = handoff_text.strip()
+            result.stage_outputs.append({"stage": stage, "output": stage_result})
+            result.stage_outputs.append({"stage": f"{stage}_handoff", "output": working})
+        else:
+            typed_outputs[stage] = obj or {}
+            result.stage_outputs.append({"stage": stage, "output": obj})
+        if prose_mode and not balanced_prose:
             handoff_record = _invoke(
                 ctx, result,
                 role=cell.model_role,
@@ -780,7 +974,7 @@ def run_persistence(ctx: RunContext, cell: MatrixCell) -> CellResult:
         record = _invoke(
             ctx, result,
             role=cell.model_role,
-            prompt_id="executor.v1",
+            prompt_id="executor.v2",
             variables={
                 "plan_result": json.dumps(plan, sort_keys=True),
                 "operation_definitions": domaintext.operation_definitions_text(ctx.bench.domain),
@@ -794,7 +988,9 @@ def run_persistence(ctx: RunContext, cell: MatrixCell) -> CellResult:
             procedure_id_present=procedure is not None,
             typed_schema_present=True,
         )
-        decision, tool_call, question, reason, valid = _parse_decision(record)
+        decision, tool_call, question, reason, valid = _parse_decision(
+            record, strict_typed_boundary=True
+        )
         result.decision, result.tool_call = decision, tool_call
         result.question, result.reason_code, result.schema_valid = question, reason, valid
         _apply_tool_call(ctx, result, sim)
@@ -811,13 +1007,20 @@ def run_persistence(ctx: RunContext, cell: MatrixCell) -> CellResult:
     record = _invoke(
         ctx, result,
         role=cell.model_role,
-        prompt_id="action-proposal-executor.v1",
+        prompt_id=(
+            "action-proposal-executor-verbatim.v1"
+            if visible_verbatim_contract else "action-proposal-executor.v1"
+        ),
         variables={
             "task_input": task_input,
             "domain_rules": domaintext.domain_summary(ctx.bench.domain),
             "known_state": known_state,
             "shared_context": domaintext.context_text(context),
             "clarification_policy": P1_POLICY,
+            **(
+                {"preservation_contract": preservation_contract}
+                if visible_verbatim_contract else {}
+            ),
         },
         response_kind="generic_action_proposal",
         stage_id="final_proposal",
@@ -841,33 +1044,51 @@ def run_agent_loop(ctx: RunContext, cell: MatrixCell) -> CellResult:
     condition = cell.architecture
     known_state = domaintext.state_json(case.initial_state)
 
-    canonical = None
+    canonical_intent = None
     if condition != "AL_RAW":
         if cell.intent_mode == "gold":
-            canonical = domaintext.gold_canonical_resolution(case)
+            envelope = _gold_resolution(case)
         elif cell.intent_mode == "runtime":
             context = ctx.bench.context_for_request(request)
-            canonical = _runtime_canonicalize(ctx, result, case, request, context)
-            if not canonical or canonical.get("status") == "CLARIFY":
-                result.decision = "CLARIFY"
-                result.question = (canonical or {}).get("question")
-                result.schema_valid = canonical is not None
+            envelope = _runtime_canonicalize(ctx, result, case, request, context)
+            if envelope is None:
                 result.final_state = sim.snapshot()
                 return result
         else:
             raise ValueError(f"{condition} requires gold or runtime canonical intent")
+        if envelope.mapping_outcome == models.MappingOutcome.NEEDS_CLARIFICATION:
+            result.decision = "CLARIFY"
+            result.question = envelope.question
+            result.schema_valid = True
+            result.final_state = sim.snapshot()
+            return result
+        canonical_intent = canonical.intent_payload(envelope)
     label = ctx.bench.domain.operations[case.canonical.operation_id].display_name.lower()
     rendering_line = ""
-    if condition == "AL_RENDERED" and cell.rendering_id:
-        rendering = ctx.bench.renderings[cell.rendering_id]
-        rendering_line = "\nMODEL-FACING RENDERING: " + domaintext.rendering_text(
-            rendering, canonical
+    if condition == "AL_RENDERED":
+        rendering = (
+            ctx.bench.renderings.get(cell.rendering_id or "")
+            if cell.rendering_id
+            else ctx.bench.rendering_for_operation(
+                canonical_intent["operation_id"],
+                cell.rendering_category or "CANONICAL_LABEL",
+            )
         )
+        if rendering is None:
+            result.schema_valid = False
+            result.error_category = "runtime_rendering_not_found"
+            result.final_state = sim.snapshot()
+            return result
+        rendered_text = domaintext.rendering_text(rendering, canonical_intent)
+        result.actual_rendering_id = rendering.rendering_id
+        result.actual_rendering_category = rendering.category.value
+        result.actual_rendering_text = rendered_text
+        rendering_line = "\nMODEL-FACING RENDERING: " + rendered_text
 
     typed_outputs: dict[str, dict] = {}
     used_labels = [label]
     stage_kinds = {"triage": "triage_result", "policy": "policy_result", "planner": "plan_result"}
-    stage_prompts = {"triage": "triage.v1", "policy": "policy.v1", "planner": "planner.v1"}
+    stage_prompts = {"triage": "triage.v1", "policy": "policy.v2", "planner": "planner.v2"}
     for stage in STAGES:
         extra = f"\nOPERATION LABEL IN USE: {label}" if condition == "AL_DRIFT" else ""
         raw_suffix = f"\nORIGINAL USER WORDING: {request.text}" if condition == "AL_RAW" else ""
@@ -875,14 +1096,14 @@ def run_agent_loop(ctx: RunContext, cell: MatrixCell) -> CellResult:
         # definitions in AL_CANONICAL/AL_RENDERED/AL_DRIFT; AL_RAW re-passes prose.
         triage_payload = json.dumps(
             typed_outputs.get("triage", {}) if condition == "AL_RAW"
-            else {"canonical_state": canonical, "triage": typed_outputs.get("triage", {})},
+            else {"canonical_state": canonical_intent, "triage": typed_outputs.get("triage", {})},
             sort_keys=True,
         )
         if stage == "triage":
             variables = {
                 "request_or_canonical_input": (
                     request.text if condition == "AL_RAW"
-                    else json.dumps(canonical, sort_keys=True) + extra + rendering_line
+                    else json.dumps(canonical_intent, sort_keys=True) + extra + rendering_line
                 ),
                 "canonical_entity_definitions": domaintext.ontology_text(ctx.bench.domain),
                 "known_state": known_state,
@@ -898,6 +1119,7 @@ def run_agent_loop(ctx: RunContext, cell: MatrixCell) -> CellResult:
                 "triage_result": triage_payload + raw_suffix,
                 "policy_result": json.dumps(typed_outputs.get("policy", {}), sort_keys=True) + extra,
                 "allowed_operations": domaintext.operation_definitions_text(ctx.bench.domain) + rendering_line,
+                "known_state": known_state,
             }
         record = _invoke(
             ctx, result,
@@ -918,8 +1140,8 @@ def run_agent_loop(ctx: RunContext, cell: MatrixCell) -> CellResult:
                 role="authoring_generator",
                 prompt_id="lexical-drift.v1",
                 variables={
-                    "canonical_id": canonical["operation_id"],
-                    "definition": ctx.bench.domain.operations[canonical["operation_id"]].description,
+                    "canonical_id": canonical_intent["operation_id"],
+                    "definition": ctx.bench.domain.operations[canonical_intent["operation_id"]].description,
                     "current_label": label,
                     "forbidden_labels": "\n".join(f"- {label}" for label in used_labels),
                 },
@@ -932,7 +1154,7 @@ def run_agent_loop(ctx: RunContext, cell: MatrixCell) -> CellResult:
             alternate = (drift_obj or {}).get("alternate_label")
             valid_drift = bool(
                 drift_obj
-                and drift_obj.get("canonical_id") == canonical["operation_id"]
+                and drift_obj.get("canonical_id") == canonical_intent["operation_id"]
                 and isinstance(alternate, str)
                 and alternate.strip()
                 and alternate.casefold() not in {item.casefold() for item in used_labels}
@@ -953,7 +1175,7 @@ def run_agent_loop(ctx: RunContext, cell: MatrixCell) -> CellResult:
     record = _invoke(
         ctx, result,
         role=cell.model_role,
-        prompt_id="executor.v1",
+        prompt_id="executor.v2",
         variables={
             "plan_result": json.dumps(typed_outputs.get("planner", {}), sort_keys=True),
             "operation_definitions": (
@@ -985,6 +1207,7 @@ ANSWER_KEYWORDS = {
     "destination_team": ("team",),
     "amount_usd": ("amount", "usd", "charge"),
     "approver_role": ("approver", "role", "manager"),
+    "message": ("message", "comment", "ask", "information", "details"),
     "operation_choice": ("operation", "escalat", "reassign", "handled as"),
 }
 
@@ -1075,28 +1298,24 @@ def run_elicitation(ctx: RunContext, cell: MatrixCell) -> CellResult:
                 assessment.get("adequacy") == "ADEQUATE"
                 and assessment.get("ambiguity") == "UNAMBIGUOUS"
             ):
-                resolution = None
-                canon_record = _invoke(
-                    ctx, result,
-                    role="boundary_canonicalizer",
-                    prompt_id="canonicalizer.v1",
-                    variables={
-                        "ontology": domaintext.ontology_text(ctx.bench.domain),
-                        "user_request": current_text + "\n" + shared,
-                        "known_state": domaintext.state_json(case.initial_state),
-                    },
-                    response_kind="canonical_resolution",
+                envelope = _runtime_canonicalize(
+                    ctx,
+                    result,
+                    case,
+                    request,
+                    base_context,
+                    user_text=current_text,
+                    shared_context_text=shared,
                     stage_id=f"turn{turn}_canonicalizer",
-                    representation="FREE_FORM_LANGUAGE",
                 )
-                resolution, _err = extract_json_object(canon_record.normalized_text)
-                if resolution and resolution.get("status") == "RESOLVED":
+                if envelope and envelope.mapping_outcome == models.MappingOutcome.MAPPED:
+                    intent = canonical.intent_payload(envelope)
                     exec_record = _invoke(
                         ctx, result,
                         role=cell.model_role,
                         prompt_id="canonical-executor.v1",
                         variables={
-                            "canonical_resolution": json.dumps(resolution, indent=2, sort_keys=True),
+                            "canonical_resolution": json.dumps(intent, indent=2, sort_keys=True),
                             "operation_definitions": domaintext.operation_definitions_text(ctx.bench.domain),
                             "known_state": domaintext.state_json(case.initial_state),
                         },
@@ -1107,11 +1326,14 @@ def run_elicitation(ctx: RunContext, cell: MatrixCell) -> CellResult:
                         canonical_ids_present=True,
                     )
                     decision, tool_call, question, reason, valid = _parse_decision(exec_record)
-                    result.canonicalization = resolution
                     targets = None
                 else:
                     decision, tool_call, question, reason, valid = (
-                        "CLARIFY", None, (resolution or {}).get("question"), None, True
+                        "CLARIFY",
+                        None,
+                        envelope.question if envelope else None,
+                        None,
+                        envelope is not None,
                     )
                     targets = None
             else:
@@ -1181,7 +1403,10 @@ def run_cell(ctx: RunContext, cell: MatrixCell) -> CellResult:
         return run_direct(ctx, cell, clarify_policy=False)
     if arch == "A1_DIRECT_CLARIFY":
         return run_direct(ctx, cell, clarify_policy=True)
-    if arch in ("B_RUNTIME", "B_GOLD", "C_RUNTIME", "C_GOLD", "D_DEFINITION_ONLY", "E_ORGANIZATION_TERM"):
+    if arch in (
+        "B_RUNTIME", "B_GOLD", "C_RUNTIME", "C_GOLD",
+        "D_DEFINITION_ONLY", "E_ORGANIZATION_TERM", "F_MODEL_DISCOVERED",
+    ):
         return run_canonical(ctx, cell)
     if arch.startswith("M"):
         return run_memory(ctx, cell)

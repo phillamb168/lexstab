@@ -1,0 +1,65 @@
+{
+  "domain": "support",
+  "policies": [
+    {
+      "applies_to_operation_ids": [
+        "REFUND_DUPLICATE_CHARGE"
+      ],
+      "policy_id": "P-17",
+      "schema_version": "1.2.0",
+      "text": "A confirmed duplicate charge below 500 USD may be refunded without manager approval."
+    },
+    {
+      "applies_to_operation_ids": [
+        "REQUEST_MANAGER_REVIEW"
+      ],
+      "policy_id": "P-18",
+      "schema_version": "1.2.0",
+      "text": "A disputed legitimate charge requires manager review."
+    },
+    {
+      "applies_to_operation_ids": [
+        "REFUND_DUPLICATE_CHARGE",
+        "REQUEST_MORE_INFORMATION"
+      ],
+      "policy_id": "P-19",
+      "schema_version": "1.2.0",
+      "text": "A refund request with an unconfirmed duplicate requires additional transaction information before any refund."
+    },
+    {
+      "applies_to_operation_ids": [
+        "ESCALATE_INCIDENT",
+        "REASSIGN_INCIDENT"
+      ],
+      "policy_id": "P-20",
+      "schema_version": "1.2.0",
+      "text": "A closed incident may not be escalated or reassigned."
+    },
+    {
+      "applies_to_operation_ids": [
+        "CLOSE_INCIDENT"
+      ],
+      "policy_id": "P-21",
+      "schema_version": "1.2.0",
+      "text": "An incident may not be closed while its information is incomplete."
+    },
+    {
+      "applies_to_operation_ids": [
+        "REQUEST_APPROVAL",
+        "REFUND_DUPLICATE_CHARGE"
+      ],
+      "policy_id": "P-22",
+      "schema_version": "1.2.0",
+      "text": "Refunds of 500 USD or more require an approval request before execution."
+    },
+    {
+      "applies_to_operation_ids": [
+        "SUSPEND_ACCOUNT"
+      ],
+      "policy_id": "P-23",
+      "schema_version": "1.2.0",
+      "text": "Account suspension requires an active account and a fraud, abuse, or non-payment reason."
+    }
+  ],
+  "schema_version": "1.2.0"
+}

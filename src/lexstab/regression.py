@@ -105,7 +105,11 @@ def check_run_thresholds(run_dir: Path, thresholds: dict[str, Any]) -> dict[str,
         "require_case_clustered_interval", True
     )
 
-    if manifest.get("mocked") or not manifest.get("baseline_eligible"):
+    if (
+        manifest.get("mocked")
+        or not manifest.get("baseline_eligible")
+        or not metrics.get("baseline_eligible", manifest.get("baseline_eligible"))
+    ):
         failures.append("run is mocked or baseline-ineligible")
     completion = metrics.get("completion") or {}
     if thresholds.get("blocking", {}).get("block_on_missing_cells", True):

@@ -13,6 +13,7 @@ import os
 import platform
 import subprocess
 import sys
+import threading
 import uuid
 from pathlib import Path
 from typing import Any, Callable
@@ -28,14 +29,15 @@ from lexstab.config import (
 )
 from lexstab.freeze import FrozenBenchmark
 from lexstab.hashing import hash_file, sha256_text
-from lexstab.matrix import Matrix, MatrixCell, expand_matrix
+from lexstab.matrix import Matrix, MatrixCell, MatrixSelectionError, expand_matrix
 from lexstab.prompts import PromptLibrary
 from lexstab.providers.registry import adapter_versions, build_provider
-from lexstab.runner import CellResult, RunContext, run_cell
+from lexstab.runner import CellResult, ProviderInvocationFailure, RunContext, run_cell
 
 INVOCATIONS_PER_ARCH = {
     "A0_DIRECT": 1, "A1_DIRECT_CLARIFY": 1, "B_RUNTIME": 2, "C_RUNTIME": 2,
     "B_GOLD": 1, "C_GOLD": 1, "D_DEFINITION_ONLY": 1, "E_ORGANIZATION_TERM": 1,
+    "F_MODEL_DISCOVERED": 1,
     "B_EXTERNAL_GATE": 6, "B_EXTERNAL_GATE_GOLD": 5, "HUMAN_ORACLE": 2,
     "M0_NO_MEMORY": 1, "M1_STATIC_GLOSSARY": 1, "M2_RETRIEVED_MEMORY": 1,
     "M3_CANONICAL_RESOLVER": 2, "M4_PERSONALIZED_MEMORY": 1,
@@ -43,7 +45,10 @@ INVOCATIONS_PER_ARCH = {
     "P2F_CANONICAL_FACTS_PROPOSAL": 1,
     "P3_CANONICAL_PROCEDURE_PROPOSAL": 2, "P4_CANONICAL_PROCEDURE_TOOL": 2,
     "LP0_LANGUAGE_THROUGHOUT": 7, "LP0G_GOLD_START_LANGUAGE": 7,
-    "LP1_CANONICAL_ONCE": 5, "LP2_CANONICAL_PROCEDURE": 5, "LP3_CANONICAL_PROCEDURE_TOOL": 5,
+    "LP0B_GOLD_START_LANGUAGE_BALANCED": 4,
+    "LP0BV_GOLD_START_LANGUAGE_BALANCED_VERBATIM": 4,
+    "LP1_CANONICAL_ONCE": 4, "LP2_CANONICAL_PROCEDURE": 4,
+    "LP3_CANONICAL_PROCEDURE_TOOL": 4,
     "AL_RAW": 4, "AL_CANONICAL": 5, "AL_RENDERED": 5, "AL_DRIFT": 8,
 }
 
@@ -52,6 +57,21 @@ DEFAULT_COST_PER_CALL_USD = 0.01  # dry-run planning placeholder; real costs com
 
 class RunError(Exception):
     pass
+
+
+def estimated_invocations(cell: MatrixCell) -> int:
+    """Structural pre-run estimate; completed reports use measured invocations."""
+    estimate = INVOCATIONS_PER_ARCH.get(cell.architecture, 2)
+    if cell.architecture in {
+        "P2_CANONICAL_PROPOSAL", "P3_CANONICAL_PROCEDURE_PROPOSAL",
+        "P4_CANONICAL_PROCEDURE_TOOL",
+    } and cell.intent_mode == "gold":
+        estimate -= 1
+    if cell.architecture == "LP1_CANONICAL_ONCE" and cell.intent_mode == "runtime":
+        estimate += 1
+    if cell.procedure_selection == "runtime":
+        estimate += 1
+    return estimate
 
 
 def _git_revision(root: Path) -> str | None:
@@ -67,12 +87,12 @@ def _git_revision(root: Path) -> str | None:
 def required_model_roles(run_config: RunConfig) -> set[str]:
     """Return exactly the enabled roles the selected matrix can invoke."""
     needed_roles = {"execution_primary"}
-    enabled_architectures = {
-        architecture
-        for track in run_config.tracks.values()
-        if isinstance(track, dict) and track.get("enabled")
-        for architecture in (track.get("architectures") or track.get("conditions") or [])
-    }
+    enabled_architectures = set()
+    for track in run_config.tracks.values():
+        if not isinstance(track, dict) or not track.get("enabled"):
+            continue
+        for key in ("architectures", "conditions", "persistence_conditions"):
+            enabled_architectures.update(track.get(key) or [])
     if enabled_architectures & {
         "B_RUNTIME", "C_RUNTIME", "B_EXTERNAL_GATE", "B_EXTERNAL_GATE_GOLD",
         "M3_CANONICAL_RESOLVER", "P2_CANONICAL_PROPOSAL",
@@ -142,7 +162,10 @@ def build_run_context(
         )
         providers[role_name] = adapter
 
-    matrix = expand_matrix(bench, run_config)
+    try:
+        matrix = expand_matrix(bench, run_config)
+    except MatrixSelectionError as exc:
+        raise RunError(f"invalid matrix selection: {exc}") from exc
     ctx = RunContext(
         root=root,
         bench=bench,
@@ -238,7 +261,7 @@ def dry_run_report(matrix: Matrix, run_config: RunConfig) -> dict[str, Any]:
     call_estimate = 0
     for cell in matrix.cells:
         by_track[cell.track] = by_track.get(cell.track, 0) + 1
-        call_estimate += INVOCATIONS_PER_ARCH.get(cell.architecture, 2)
+        call_estimate += estimated_invocations(cell)
     return {
         "matrix_cells": len(matrix.cells),
         "cells_by_track": by_track,
@@ -270,6 +293,78 @@ def _write_result(run_dir: Path, result: CellResult, tracing: dict[str, Any]) ->
         jsonl_append(run_dir / "interface-events.jsonl", {"cell_id": result.cell.cell_id, **event})
 
 
+def summarize_run_health(
+    results: list[CellResult | dict[str, Any]],
+    *,
+    configured_baseline_eligible: bool,
+    invocations: list[models.InvocationRecord | dict[str, Any]] | None = None,
+) -> dict[str, Any]:
+    """Summarize infrastructure health separately from experimental failures.
+
+    Provider failures, harness failures, aborted cells, and length-terminated
+    outputs invalidate run health and baseline eligibility. Other model-level
+    failures remain benchmark observations and are scored normally.
+    """
+
+    def value(item: Any, key: str, default: Any = None) -> Any:
+        return item.get(key, default) if isinstance(item, dict) else getattr(item, key, default)
+
+    all_invocations = list(invocations or [])
+    if invocations is None:
+        for result in results:
+            all_invocations.extend(value(result, "invocations", []) or [])
+
+    finishes = [value(record, "finish_reason") for record in all_invocations]
+    provider_errors = [
+        finish for finish in finishes
+        if finish == "transport_error" or (isinstance(finish, str) and finish.startswith("http_"))
+    ]
+    provider_error_cells = {
+        value(record, "cell_id")
+        for record in all_invocations
+        if value(record, "finish_reason") == "transport_error"
+        or (
+            isinstance(value(record, "finish_reason"), str)
+            and value(record, "finish_reason").startswith("http_")
+        )
+    }
+    categories = [value(result, "error_category") or "" for result in results]
+    aborted_cells = sum(category == "run_aborted_after_provider_failure" for category in categories)
+    harness_error_cells = sum(category.startswith("harness_error:") for category in categories)
+    length_terminated_calls = sum(finish == "length" for finish in finishes)
+    healthy = (
+        not provider_errors
+        and not aborted_cells
+        and not harness_error_cells
+        and not length_terminated_calls
+    )
+    if provider_errors:
+        status = "provider_failure"
+    elif harness_error_cells:
+        status = "harness_failure"
+    elif aborted_cells:
+        status = "aborted"
+    elif length_terminated_calls:
+        status = "length_terminated"
+    else:
+        status = "complete"
+    return {
+        "status": status,
+        "healthy": healthy,
+        "configured_baseline_eligible": configured_baseline_eligible,
+        "baseline_eligible": bool(configured_baseline_eligible and healthy),
+        "provider_error_calls": len(provider_errors),
+        "provider_error_cells": len(provider_error_cells),
+        "http_error_calls": sum(
+            isinstance(finish, str) and finish.startswith("http_") for finish in finishes
+        ),
+        "transport_error_calls": sum(finish == "transport_error" for finish in finishes),
+        "length_terminated_calls": length_terminated_calls,
+        "harness_error_cells": harness_error_cells,
+        "aborted_cells": aborted_cells,
+    }
+
+
 def execute_run(
     root: Path,
     run_config: RunConfig,
@@ -299,10 +394,26 @@ def execute_run(
         bool(run_config.execution.get("randomize_matrix_order", True)), run_config.random_seed
     )
     concurrency = int(run_config.execution.get("concurrency", 1))
+    stop_after_provider_failure = threading.Event()
 
     def _run_one(cell: MatrixCell) -> CellResult:
+        if stop_after_provider_failure.is_set():
+            aborted = CellResult(cell=cell)
+            aborted.schema_valid = False
+            aborted.error_category = "run_aborted_after_provider_failure"
+            return aborted
         try:
-            return cell_runner(ctx, cell)
+            result = cell_runner(ctx, cell)
+            if any(
+                record.finish_reason == "transport_error"
+                or bool(record.finish_reason and record.finish_reason.startswith("http_"))
+                for record in result.invocations
+            ):
+                stop_after_provider_failure.set()
+            return result
+        except ProviderInvocationFailure as exc:
+            stop_after_provider_failure.set()
+            return exc.result
         except Exception as exc:  # never drop failed cells silently (§39.11)
             failed = CellResult(cell=cell)
             failed.schema_valid = False
@@ -318,14 +429,28 @@ def execute_run(
             if progress and (index + 1) % 25 == 0:
                 progress(f"{index + 1}/{len(ordered)} cells")
     else:
+        results = []
         with concurrent.futures.ThreadPoolExecutor(max_workers=concurrency) as pool:
-            for result in pool.map(_run_one, ordered):
+            for index, result in enumerate(pool.map(_run_one, ordered)):
                 _write_result(run_dir, result, run_config.tracing)
+                results.append(result)
+                if progress and (index + 1) % 25 == 0:
+                    progress(f"{index + 1}/{len(ordered)} cells")
 
+    configured_baseline_eligible = bool(
+        models_config.roles.get("execution_primary")
+        and models_config.roles["execution_primary"].baseline_eligible
+        and not ctx.mocked
+    )
+    health = summarize_run_health(
+        results,
+        configured_baseline_eligible=configured_baseline_eligible,
+    )
     json_write(run_dir / "run-summary.json", {
         "run_id": ctx.run_id,
         "cells_executed": len(ordered),
         "mocked": ctx.mocked,
+        **health,
     })
     return run_dir
 

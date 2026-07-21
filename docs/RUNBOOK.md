@@ -133,6 +133,27 @@ uv run lexstab interfaces validate --root dataset/interfaces
 uv run lexstab integrity
 ```
 
+For the corrected `v0.2.0` source artifacts, validate the manifest inputs explicitly:
+
+```bash
+uv run lexstab domain validate --root dataset/domain/v0.2.0
+uv run lexstab cases validate \
+  --root dataset/cases/support-v0.2.0 \
+  --domain-root dataset/domain/v0.2.0
+uv run lexstab interfaces compare \
+  --domain-root dataset/domain/v0.2.0 \
+  --generic dataset/interfaces/v0.2.0/generic-action-proposal.json \
+  --typed dataset/interfaces/v0.2.0/typed-tools/support.jsonl
+uv run lexstab integrity \
+  --domain-root dataset/domain/v0.2.0 \
+  --cases-root dataset/cases/support-v0.2.0 \
+  --interfaces-root dataset/interfaces/v0.2.0
+```
+
+The versioned source paths prevent a corrected ontology or gold case from changing files hashed by
+the historical `v0.1.0` manifest. The benchmark loader verifies and loads the paths declared by
+each manifest.
+
 `lexstab integrity` runs the full referential-integrity sweep over approved artifacts. Dataset
 construction and freezing (spec §42.5–42.10) are covered in `docs/DATASET_AUTHORING.md` and
 `docs/PROCEDURES_AND_INTERFACES.md`.
@@ -387,3 +408,330 @@ container runtime with no network, a read-only filesystem, dropped capabilities,
 and an unprivileged user. If the runtime is unavailable, the experiment records a sandbox error
 and does not execute the candidate. Local execution exists only for repository-owned deterministic
 mock fixtures used by offline tests.
+
+## 17. Corrected `v0.2.0` release and validation sequence
+
+The corrective release preserves `v0.1.0`, its frozen artifacts, and all historical run outputs.
+Do not use `--dev-overwrite` against `v0.1.0`.
+
+### 17.1 Human review gates
+
+First inspect and review the corrected request labels. The original ownership wording becomes a
+clarification case; the explicit tier-transition wording becomes its invariant replacement.
+
+```bash
+uv run lexstab review requests \
+  --input dataset/requests/candidate/corrective-v0.2.0.jsonl \
+  --reviewer phillip \
+  --interactive
+```
+
+Then generate all eight model-discovered operation renderings. This is 400 fresh Opus calls when
+`execution_primary` is configured as the pinned Opus model.
+
+```bash
+uv run lexstab discover renderings \
+  --operations ESCALATE_INCIDENT,REASSIGN_INCIDENT,CLOSE_INCIDENT,REQUEST_MORE_INFORMATION,REQUEST_APPROVAL,REFUND_DUPLICATE_CHARGE,REQUEST_MANAGER_REVIEW,SUSPEND_ACCOUNT \
+  --execution-model-role execution_primary \
+  --samples 50 \
+  --models config/models.local.yaml \
+  --output dataset/renderings/candidate/discovery-opus-v0.2.0.jsonl
+```
+
+The discovery command requests provider-enforced JSON structured output and checkpoints every
+sample immediately beside the candidate file as `discovery-opus-v0.2.0.samples.jsonl`. It also
+writes `discovery-opus-v0.2.0.summary.json`. If the command is interrupted, repeat the same command
+to resume. Previously completed compatible samples are reused. Do not delete the sample checkpoint
+until discovery and human review are complete.
+
+The checkpoint is append-only. A retried sample retains both its failed and successful provider
+attempts, so `wc -l` can exceed 400. The completed experiment requires 400 unique sample keys and
+400 effective valid responses, not exactly 400 physical checkpoint lines. The summary records both
+figures under `checkpoint_audit`.
+
+If discovery reports five consecutive invalid structured responses for an operation, it stops that
+operation and preserves the responses for diagnosis. Provider failures stop the command immediately
+after the failed response is recorded. Neither failure mode silently substitutes a semantic retry.
+
+Stop and inspect the eight candidates before approval. The review command records the human
+reviewer and supersedes prior active discovered renderings for the same operation.
+
+```bash
+uv run lexstab review renderings \
+  --input dataset/renderings/candidate/discovery-opus-v0.2.0.jsonl \
+  --reviewer phillip \
+  --interactive
+```
+
+The interactive review approves, rejects, or defers each operation independently. Approved and
+rejected rows leave the candidate file; deferred rows remain for later review. Batch approval is
+still available through `--decision APPROVE`, but should only be used after every remaining row has
+already been inspected.
+
+The first RMI discovery identified a waiting-state label rather than the outbound action and was
+rejected. Before rediscovering that one operation, review the corrected request corpus:
+
+```bash
+uv run lexstab review requests \
+  --input dataset/requests/candidate/rmi-contract-v0.2.0.jsonl \
+  --reviewer phillip \
+  --interactive
+```
+
+The corrected contract keeps the current support team and tier, requires an explicit public
+reporter message, marks the incident as awaiting its original reporter, and records a reporter
+notification. A request that identifies the incident and operation but omits the message must
+clarify. After approving the request candidates, run only the revised 50-call discovery:
+
+```bash
+uv run lexstab discover renderings \
+  --operations REQUEST_MORE_INFORMATION \
+  --execution-model-role execution_primary \
+  --samples 50 \
+  --models config/models.local.yaml \
+  --domain-root dataset/domain/v0.2.0 \
+  --output dataset/renderings/candidate/discovery-opus-v0.2.0-rmi-corrected.jsonl
+
+uv run lexstab review renderings \
+  --input dataset/renderings/candidate/discovery-opus-v0.2.0-rmi-corrected.jsonl \
+  --reviewer phillip \
+  --domain-root dataset/domain/v0.2.0 \
+  --cases-root dataset/cases/support-v0.2.0 \
+  --interactive
+```
+
+The original 50 RMI samples and rejected `await-info` rendering remain as audit evidence. Do not
+reuse their checkpoint for the corrected discovery card.
+
+### 17.2 Freeze and verify
+
+```bash
+uv run lexstab benchmark freeze \
+  --version 0.2.0 \
+  --changelog-file dataset/manifests/changelog-v0.2.0.json
+
+uv run lexstab benchmark verify \
+  --manifest dataset/manifests/benchmark-v0.2.0.json
+```
+
+The corrected freeze rejects any mock-derived discovered rendering, any operation without exactly
+one active discovered rendering, and any discovered template that changes canonical placeholders
+or text outside the lexical label.
+
+### 17.3 Targeted provider checks
+
+The development provider check covers B/C/F, P2/P3/P4, LP0B/LP1/LP3, explicit refusal and
+clarification requests, the hidden-state grounding case, and the corrected ownership stimuli.
+Explicit case and request IDs are now audited against the selected split. A cross-split mismatch
+fails before any provider call instead of silently removing stimuli.
+
+```bash
+uv run lexstab run \
+  --config config/run.v0.2-provider-check.yaml \
+  --run-id run-v0.2-provider-check
+
+jq '{status,healthy,baseline_eligible,provider_error_calls,length_terminated_calls,aborted_cells}' \
+  runs/run-v0.2-provider-check/run-summary.json
+
+uv run lexstab evaluate --run runs/run-v0.2-provider-check
+uv run lexstab report --run runs/run-v0.2-provider-check --formats markdown,html,csv,parquet
+```
+
+Do not proceed unless provider errors, length terminations, and aborted cells are zero. Any length
+termination sets `status: length_terminated`, `healthy: false`, and `baseline_eligible: false`.
+Inspect the P3 and LP3 headline rows and require schema validity of 1.0 in this targeted check.
+
+Run the corrected request-more-information contract separately because `RMI_001` and `CLOSE_001`
+belong to the validation split:
+
+```bash
+uv run lexstab run \
+  --config config/run.v0.2-rmi-check.yaml \
+  --dry-run
+
+uv run lexstab run \
+  --config config/run.v0.2-rmi-check.yaml \
+  --run-id run-v0.2-rmi-check
+
+jq '{status,healthy,baseline_eligible,provider_error_calls,length_terminated_calls,aborted_cells}' \
+  runs/run-v0.2-rmi-check/run-summary.json
+
+uv run lexstab evaluate --run runs/run-v0.2-rmi-check
+uv run lexstab report --run runs/run-v0.2-rmi-check --formats markdown,html,csv,parquet
+```
+
+The policy and planner stages use their v2 contracts in current harness runs. These contracts
+distinguish `NO_POLICY_REQUIRED` from missing information and give the planner the same known state
+available to triage, policy, and the final executor. The run manifest records the hashes of these
+prompt versions. The original v1 prompt files remain unchanged for historical verification.
+
+### 17.4 Canonical-envelope diagnostic
+
+This diagnostic is separate from the benchmark matrix and never enters headline metrics.
+
+```bash
+uv run lexstab experiment canonical-envelope \
+  --manifest dataset/manifests/benchmark-v0.2.0.json \
+  --models config/models.local.yaml \
+  --output runs/canonical-envelope-v0.2.0.jsonl
+```
+
+Compare its three conditions directly. Preserve the artifact even if the original
+`status: RESOLVED` condition remains better or worse.
+
+### 17.5 One-repetition frozen run before scaling
+
+After updating `config/run.local.yaml` to the `v0.2.0` manifest and procedure path:
+
+```bash
+uv run lexstab run \
+  --config config/run.local.yaml \
+  --split development \
+  --repetitions 1 \
+  --run-id run-v0.2-frozen-1x
+
+uv run lexstab evaluate --run runs/run-v0.2-frozen-1x
+uv run lexstab report --run runs/run-v0.2-frozen-1x --formats markdown,html,csv,parquet
+```
+
+Read `measurement_warnings`, cohort-separated headline rows, and `rendering_contrast` before any
+larger run. Confirm that F-Model-Discovered has coverage for all operations and that the distinct
+subset is non-empty if a lexical comparison is claimed.
+
+Only after the one-repetition report is interpretable:
+
+```bash
+uv run lexstab run \
+  --config config/run.local.yaml \
+  --split development \
+  --repetitions 5 \
+  --run-id run-v0.2-frozen-5x
+```
+
+## 18. v0.2.1 corrective release sequence
+
+This sequence is intentionally gated. Do not run a real provider command until the two request
+candidates are approved and the v0.2.1 benchmark has frozen and verified.
+
+### 18.1 Human review gate
+
+```bash
+uv run lexstab review requests \
+  --input dataset/requests/candidate/corrective-v0.2.1.jsonl \
+  --reviewer phillip \
+  --interactive
+```
+
+Approve the ownership candidate only if Tier 1 to Tier 2 is escalation. Approve the contrast only
+if its exact reporter question and RMI operation are correct. Approval supersedes the named active
+source row. It does not edit a frozen v0.2.0 file.
+
+### 18.2 Local validation, freeze, and historical verification
+
+After both candidates are approved:
+
+```bash
+uv run lexstab schema generate
+uv run lexstab schema validate --all
+uv run pytest -q
+
+uv run lexstab domain validate --root dataset/domain/v0.2.1
+uv run lexstab cases validate \
+  --root dataset/cases/support-v0.2.1 \
+  --domain-root dataset/domain/v0.2.1
+uv run lexstab interfaces compare \
+  --domain-root dataset/domain/v0.2.1 \
+  --generic dataset/interfaces/v0.2.1/generic-action-proposal.json \
+  --typed dataset/interfaces/v0.2.1/typed-tools/support.jsonl
+
+uv run lexstab prompt-size-report \
+  --output runs/prompt-size-v0.2.1.json
+
+uv run lexstab benchmark freeze \
+  --version 0.2.1 \
+  --changelog-file dataset/manifests/changelog-v0.2.1.json
+
+uv run lexstab benchmark verify \
+  --manifest dataset/manifests/benchmark-v0.1.0.json
+uv run lexstab benchmark verify \
+  --manifest dataset/manifests/benchmark-v0.2.0.json
+uv run lexstab benchmark verify \
+  --manifest dataset/manifests/benchmark-v0.2.1.json
+```
+
+Never use `--dev-overwrite` for this release. The prompt-size command makes zero model calls and
+writes exact character and UTF-8 byte counts plus an explicitly labeled four-bytes-per-token
+estimate. The current fixed fixture targets a median increase below 2 percent and warns on any
+stage above 5 percent.
+
+### 18.3 Doctor and mock smoke
+
+```bash
+uv run lexstab doctor \
+  --models config/models.mock.yaml \
+  --run config/run.smoke.yaml
+
+uv run lexstab run \
+  --config config/run.v0.2.1-provider-check.yaml \
+  --dry-run
+```
+
+The dry run requires the frozen v0.2.1 manifest. It reports matrix size and estimated calls but
+does not invoke providers.
+
+### 18.4 Targeted real-provider checks
+
+These commands are operator-run steps and are not part of the corrective coding pass:
+
+```bash
+uv run lexstab run \
+  --config config/run.v0.2.1-provider-check.yaml \
+  --run-id run-v0.2.1-provider-check
+
+jq '{status,healthy,baseline_eligible,provider_error_calls,length_terminated_calls,aborted_cells}' \
+  runs/run-v0.2.1-provider-check/run-summary.json
+
+uv run lexstab evaluate --run runs/run-v0.2.1-provider-check
+uv run lexstab report \
+  --run runs/run-v0.2.1-provider-check \
+  --formats markdown,html,csv,parquet
+
+uv run lexstab run \
+  --config config/run.v0.2.1-rmi-check.yaml \
+  --run-id run-v0.2.1-rmi-check
+
+jq '{status,healthy,baseline_eligible,provider_error_calls,length_terminated_calls,aborted_cells}' \
+  runs/run-v0.2.1-rmi-check/run-summary.json
+
+uv run lexstab evaluate --run runs/run-v0.2.1-rmi-check
+uv run lexstab report \
+  --run runs/run-v0.2.1-rmi-check \
+  --formats markdown,html,csv,parquet
+```
+
+Stop if either health summary reports a provider error, length termination, or aborted cell.
+Require schema validity 1.0 for P3, P4, and LP3. Inspect actual runtime rendering and procedure IDs,
+the ownership request's escalation result, the replacement contrast's RMI result, and the exact
+first protected-message divergence.
+
+### 18.5 Frozen one-repetition run, then optional five-repetition run
+
+Do not begin this step during the corrective patch. After both targeted reports pass review:
+
+```bash
+uv run lexstab run \
+  --config config/run.v0.2.1-frozen-1x.yaml \
+  --run-id run-v0.2.1-frozen-1x
+uv run lexstab evaluate --run runs/run-v0.2.1-frozen-1x
+uv run lexstab report \
+  --run runs/run-v0.2.1-frozen-1x \
+  --formats markdown,html,csv,parquet
+```
+
+Only after that report is healthy and interpretable:
+
+```bash
+uv run lexstab run \
+  --config config/run.v0.2.1-frozen-5x.yaml \
+  --run-id run-v0.2.1-frozen-5x
+```

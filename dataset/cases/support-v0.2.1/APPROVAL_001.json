@@ -1,0 +1,71 @@
+{
+  "canonical": {
+    "arguments": {
+      "approver_role": "MANAGER"
+    },
+    "entity_id": "APR-0021",
+    "entity_type": "APPROVAL_REQUEST",
+    "operation_id": "REQUEST_APPROVAL"
+  },
+  "case_id": "APPROVAL_001",
+  "created_at": "2026-07-20T00:00:00Z",
+  "created_by": "human",
+  "difficulty": "intermediate",
+  "domain": "support",
+  "family_id": "APPROVAL",
+  "gold": {
+    "arguments": {
+      "approval_id": "APR-0021",
+      "approver_role": "MANAGER"
+    },
+    "decision": "ACT",
+    "resulting_state": {
+      "approvals": {
+        "APR-0021": {
+          "amount_usd": 750.0,
+          "approver_role": "MANAGER",
+          "operation_requested": "REFUND_DUPLICATE_CHARGE",
+          "status": "ROUTED",
+          "updated_at": "<run_clock>"
+        }
+      },
+      "orders": {
+        "ORD-0077": {
+          "charge_count": 2,
+          "duplicate_charge_amount_usd": 750.0,
+          "duplicate_charge_confirmed": true,
+          "fulfillment_state": "DELIVERED",
+          "payment_state": "PAID",
+          "refund_state": "NONE"
+        }
+      }
+    },
+    "tool": "request_approval"
+  },
+  "initial_state": {
+    "approvals": {
+      "APR-0021": {
+        "amount_usd": 750.0,
+        "operation_requested": "REFUND_DUPLICATE_CHARGE",
+        "status": "PENDING"
+      }
+    },
+    "orders": {
+      "ORD-0077": {
+        "charge_count": 2,
+        "duplicate_charge_amount_usd": 750.0,
+        "duplicate_charge_confirmed": true,
+        "fulfillment_state": "DELIVERED",
+        "payment_state": "PAID",
+        "refund_state": "NONE"
+      }
+    }
+  },
+  "schema_version": "1.2.0",
+  "tags": [
+    "single_turn",
+    "tool_selection",
+    "policy_dependent"
+  ],
+  "title": "Route a 750 USD refund approval request to a manager"
+}

@@ -500,7 +500,49 @@ def review_candidates(
             deferred.append(row)
     if approved and approved_output:
         existing = jsonl_read(approved_output) if approved_output.exists() else []
-        jsonl_write(approved_output, existing + approved)
+        existing_by_id = {row["request_id"]: row for row in existing}
+        superseded_ids = {
+            request_id
+            for row in approved
+            for request_id in (row.get("provenance") or {}).get(
+                "supersedes_request_ids", []
+            )
+        }
+        missing_superseded = sorted(superseded_ids - set(existing_by_id))
+        if missing_superseded:
+            raise ValueError(
+                "approved candidates reference unknown superseded requests: "
+                + ", ".join(missing_superseded)
+            )
+        updated_existing = []
+        for row in existing:
+            if row["request_id"] not in superseded_ids:
+                updated_existing.append(row)
+                continue
+            replacement = dict(row)
+            replacement_validation = dict(replacement["validation"])
+            replacement_validation["status"] = "SUPERSEDED"
+            replacement_validation["reviewers"] = list(
+                replacement_validation.get("reviewers", [])
+            ) + [{
+                "reviewer_id": reviewer_id,
+                "decision": "SUPERSEDE",
+                "notes": (
+                    "Superseded by an approved corrective request: "
+                    + ", ".join(
+                        candidate["request_id"]
+                        for candidate in approved
+                        if row["request_id"] in (
+                            candidate.get("provenance") or {}
+                        ).get("supersedes_request_ids", [])
+                    )
+                ),
+                "reviewed_at": now,
+            }]
+            replacement["validation"] = replacement_validation
+            models.NLRequest.model_validate(replacement)
+            updated_existing.append(replacement)
+        jsonl_write(approved_output, updated_existing + approved)
     if rejected and rejected_output:
         existing = jsonl_read(rejected_output) if rejected_output.exists() else []
         jsonl_write(rejected_output, existing + rejected)

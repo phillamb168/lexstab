@@ -21,6 +21,8 @@ SCHEMA_MAP: dict[str, type[BaseModel]] = {
     "domain.schema.json": models.DomainFile,
     "operation.schema.json": models.Operation,
     "case.schema.json": models.CanonicalCase,
+    "canonical-resolution.schema.json": models.CanonicalResolution,
+    "lexical-name.schema.json": models.LexicalNameResponse,
     "context.schema.json": models.FrozenContext,
     "request.schema.json": models.NLRequest,
     "rendering.schema.json": models.Rendering,

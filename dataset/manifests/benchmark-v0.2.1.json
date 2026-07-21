@@ -1,0 +1,424 @@
+{
+  "action_interfaces": {
+    "files": [
+      "dataset/interfaces/v0.2.1/generic-action-proposal.json",
+      "dataset/interfaces/v0.2.1/typed-tools/support.jsonl"
+    ],
+    "hashes": {
+      "dataset/interfaces/v0.2.1/generic-action-proposal.json": "sha256:51ee9d90e398bb5f93562118196c5745fe4445c9a18f810c44d8b9c998c33e10",
+      "dataset/interfaces/v0.2.1/typed-tools/support.jsonl": "sha256:59e9234650856b1b7de5be6e0ae9f43d9a5322462e00d5c9dd035516ef9dcbe4"
+    },
+    "ids": [
+      "GENERIC_ACTION_PROPOSAL_V1",
+      "TYPED_SUPPORT_TOOLS_V1"
+    ]
+  },
+  "allowed_architectures": [
+    "A0_DIRECT",
+    "A1_DIRECT_CLARIFY",
+    "B_RUNTIME",
+    "B_GOLD",
+    "C_RUNTIME",
+    "C_GOLD",
+    "D_DEFINITION_ONLY",
+    "E_ORGANIZATION_TERM",
+    "F_MODEL_DISCOVERED",
+    "B_EXTERNAL_GATE",
+    "B_EXTERNAL_GATE_GOLD",
+    "HUMAN_ORACLE",
+    "M0_NO_MEMORY",
+    "M1_STATIC_GLOSSARY",
+    "M2_RETRIEVED_MEMORY",
+    "M3_CANONICAL_RESOLVER",
+    "M4_PERSONALIZED_MEMORY",
+    "P0_RAW_PROPOSAL",
+    "P1_CLARIFY_PROPOSAL",
+    "P2_CANONICAL_PROPOSAL",
+    "P2F_CANONICAL_FACTS_PROPOSAL",
+    "P3_CANONICAL_PROCEDURE_PROPOSAL",
+    "P4_CANONICAL_PROCEDURE_TOOL",
+    "LP0_LANGUAGE_THROUGHOUT",
+    "LP0G_GOLD_START_LANGUAGE",
+    "LP0B_GOLD_START_LANGUAGE_BALANCED",
+    "LP0BV_GOLD_START_LANGUAGE_BALANCED_VERBATIM",
+    "LP1_CANONICAL_ONCE",
+    "LP2_CANONICAL_PROCEDURE",
+    "LP3_CANONICAL_PROCEDURE_TOOL"
+  ],
+  "artifact_root_hash": "sha256:78bcbea7141f381c3d425484346b97ccd94b34060b7e2174c638418a41392f41",
+  "benchmark_id": "lexstab-support",
+  "benchmark_version": "0.2.1",
+  "cases": {
+    "files": [
+      "dataset/cases/support-v0.2.1/APPROVAL_001.json",
+      "dataset/cases/support-v0.2.1/CLOSE_001.json",
+      "dataset/cases/support-v0.2.1/ESCALATE_001.json",
+      "dataset/cases/support-v0.2.1/ESCALATE_002.json",
+      "dataset/cases/support-v0.2.1/ESCALATE_003.json",
+      "dataset/cases/support-v0.2.1/ESCALATE_004.json",
+      "dataset/cases/support-v0.2.1/ESCALATE_005.json",
+      "dataset/cases/support-v0.2.1/REASSIGN_001.json",
+      "dataset/cases/support-v0.2.1/REFUND_001.json",
+      "dataset/cases/support-v0.2.1/REVIEW_001.json",
+      "dataset/cases/support-v0.2.1/RMI_001.json",
+      "dataset/cases/support-v0.2.1/SUSPEND_001.json"
+    ],
+    "hashes": {
+      "APPROVAL_001": "sha256:ad029828ac1b662faf08e24a4e6232612f3a59e721fa1648f3f21b233ec99cd7",
+      "CLOSE_001": "sha256:d6b248aa9f43e8f64265465205a74f3e5a929afd30a805e5437ba729c5451609",
+      "ESCALATE_001": "sha256:fc49526eff230f0edb3a93cbb878e5d91af7ceb80b152ccf7ce0a00db2be0a80",
+      "ESCALATE_002": "sha256:60b9106b344ed70c278514e5a191ff1908d4085cc1bc24e430e89e3c6edd1a95",
+      "ESCALATE_003": "sha256:724d1c1302bb71ae7f834322f621900e7f0b265355cd5514baf9a246c1317a2a",
+      "ESCALATE_004": "sha256:bf07a3a1d7a07fb970da9ffd55cc2af0c62bbdd7965a450803fe118914e01d41",
+      "ESCALATE_005": "sha256:0051ec473f9b67767e97fdb51d9213e21b23f0a0975745f181a75dd06367d0c5",
+      "REASSIGN_001": "sha256:65226e13a37eaa1420e2cfa0ed165d576dd2691805f8da3464d219211b8bf3db",
+      "REFUND_001": "sha256:ba01745dbf14874c4f8bf72fe4a0f38adbcd6b81d87840011e9250ad39356cdf",
+      "REVIEW_001": "sha256:16b80d0d99247c27c1046afe8ae385f9266fbcb5f823cacae210243615a3ab7d",
+      "RMI_001": "sha256:61b6c93806a21c1f338b81ca7b5aaf0ead32c84c0c7794c691198043358d16d6",
+      "SUSPEND_001": "sha256:a41d036b4b2589ac36ebeb1d332574949fde842a5fe570e9887428286f01dde6"
+    },
+    "ids": [
+      "APPROVAL_001",
+      "CLOSE_001",
+      "ESCALATE_001",
+      "ESCALATE_002",
+      "ESCALATE_003",
+      "ESCALATE_004",
+      "ESCALATE_005",
+      "REASSIGN_001",
+      "REFUND_001",
+      "REVIEW_001",
+      "RMI_001",
+      "SUSPEND_001"
+    ]
+  },
+  "changelog": [
+    {
+      "approved_by": "phillip",
+      "change": "Preserved benchmark v0.1.0 and v0.2.0; v0.2.1 uses isolated domain, case, interface, elicitation, request, prompt, and frozen artifact versions.",
+      "version": "0.2.1"
+    },
+    {
+      "approved_by": "phillip",
+      "change": "Relabeled the Tier 1 to Tier 2 ownership request as an ESCALATE_INCIDENT invariant under new request REQ-ESCALATE-001-0009; supersedes REQ-ESCALATE-001-CLARIFY-OWNERSHIP-0001 after human approval.",
+      "version": "0.2.1"
+    },
+    {
+      "approved_by": "phillip",
+      "change": "Replaced the state-conflicted CLOSE contrast with REQ-CLOSE-001-CONTRAST-0003, an executable REQUEST_MORE_INFORMATION contrast with an exact protected public message; supersedes REQ-CLOSE-001-CONTRAST-0002 after human approval.",
+      "version": "0.2.1"
+    },
+    {
+      "approved_by": "phillip",
+      "change": "Runtime rendering and deterministic procedure lookup now select artifacts from the resolved operation and record the actual artifact IDs and instantiated rendering text.",
+      "version": "0.2.1"
+    },
+    {
+      "approved_by": "phillip",
+      "change": "Added VERBATIM, CANONICAL, and SEMANTIC argument-preservation modes plus operation, argument, and verbatim first-divergence diagnostics using deterministic token-sequence comparison.",
+      "version": "0.2.1"
+    },
+    {
+      "approved_by": "phillip",
+      "change": "Added interpretation gates requiring six independent canonical cases and three operation families for broader generalization; raw observations remain available below the gates.",
+      "version": "0.2.1"
+    },
+    {
+      "approved_by": "phillip",
+      "change": "Added LP0BV_GOLD_START_LANGUAGE_BALANCED_VERBATIM and prompts triage-language-handoff-verbatim.v1, policy-language-handoff-verbatim.v1, planner-language-handoff-verbatim.v1, and action-proposal-executor-verbatim.v1. The fixed-fixture prompt-size report is provider-free.",
+      "version": "0.2.1"
+    },
+    {
+      "approved_by": "phillip",
+      "change": "Comparability note: v0.2.1 corrects request labels, contrast wording, runtime artifact selection, preservation scoring, and interpretation gates. Do not replace or directly merge its headline scores with v0.2.0 results.",
+      "version": "0.2.1"
+    }
+  ],
+  "contexts": {
+    "files": [
+      "dataset/contexts/frozen/support-v0.2.1.jsonl"
+    ],
+    "hashes": {
+      "dataset/contexts/frozen/support-v0.2.1.jsonl": "sha256:018018b2a32e69c21b3bec9156a6a6aa579aff42be732d4d6d481f59f4cdac24"
+    },
+    "ids": [
+      "CTX-EMPTY-001",
+      "CTX-INC-1047-IDENTIFIED-001"
+    ]
+  },
+  "created_at": "2026-07-21T19:16:49Z",
+  "description": "Support-domain lexical stability benchmark",
+  "development_overwrite": false,
+  "elicitation_cases": {
+    "files": [
+      "dataset/elicitation/approved-v0.2.1.jsonl"
+    ],
+    "hashes": {
+      "dataset/elicitation/approved-v0.2.1.jsonl": "sha256:14ff2589adc10a5f6656c9f7bec5283e7a8768920599363317e29e2beeaa4ae8"
+    },
+    "ids": [
+      "ELICIT-ESCALATE-001",
+      "ELICIT-REASSIGN-001",
+      "ELICIT-RMI-001"
+    ]
+  },
+  "ontology": {
+    "entities_file": "dataset/domain/v0.2.1/entities.json",
+    "hashes": {
+      "entities": "sha256:715659656e67d1f4965ccf41d95bf5f220ad2a2ff8157a42ad28859f11195e23",
+      "initial_state": "sha256:d1439d8499839554ab6cb619ef878809b5c40762068cce3c09bcc456b7726d11",
+      "operations": "sha256:7fa3dc016acb7f32b0f15a5b3d50d78f90ea52e837aac9d933f873e4b04d2273",
+      "policies": "sha256:cd5edd9493321b5d230d94ec9ba222c9ec8f57b94259b9034345ed590d9f0230"
+    },
+    "initial_state_file": "dataset/domain/v0.2.1/initial-state.json",
+    "operations_file": "dataset/domain/v0.2.1/operations.json",
+    "policies_file": "dataset/domain/v0.2.1/policies.json"
+  },
+  "procedures": {
+    "files": [
+      "dataset/procedures/frozen/support-v0.2.1.jsonl"
+    ],
+    "hashes": {
+      "dataset/procedures/frozen/support-v0.2.1.jsonl": "sha256:365a8e9fd4113b4b2a498e76198e34704046fbfbb9273c002edab17b871faa22"
+    },
+    "ids": [
+      "SKILL_CLOSE_INCIDENT_V1",
+      "SKILL_ESCALATE_INCIDENT_V1",
+      "SKILL_REASSIGN_INCIDENT_V1",
+      "SKILL_REFUND_DUPLICATE_CHARGE_V1",
+      "SKILL_REQUEST_APPROVAL_V1",
+      "SKILL_REQUEST_MANAGER_REVIEW_V1",
+      "SKILL_REQUEST_MORE_INFORMATION_V1",
+      "SKILL_SUSPEND_ACCOUNT_V1"
+    ]
+  },
+  "prompt_hashes": {
+    "action-proposal-executor-verbatim.v1": "sha256:e96d675e83a27f852f812c59b14d09fe91d0bec3a97d6ada672d691cd0a2fc54",
+    "action-proposal-executor.v1": "sha256:9e56c733a9a869994ecc42db134b68727a388693272002ab818c23984b34dcf2",
+    "adequacy-assessor.v1": "sha256:73b25fbd3264c7523f8dcaaa3fbc76be2e5d733028db32c426d5e1e353d784e2",
+    "adequacy-critic.v1": "sha256:82fbde67301bfb86889c1cd15dfd5f2f4d2bc03b22f615114097a050e3f4c432",
+    "adversarial-critic.v1": "sha256:dfd1287107206dc66e796ef97c3c24bdaa534ef27d99b0a3ea3a9e7ec08ebc54",
+    "ambiguity-classifier.v1": "sha256:f723e424a34c7eaa59e1d26b241d4703244169a01174c6b1d3c14cab97f18516",
+    "canonical-executor.v1": "sha256:0d990839c7cbe4445f7fb0abc7ed0564bcc559cfe4971e693e2d032e78a6f623",
+    "canonicalizer.v1": "sha256:e87b9f971862879bd91bb7bc8ab1c02d1e9350dbe811cafd657fe861bbe265d6",
+    "canonicalizer.v2": "sha256:f072e38a4cffb3d9e6c0156515b5e86387f87bc98f78d06066f5fd277b1cb1bb",
+    "clarification-generator.v1": "sha256:c881160e9ded531ebe69c89e872a5ceba5d6238cf958456c7527103f49fdb21e",
+    "clarification-resolver.v1": "sha256:dedcd65925bf636acf9cd350518b348ff2ea53db6bb69d7823ef688035fcefc8",
+    "code-modification.v1": "sha256:0df95ea90899a9b1b2fb2b9e9e3e7f180e4f484e9056c5c6192b4742ecb6de68",
+    "contrast-generator.v1": "sha256:985fee749b442b85c7a2170a28dbf25539c2e27c0698c6a070d0b6af5288ec2f",
+    "coverage-planner.v1": "sha256:12913764229bed4f863a2ae873e8ca812efee000f5bbf7012ec1474dc2504172",
+    "direct-clarify-executor.v1": "sha256:c604c4458fdebdd8efb2a775c52ab71365bce0381b7d10e7a298b6fb2dab42e7",
+    "direct-executor.v1": "sha256:6899108b560b0047e3f396e5c93c78b796223b48122a5710153af661353942cc",
+    "engineering-canonicalizer.v1": "sha256:58be213f0dc9465098eeb370be31105257e243bf87404ac968f6b9881a5bca9b",
+    "equivalence-critic.v1": "sha256:f9efb359b70f301b51c1d975b2e148c7056b0beec6e7f4dfc8cc41c9a9446dab",
+    "executor.v1": "sha256:339c8fe38d7b376f4543508eb86e67554d6ce74a3417d535b0cdf221cf9b9036",
+    "executor.v2": "sha256:1bb6a3e3911bab43f5a670989de9e49bd3e15c42e48aeb5ef12ecc18b1aa3b26",
+    "failure-analyst.v1": "sha256:72bf5b6670e7e40e8b26dd2c64dae7ebddf517bdb06c4e7eedaf3e85a6b46cfc",
+    "grammar-author-term.v1": "sha256:ea3f2e4007ab8a3289b00a4200e244185f4a61b11cef717d95afb40f24957d74",
+    "grammar-correction-judge.v1": "sha256:8db17e7e11cf8acb69748d98f2fb337f30ec1d3681b611c16a8df501302800fe",
+    "grammar-definition-only.v1": "sha256:630065f4f0c825b793608e922c2c6996a47517a0d56e5d554a2d30e372db969a",
+    "grammar-model-term-definition.v1": "sha256:3d5afb33da3af9290f94f2e59e8ed6fd4220ebf08ed4ca7960e78d6a16d26734",
+    "grammar-model-term.v1": "sha256:5aa39a3796a95952a3e228a896da7f05f7328edff51cea98ce6d4b81b3f201ea",
+    "high-distance-generator.v1": "sha256:4c60a7b83fb798d89ec971c89a28a2e49522aff4cc01fbf3551998afefa6cd60",
+    "language-handoff.v1": "sha256:4022d2959af1b0968440cac7a558f102b45824cd4f3a7706e99a594a56ba38e6",
+    "lexical-convergence.v1": "sha256:954070f59c3baf398613372116a1f5cc5dbec88559b8c4fec349afeb929f0cfd",
+    "lexical-drift.v1": "sha256:ee0a66e32f3485c249498b0c33e073e90b71afd3687474c089c053d813696987",
+    "operation-lexical-convergence.v1": "sha256:537d026db5e384342dcd3e6933cea584b98dbdb1bdf50b02de9c56ce60da3351",
+    "planner-language-handoff-verbatim.v1": "sha256:6f76bc7113d0d0e21a570c2a8ca1c25da7a8371f192516876dcd34da2be47687",
+    "planner-language-handoff.v1": "sha256:03adef0a5b3919b92bfba00b0b0e376e98eabbad3d738c377463b241322dc254",
+    "planner-language-handoff.v2": "sha256:82fad4cff3fdb3116957cfa3a9c7cbdd6893c0729fc6e315152bfc04e467b6b4",
+    "planner.v1": "sha256:7a2a7396315130af91feabf5afebe88011c7dd8ecbbb8abd2662ce38a8fb7074",
+    "planner.v2": "sha256:9a1d793ba18e2063568b225c02cdacec241a6cbf775e6adb2d25fc4a8ace4398",
+    "policy-language-handoff-verbatim.v1": "sha256:b44c2c5cddd7d4721bbe25c954435a2f21d7083fde7dc0978623261342873d40",
+    "policy-language-handoff.v1": "sha256:6f4031ff3183211fdeab3534df8bb6909f14129c37fd99fcecd550a0eaccf81d",
+    "policy-language-handoff.v2": "sha256:8d4da34d7a6e3d68f29c4f134af1f7fbe39b65d0b528acb9e5320d84c15a1579",
+    "policy.v1": "sha256:51e1dbd1804d55e4fef2e67427eaeea67fb5625338027b26d9c508b26b313b05",
+    "policy.v2": "sha256:ed7f14968694ed5a8f0eea687e6161385e9a8011e79ad503f290e7dada5d0063",
+    "procedure-executor.v1": "sha256:995074baf5b0bf755b7022ed693cf9a5d369c4dd97c69649cedabde4c7faea21",
+    "procedure-proposal-executor.v2": "sha256:50967ca82b3c48e3f6d3b7d0e46b6f8e288ed181a47bed59ef16b8490a737122",
+    "procedure-router.v1": "sha256:ef491475435b232fca8e8a7af805bf96c4bf00d6565f6442c3fcef9b91504e23",
+    "procedure-tool-executor.v2": "sha256:3e2623d398704ed700a9c909dc475a70100ca4d198cd5bb0aef74e230c7c64d3",
+    "rendered-executor.v1": "sha256:de26a76ccb15da8f48c90c985168b7d12d77c1c78e8e40e8c2d34f7d8e76182a",
+    "request-generator.v1": "sha256:42c09c885d8f3ba5ba1dea0b8673e3378902845b7b07aabb4fd9d221169e07ad",
+    "semantic-equivalence-judge.v1": "sha256:e591b75a05a5ba9434527094625ccbbb15d3b595757c8cec23b7d9028ca05baf",
+    "trajectory-judge.v1": "sha256:d055c11563911961bdfe25ed18ff12e50a560e985449f883487dbe845867268e",
+    "triage-language-handoff-verbatim.v1": "sha256:428ebe4067185b6097a3553607787049c0f46846f5a7d75ac63d966a0e88685e",
+    "triage-language-handoff.v1": "sha256:88b7c686b1a563f3b76d8a7c9c7bfc3d0470c307746b6f4e40d2bac9bbbfe3c2",
+    "triage.v1": "sha256:d58c9b9b080a923fc7bca022df377c67cf5b07586513d097414dff846e360aff"
+  },
+  "prompt_versions": {
+    "action_proposal_executor": "action-proposal-executor.v1",
+    "action_proposal_executor_verbatim": "action-proposal-executor-verbatim.v1",
+    "adequacy_assessor": "adequacy-assessor.v1",
+    "canonical_executor": "canonical-executor.v1",
+    "canonicalizer": "canonicalizer.v2",
+    "clarification_resolver": "clarification-resolver.v1",
+    "direct_clarify_executor": "direct-clarify-executor.v1",
+    "direct_executor": "direct-executor.v1",
+    "executor": "executor.v2",
+    "language_handoff": "language-handoff.v1",
+    "planner": "planner.v2",
+    "planner_language_handoff": "planner-language-handoff.v2",
+    "planner_language_handoff_verbatim": "planner-language-handoff-verbatim.v1",
+    "policy": "policy.v2",
+    "policy_language_handoff": "policy-language-handoff.v2",
+    "policy_language_handoff_verbatim": "policy-language-handoff-verbatim.v1",
+    "procedure_proposal_executor": "procedure-proposal-executor.v2",
+    "procedure_tool_executor": "procedure-tool-executor.v2",
+    "rendered_executor": "rendered-executor.v1",
+    "triage": "triage.v1",
+    "triage_language_handoff": "triage-language-handoff.v1",
+    "triage_language_handoff_verbatim": "triage-language-handoff-verbatim.v1"
+  },
+  "renderings": {
+    "files": [
+      "dataset/renderings/frozen/support-v0.2.1.jsonl"
+    ],
+    "hashes": {
+      "dataset/renderings/frozen/support-v0.2.1.jsonl": "sha256:607b5a749290339d5a517839f7db62955d4c92a5320853e8f2dd3ea5908ad552"
+    },
+    "ids": [
+      "REN-CLOSE-INCIDENT-CANONICAL-001",
+      "REN-CLOSE-INCIDENT-DISCOVERED-CLAUDE-OPUS-4-8-001",
+      "REN-ESCALATE-CANONICAL-001",
+      "REN-ESCALATE-DEFN-001",
+      "REN-ESCALATE-HUMAN-001",
+      "REN-ESCALATE-INCIDENT-DISCOVERED-CLAUDE-OPUS-4-8-001",
+      "REN-ESCALATE-OPAQUE-001",
+      "REN-ESCALATE-ORG-001",
+      "REN-REASSIGN-INCIDENT-CANONICAL-001",
+      "REN-REASSIGN-INCIDENT-DISCOVERED-CLAUDE-OPUS-4-8-001",
+      "REN-REFUND-DUPLICATE-CHARGE-CANONICAL-001",
+      "REN-REFUND-DUPLICATE-CHARGE-DISCOVERED-CLAUDE-OPUS-4-8-001",
+      "REN-REQUEST-APPROVAL-CANONICAL-001",
+      "REN-REQUEST-APPROVAL-DISCOVERED-CLAUDE-OPUS-4-8-001",
+      "REN-REQUEST-MANAGER-REVIEW-CANONICAL-001",
+      "REN-REQUEST-MANAGER-REVIEW-DISCOVERED-CLAUDE-OPUS-4-8-001",
+      "REN-REQUEST-MORE-INFORMATION-CANONICAL-001",
+      "REN-REQUEST-MORE-INFORMATION-DISCOVERED-CLAUDE-OPUS-4-8-001",
+      "REN-SUSPEND-ACCOUNT-CANONICAL-001",
+      "REN-SUSPEND-ACCOUNT-DISCOVERED-CLAUDE-OPUS-4-8-001"
+    ]
+  },
+  "requests": {
+    "files": [
+      "dataset/requests/frozen/support-v0.2.1.jsonl"
+    ],
+    "hashes": {
+      "dataset/requests/frozen/support-v0.2.1.jsonl": "sha256:31a982dd7f0200513553e76af4e633dc4d1d4f6361f9bb331b147599f602fe91"
+    },
+    "ids": [
+      "REQ-APPROVAL-001-0001",
+      "REQ-APPROVAL-001-0002",
+      "REQ-APPROVAL-001-0003",
+      "REQ-APPROVAL-001-INADEQUATE-0001",
+      "REQ-APPROVAL-001-INADEQUATE-0002",
+      "REQ-APPROVAL-001-REFUSAL-0001",
+      "REQ-CLOSE-001-0001",
+      "REQ-CLOSE-001-0002",
+      "REQ-CLOSE-001-0003",
+      "REQ-CLOSE-001-CONTRAST-0003",
+      "REQ-CLOSE-001-INADEQUATE-0001",
+      "REQ-CLOSE-001-INADEQUATE-0002",
+      "REQ-ESCALATE-001-0001",
+      "REQ-ESCALATE-001-0002",
+      "REQ-ESCALATE-001-0003",
+      "REQ-ESCALATE-001-0004",
+      "REQ-ESCALATE-001-0005",
+      "REQ-ESCALATE-001-0007",
+      "REQ-ESCALATE-001-0008",
+      "REQ-ESCALATE-001-0009",
+      "REQ-ESCALATE-001-CONTRAST-0001",
+      "REQ-ESCALATE-001-INADEQUATE-0001",
+      "REQ-ESCALATE-001-INADEQUATE-0002",
+      "REQ-ESCALATE-002-0001",
+      "REQ-ESCALATE-002-0002",
+      "REQ-ESCALATE-002-0003",
+      "REQ-ESCALATE-002-CONTRAST-0001",
+      "REQ-ESCALATE-002-INADEQUATE-0001",
+      "REQ-ESCALATE-002-INADEQUATE-0002",
+      "REQ-ESCALATE-003-0001",
+      "REQ-ESCALATE-003-0002",
+      "REQ-ESCALATE-003-0003",
+      "REQ-ESCALATE-003-CONTRAST-0001",
+      "REQ-ESCALATE-003-INADEQUATE-0001",
+      "REQ-ESCALATE-003-INADEQUATE-0002",
+      "REQ-ESCALATE-004-REFUSAL-0001",
+      "REQ-ESCALATE-004-REFUSAL-0002",
+      "REQ-ESCALATE-005-INADEQUATE-0001",
+      "REQ-ESCALATE-005-INADEQUATE-0002",
+      "REQ-REASSIGN-001-0001",
+      "REQ-REASSIGN-001-0002",
+      "REQ-REASSIGN-001-0003",
+      "REQ-REASSIGN-001-CONTRAST-0001",
+      "REQ-REASSIGN-001-INADEQUATE-0001",
+      "REQ-REASSIGN-001-INADEQUATE-0002",
+      "REQ-REFUND-001-0001",
+      "REQ-REFUND-001-0002",
+      "REQ-REFUND-001-0003",
+      "REQ-REFUND-001-CONTRAST-0001",
+      "REQ-REFUND-001-INADEQUATE-0001",
+      "REQ-REFUND-001-INADEQUATE-0002",
+      "REQ-REVIEW-001-0001",
+      "REQ-REVIEW-001-0002",
+      "REQ-REVIEW-001-0003",
+      "REQ-REVIEW-001-INADEQUATE-0001",
+      "REQ-REVIEW-001-INADEQUATE-0002",
+      "REQ-REVIEW-001-REFUSAL-0001",
+      "REQ-RMI-001-0004",
+      "REQ-RMI-001-0005",
+      "REQ-RMI-001-0006",
+      "REQ-RMI-001-CONTRAST-0001",
+      "REQ-RMI-001-INADEQUATE-0003",
+      "REQ-RMI-001-INADEQUATE-0004",
+      "REQ-RMI-001-INADEQUATE-0005",
+      "REQ-RMI-001-REFUSAL-0001",
+      "REQ-SUSPEND-001-0001",
+      "REQ-SUSPEND-001-0002",
+      "REQ-SUSPEND-001-0003",
+      "REQ-SUSPEND-001-CONTRAST-0001",
+      "REQ-SUSPEND-001-INADEQUATE-0001",
+      "REQ-SUSPEND-001-INADEQUATE-0002"
+    ]
+  },
+  "schema_version": "1.2.0",
+  "semantic_memory": {
+    "files": [
+      "dataset/memory/glossaries/support.jsonl"
+    ],
+    "hashes": {
+      "dataset/memory/glossaries/support.jsonl": "sha256:37e7f8849f88ebb39dd2a4d47cf156be66c62860829ef6a5ddaa192da3b51655"
+    },
+    "ids": [
+      "MEM-ORG-ESCALATE-001",
+      "MEM-ORG-PAYGRADE-001",
+      "MEM-ORG-STALE-001",
+      "MEM-USER-BLESSED-001"
+    ]
+  },
+  "splits": {
+    "development": [
+      "ESCALATE_001",
+      "ESCALATE_002",
+      "ESCALATE_003",
+      "ESCALATE_004",
+      "ESCALATE_005",
+      "REASSIGN_001",
+      "REFUND_001"
+    ],
+    "test": [
+      "REVIEW_001",
+      "SUSPEND_001",
+      "APPROVAL_001"
+    ],
+    "validation": [
+      "CLOSE_001",
+      "RMI_001"
+    ]
+  },
+  "validation": {
+    "referential_integrity_valid": true,
+    "schema_valid": true,
+    "state_transitions_valid": true
+  }
+}

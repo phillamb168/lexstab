@@ -85,6 +85,38 @@ def _ok(message: str) -> None:
     typer.secho(message, fg=typer.colors.GREEN)
 
 
+@app.command("prompt-size-report")
+def prompt_size_report_cmd(
+    output: str = typer.Option(
+        "runs/prompt-size-v0.2.1.json", "--output",
+        help="JSON report path; a Markdown companion is written beside it",
+    ),
+    target_median_percent: float = typer.Option(2.0, "--target-median-percent"),
+    warning_percent: float = typer.Option(5.0, "--warning-percent"),
+) -> None:
+    """Measure LP0B reminder overhead from a fixed fixture without model calls."""
+    root = _root()
+    from lexstab.promptsize import build_prompt_size_report, render_prompt_size_markdown
+
+    report = build_prompt_size_report(
+        root,
+        target_median_percent=target_median_percent,
+        per_stage_warning_percent=warning_percent,
+    )
+    destination = root / output
+    json_write(destination, report)
+    markdown_path = destination.with_suffix(".md")
+    markdown_path.write_text(render_prompt_size_markdown(report), encoding="utf-8")
+    summary = report["summary"]
+    _ok(
+        f"prompt-size report: median delta {summary['median_delta_percent']:.2f}% "
+        f"with {len(summary['stages_above_warning'])} stage warning(s); "
+        "provider calls: 0"
+    )
+    typer.echo(f"  JSON: {destination}")
+    typer.echo(f"  Markdown: {markdown_path}")
+
+
 # ---------------------------------------------------------------- doctor (§42.3)
 
 
@@ -146,9 +178,12 @@ def doctor(
                 adapter = build_provider(role)
                 record = adapter.invoke(
                     role=name, model_id=role.model_id,
-                    messages=[{"role": "user", "content": "Reply with OK."}],
+                    messages=[{"role": "system", "content": "Reply with OK."}],
                     tools=None, response_schema=None,
-                    parameters={"max_tokens": 8, "temperature": 0.0},
+                    parameters={
+                        **role.parameters,
+                        "max_tokens": min(int(role.parameters.get("max_tokens", 8)), 16),
+                    },
                     metadata={"run_id": "doctor", "cell_id": "doctor-ping",
                               "timestamp": "", "response_kind": "ping"},
                 )
@@ -216,10 +251,11 @@ def domain_validate(
 def cases_validate(
     action: str = typer.Argument("validate"),
     root_dir: str = typer.Option("dataset/cases/support", "--root"),
+    domain_root: str = typer.Option("dataset/domain", "--domain-root"),
 ) -> None:
     root = _root()
     try:
-        domain = DomainStore.load(root)
+        domain = DomainStore.load(root, domain_root)
         cases = load_cases(root, root_dir)
         from lexstab.artifacts import validate_case_against_domain
 
@@ -303,18 +339,22 @@ def interfaces_validate(root_dir: str = typer.Option("dataset/interfaces", "--ro
 
 
 @app.command("integrity")
-def integrity_check() -> None:
+def integrity_check(
+    domain_root: str = typer.Option("dataset/domain", "--domain-root"),
+    cases_root: str = typer.Option("dataset/cases/support", "--cases-root"),
+    interfaces_root: str = typer.Option("dataset/interfaces", "--interfaces-root"),
+) -> None:
     """Full referential-integrity sweep over approved artifacts."""
     root = _root()
-    domain = DomainStore.load(root)
-    cases = load_cases(root)
+    domain = DomainStore.load(root, domain_root)
+    cases = load_cases(root, cases_root)
     requests = load_requests(root, "dataset/requests/approved/support.jsonl")
     contexts = load_contexts(root, "dataset/contexts/approved.jsonl")
     renderings = load_renderings(root, "dataset/renderings/approved/support.jsonl")
     procedures = load_procedures(root, "dataset/procedures/approved/support.jsonl")
     interfaces = load_interfaces(root, [
-        "dataset/interfaces/generic-action-proposal.json",
-        "dataset/interfaces/typed-tools/support.jsonl",
+        str(Path(interfaces_root) / "generic-action-proposal.json"),
+        str(Path(interfaces_root) / "typed-tools/support.jsonl"),
     ])
     errors = referential_integrity(domain, cases, requests, contexts, renderings, procedures, interfaces)
     if errors:
@@ -463,12 +503,49 @@ def review_requests_cmd(
     decisions: dict[str, str] = {}
     if interactive:
         for row in jsonl_read(path):
+            labels = row["labels"]
+            provenance = row.get("provenance") or {}
             typer.echo(f"\n[{row['request_id']}] case {row['case_id']}")
             typer.echo(f"  text: {row['text']}")
-            typer.echo(f"  labels: {json.dumps(row['labels'], default=str)[:200]}")
-            answer = typer.prompt("  decision [a]pprove / [r]eject / [s]econd-review / [k]eep", default="k")
+            typer.echo("  proposed labels:")
+            typer.echo(f"    semantic role: {labels.get('semantic_role')}")
+            typer.echo(f"    expected behavior: {labels.get('expected_behavior')}")
+            typer.echo(f"    lexical equivalence: {labels.get('lexical_equivalence')}")
+            typer.echo(f"    adequacy: {labels.get('adequacy')}")
+            typer.echo(f"    ambiguity: {labels.get('ambiguity')}")
+            typer.echo(
+                "    variation axes: "
+                + (", ".join(labels.get("variation_axes") or []) or "none")
+            )
+            if labels.get("missing_information"):
+                typer.echo(
+                    "    missing information: "
+                    + ", ".join(labels["missing_information"])
+                )
+            if labels.get("contrast_operation_id"):
+                typer.echo(
+                    f"    contrast operation: {labels['contrast_operation_id']}"
+                )
+                typer.echo(
+                    "    contrast arguments: "
+                    + json.dumps(
+                        labels.get("contrast_arguments") or {},
+                        ensure_ascii=False,
+                        sort_keys=True,
+                    )
+                )
+            supersedes = provenance.get("supersedes_request_ids") or []
+            if supersedes:
+                typer.echo("  supersedes on approval: " + ", ".join(supersedes))
+            answer = typer.prompt(
+                "  decision [a]pprove / [r]eject / [s]econd-review / [d]efer",
+                default="d",
+            )
             decisions[row["request_id"]] = {
-                "a": "APPROVE", "r": "REJECT", "s": "NEEDS_SECOND_REVIEW",
+                "a": "APPROVE",
+                "r": "REJECT",
+                "s": "NEEDS_SECOND_REVIEW",
+                "d": "NEEDS_SECOND_REVIEW",
             }.get(answer.strip().lower(), None) or "NEEDS_SECOND_REVIEW"
     result = review_candidates(
         path,
@@ -492,21 +569,33 @@ def discover_renderings_cmd(
     samples: int = typer.Option(50, "--samples"),
     role: str = typer.Option("execution_primary", "--execution-model-role"),
     output: str = typer.Option(..., "--output"),
+    domain_root: str = typer.Option("dataset/domain", "--domain-root"),
+    checkpoint: str = typer.Option(
+        None,
+        "--checkpoint",
+        help="Optional resumable per-sample JSONL path; defaults beside --output",
+    ),
 ) -> None:
     """Blind lexical-convergence discovery (development material only, §22.2)."""
     root = _root()
-    from lexstab.discovery import discover_renderings
+    from lexstab.discovery import DiscoveryError, discover_renderings
     from lexstab.providers.registry import build_provider
 
     models_config = load_models_config(
         root / models_path, strict_env=True, strict_roles={role}
     )
     provider = build_provider(models_config.role(role))
-    renderings = discover_renderings(
-        root, DomainStore.load(root), models_config, provider,
-        operation_ids=[op.strip() for op in operations.split(",") if op.strip()],
-        samples=samples, role=role, output=root / output,
-    )
+    try:
+        renderings = discover_renderings(
+            root, DomainStore.load(root, domain_root), models_config, provider,
+            operation_ids=[op.strip() for op in operations.split(",") if op.strip()],
+            samples=samples, role=role, output=root / output,
+            checkpoint=(root / checkpoint if checkpoint else None),
+            progress=typer.echo,
+        )
+    except DiscoveryError as exc:
+        _fail(str(exc))
+        return
     for rendering in renderings:
         dist = rendering["_distribution"]
         typer.echo(
@@ -521,28 +610,153 @@ def discover_renderings_cmd(
 def review_renderings_cmd(
     input_path: str = typer.Option(..., "--input"),
     reviewer: str = typer.Option("operator", "--reviewer"),
-    decision: str = typer.Option("APPROVE", "--decision"),
+    decision: str = typer.Option(
+        None,
+        "--decision",
+        help="Batch decision for all rows: APPROVE, REJECT, or DEFER",
+    ),
+    interactive: bool = typer.Option(
+        False,
+        "--interactive",
+        help="Review each rendering independently",
+    ),
+    show_request_variants: bool = typer.Option(
+        True,
+        "--show-request-variants/--hide-request-variants",
+        help="Show approved human-language variants for the same canonical operation",
+    ),
+    max_request_variants: int = typer.Option(
+        8,
+        "--max-request-variants",
+        min=1,
+        help="Maximum equivalent human-language examples displayed per operation",
+    ),
+    domain_root: str = typer.Option("dataset/domain", "--domain-root"),
+    cases_root: str = typer.Option("dataset/cases/support", "--cases-root"),
 ) -> None:
-    """Approve candidate renderings into the approved corpus."""
+    """Review discovered renderings individually or with an explicit batch decision."""
     root = _root()
-    import datetime as _dt
+    from lexstab.discovery import DiscoveryError, review_rendering_candidates
 
-    rows = jsonl_read(root / input_path)
-    approved_path = root / "dataset" / "renderings" / "approved" / "support.jsonl"
-    existing = jsonl_read(approved_path) if approved_path.exists() else []
-    existing_ids = {row["rendering_id"] for row in existing}
-    added = 0
-    for row in rows:
-        row = {key: value for key, value in row.items() if not key.startswith("_")}
-        if row["rendering_id"] in existing_ids or decision != "APPROVE":
-            continue
-        row["validation"] = {"status": "APPROVED", "reviewed_by": [reviewer],
-                             "approved_at": _dt.datetime.now(_dt.timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")}
-        models.Rendering.model_validate(row)
-        existing.append(row)
-        added += 1
-    jsonl_write(approved_path, existing)
-    _ok(f"approved {added} renderings into {approved_path.relative_to(root)}")
+    source = root / input_path
+    if not source.exists():
+        _fail(f"no candidate file at {input_path}")
+        return
+    if not interactive and decision is None:
+        _fail("choose --interactive or provide an explicit --decision")
+        return
+
+    decisions = {}
+    if interactive:
+        domain = DomainStore.load(root, domain_root)
+        cases = load_cases(root, cases_root)
+        approved_request_rows = []
+        for request_file in sorted((root / "dataset" / "requests" / "approved").glob("*.jsonl")):
+            approved_request_rows.extend(jsonl_read(request_file))
+        active_requests = [
+            request
+            for request in approved_request_rows
+            if (request.get("validation") or {}).get("status") in ("APPROVED", "FROZEN")
+        ]
+        approved_rendering_rows = jsonl_read(
+            root / "dataset" / "renderings" / "approved" / "support.jsonl"
+        )
+        for row in jsonl_read(source):
+            discovery = row.get("discovery") or {}
+            distribution = row.get("_distribution") or {}
+            operation_id = row["operation_id"]
+            operation = domain.operations[operation_id]
+            canonical_rendering = next(
+                (
+                    rendering
+                    for rendering in approved_rendering_rows
+                    if rendering.get("operation_id") == operation_id
+                    and rendering.get("category") == "CANONICAL_LABEL"
+                    and (rendering.get("validation") or {}).get("status")
+                    in ("APPROVED", "FROZEN")
+                ),
+                None,
+            )
+            operation_case_ids = {
+                case_id
+                for case_id, case in cases.items()
+                if case.canonical.operation_id == operation_id
+            }
+            operation_requests = [
+                request for request in active_requests
+                if request.get("case_id") in operation_case_ids
+            ]
+            equivalent_requests = [
+                request for request in operation_requests
+                if (request.get("labels") or {}).get("expected_behavior") == "EXECUTE"
+                and (request.get("labels") or {}).get("lexical_equivalence") == "INVARIANT"
+                and (request.get("labels") or {}).get("adequacy") == "ADEQUATE"
+                and (request.get("labels") or {}).get("ambiguity") == "UNAMBIGUOUS"
+            ]
+            control_counts = {}
+            for request in operation_requests:
+                behavior = (request.get("labels") or {}).get("expected_behavior", "UNKNOWN")
+                control_counts[behavior] = control_counts.get(behavior, 0) + 1
+            typer.echo(f"\n[{row['operation_id']}] {row['rendering_id']}")
+            typer.echo(f"  operation: {operation.description or operation.display_name}")
+            if canonical_rendering:
+                typer.echo(f"  canonical label: {canonical_rendering.get('label')}")
+                typer.echo(f"  canonical template: {canonical_rendering.get('template')}")
+            typer.echo(f"  label: {row.get('label')}")
+            typer.echo(f"  template: {row.get('template')}")
+            typer.echo(
+                "  convergence: "
+                f"{discovery.get('convergence_rate')}  "
+                f"entropy: {discovery.get('term_entropy')}  "
+                f"definition-only: {discovery.get('definition_only_rate')}"
+            )
+            typer.echo(
+                "  term counts: "
+                + json.dumps(discovery.get("term_counts") or distribution.get("alternatives") or {})
+            )
+            if show_request_variants:
+                typer.echo(
+                    f"  approved request corpus: {len(operation_requests)} total "
+                    f"{json.dumps(control_counts, sort_keys=True)}"
+                )
+                typer.echo(
+                    f"  equivalent human-language variants: {len(equivalent_requests)}"
+                )
+                for request in equivalent_requests[:max_request_variants]:
+                    labels = request.get("labels") or {}
+                    axes = ", ".join(labels.get("variation_axes") or [])
+                    typer.echo(
+                        f"    - [{request['case_id']} | {axes}] {request['text']}"
+                    )
+                hidden = len(equivalent_requests) - max_request_variants
+                if hidden > 0:
+                    typer.echo(f"    ... {hidden} more equivalent variants not shown")
+                typer.echo(
+                    "  Review scope: this decision changes only the discovered model-facing "
+                    "rendering; the requests above are unchanged reference stimuli."
+                )
+            answer = typer.prompt(
+                "  decision [a]pprove / [r]eject / [d]efer",
+                default="d",
+            )
+            decisions[row["rendering_id"]] = {
+                "a": "APPROVE",
+                "r": "REJECT",
+                "d": "DEFER",
+            }.get(answer.strip().lower(), "DEFER")
+    try:
+        result = review_rendering_candidates(
+            source,
+            root / "dataset" / "renderings" / "approved" / "support.jsonl",
+            root / "dataset" / "renderings" / "rejected" / "rejected.jsonl",
+            reviewer=reviewer,
+            decisions=decisions or None,
+            default_decision=decision,
+        )
+    except DiscoveryError as exc:
+        _fail(str(exc))
+        return
+    _ok(f"rendering review complete: {result}")
 
 
 # ---------------------------------------------------------------- procedures (§42.9)
@@ -655,7 +869,11 @@ def interfaces_build(
     root = _root()
     from lexstab.interfaces import build_generic_interface, build_mcp_interface, build_typed_interface
 
-    domain = DomainStore.load(root)
+    operations_path = Path(operations)
+    if operations_path.name != "operations.json":
+        _fail("--operations must name an operations.json inside a complete domain directory")
+        return
+    domain = DomainStore.load(root, operations_path.parent)
     json_write(root / generic_output, build_generic_interface(domain))
     jsonl_write(root / typed_output, [build_typed_interface(domain)])
     if mcp_output:
@@ -667,12 +885,13 @@ def interfaces_build(
 def interfaces_compare(
     generic: str = typer.Option("dataset/interfaces/generic-action-proposal.json", "--generic"),
     typed: str = typer.Option("dataset/interfaces/typed-tools/support.jsonl", "--typed"),
+    domain_root: str = typer.Option("dataset/domain", "--domain-root"),
 ) -> None:
     """Verify generic/typed equivalence: coverage, arguments, simulator mapping."""
     root = _root()
     from lexstab.interfaces import compare_interfaces
 
-    domain = DomainStore.load(root)
+    domain = DomainStore.load(root, domain_root)
     generic_doc = json_read(root / generic)
     typed_doc = jsonl_read(root / typed)[0]
     report = compare_interfaces(domain, generic_doc, typed_doc)
@@ -690,6 +909,7 @@ def benchmark_freeze(
     version: str = typer.Option(..., "--version"),
     split_config: str = typer.Option("dataset/splits", "--split-config"),
     output: str = typer.Option(None, "--output"),
+    changelog_path: str = typer.Option(None, "--changelog-file"),
     dev_overwrite: bool = typer.Option(False, "--dev-overwrite",
                                        help="DEVELOPMENT ONLY: allow re-freezing an existing version"),
 ) -> None:
@@ -697,7 +917,12 @@ def benchmark_freeze(
     from lexstab.freeze import FreezeError, freeze_benchmark
 
     try:
-        path = freeze_benchmark(root, version, dev_overwrite=dev_overwrite)
+        changelog = json_read(root / changelog_path) if changelog_path else None
+        if changelog is not None and not isinstance(changelog, list):
+            raise FreezeError("changelog file must contain a JSON list")
+        path = freeze_benchmark(
+            root, version, dev_overwrite=dev_overwrite, changelog=changelog
+        )
     except (FreezeError, ArtifactError) as exc:
         _fail(str(exc))
         return
@@ -819,11 +1044,29 @@ def run_cmd(
         _fail(str(exc))
         return
     manifest_doc = json_read(run_dir / "run-manifest.json")
+    summary_doc = json_read(run_dir / "run-summary.json")
+    if not summary_doc.get("healthy", False):
+        typer.secho(f"run stopped with {summary_doc.get('status')}: {run_dir}", fg=typer.colors.RED)
+        typer.echo(
+            f"  provider error calls: {summary_doc.get('provider_error_calls', 0)}  "
+            f"length terminations: {summary_doc.get('length_terminated_calls', 0)}  "
+            f"aborted cells: {summary_doc.get('aborted_cells', 0)}"
+        )
+        typer.echo("  artifacts were retained for diagnosis; this run is not baseline-eligible")
+        raise typer.Exit(code=1)
     _ok(f"run complete: {run_dir}")
     typer.echo(f"  run id: {manifest_doc['run_id']}")
     typer.echo(f"  benchmark hash: {manifest_doc['benchmark_root_hash'][:23]}")
     typer.echo(f"  matrix cells: {manifest_doc['matrix_cell_count']}")
-    typer.echo(f"  mocked: {manifest_doc['mocked']}  baseline_eligible: {manifest_doc['baseline_eligible']}")
+    typer.echo(
+        f"  mocked: {manifest_doc['mocked']}  "
+        f"baseline_eligible: {summary_doc['baseline_eligible']}"
+    )
+    if summary_doc.get("length_terminated_calls"):
+        typer.secho(
+            f"  warning: {summary_doc['length_terminated_calls']} invocation(s) reached max_tokens",
+            fg=typer.colors.YELLOW,
+        )
     typer.echo(f"  execution model: {manifest_doc['resolved_roles']['execution_primary']['model_id']}")
 
 
@@ -1058,6 +1301,27 @@ def experiment_modality(
     from lexstab.experiments.modality import run_modality_experiment
 
     result = run_modality_experiment(root, root / dataset, models_path, root / output)
+    typer.echo(json.dumps(result, indent=2))
+
+
+@experiment_app.command("canonical-envelope")
+def experiment_canonical_envelope(
+    manifest: str = typer.Option("dataset/manifests/benchmark-v0.1.0.json", "--manifest"),
+    models_path: str = typer.Option("config/models.mock.yaml", "--models"),
+    output: str = typer.Option("runs/canonical-envelope-latest.jsonl", "--output"),
+    case_ids: str = typer.Option("", "--case-ids"),
+) -> None:
+    """Diagnostic: vary only the canonical-envelope outcome field label."""
+    root = _root()
+    from lexstab.experiments.canonical_envelope import run_canonical_envelope_diagnostic
+
+    result = run_canonical_envelope_diagnostic(
+        root,
+        root / manifest,
+        root / models_path,
+        root / output,
+        case_ids=[item.strip() for item in case_ids.split(",") if item.strip()] or None,
+    )
     typer.echo(json.dumps(result, indent=2))
 
 

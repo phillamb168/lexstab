@@ -180,6 +180,23 @@
       "title": "Normalized Score",
       "type": "object"
     },
+    "argument_preservation": {
+      "additionalProperties": true,
+      "title": "Argument Preservation",
+      "type": "object"
+    },
+    "verbatim_arguments_correct": {
+      "anyOf": [
+        {
+          "type": "boolean"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Verbatim Arguments Correct"
+    },
     "clarification_outcome": {
       "anyOf": [
         {

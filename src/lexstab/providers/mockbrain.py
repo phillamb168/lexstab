@@ -21,6 +21,7 @@ AMOUNT_RE = re.compile(r"\b(\d+(?:\.\d+)?)\s*(?:usd|dollars|\$)|\$\s*(\d+(?:\.\d
 TEAM_RE = re.compile(
     r"\b(billing|payments|security|service desk|fraud|tier ?2 team)\b", re.IGNORECASE
 )
+QUOTED_MESSAGE_RE = re.compile(r'"([^"\n]{3,})"')
 
 # Keyword lexicon: deliberately covers canonical wording and common synonyms,
 # but NOT every idiom, so lexically distant variants can fail.
@@ -209,6 +210,12 @@ def build_arguments(op_id: str, request_text: str, context_text: str) -> tuple[d
             arguments["amount_usd"] = float(amount.group(1) or amount.group(2))
         else:
             missing.append("amount_usd")
+    elif op_id == "REQUEST_MORE_INFORMATION":
+        messages = QUOTED_MESSAGE_RE.findall(combined)
+        if messages:
+            arguments["message"] = messages[-1].strip()
+        else:
+            missing.append("message")
     elif op_id == "REQUEST_MANAGER_REVIEW":
         arguments["reason_code"] = "DISPUTED_CHARGE"
     elif op_id == "SUSPEND_ACCOUNT":

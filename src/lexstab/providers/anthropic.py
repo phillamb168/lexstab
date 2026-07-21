@@ -16,6 +16,7 @@ from lexstab.providers.base import BaseAdapter, ProviderResponse, TransportError
 API_URL = "https://api.anthropic.com/v1/messages"
 API_VERSION = "2023-06-01"
 RETRIABLE_STATUS = {408, 409, 429, 500, 502, 503, 504, 529}
+SYSTEM_ONLY_USER_TURN = "Complete the task exactly as specified in the system instructions."
 
 
 def _to_anthropic_messages(messages: list[dict]) -> tuple[str | None, list[dict]]:
@@ -26,6 +27,11 @@ def _to_anthropic_messages(messages: list[dict]) -> tuple[str | None, list[dict]
             system = (system + "\n\n" if system else "") + message["content"]
         else:
             output.append({"role": message["role"], "content": message["content"]})
+    # The Anthropic Messages API requires at least one non-system message. Most
+    # harness stages are intentionally expressed as a complete system prompt,
+    # so add a semantically neutral user turn only for that wire-format case.
+    if system and not output:
+        output.append({"role": "user", "content": SYSTEM_ONLY_USER_TURN})
     return system, output
 
 
@@ -79,6 +85,13 @@ class AnthropicProvider(BaseAdapter):
         anthropic_tools = _to_anthropic_tools(tools)
         if anthropic_tools:
             payload["tools"] = anthropic_tools
+        if response_schema is not None:
+            payload["output_config"] = {
+                "format": {
+                    "type": "json_schema",
+                    "schema": response_schema,
+                }
+            }
 
         try:
             response = httpx.post(
@@ -130,8 +143,11 @@ class AnthropicProvider(BaseAdapter):
             reported_model_id=body.get("model"),
             provider_request_id=response.headers.get("request-id"),
             accepted_parameters={
-                key: parameters[key]
-                for key in ("max_tokens", "temperature", "top_p", "stop_sequences")
-                if key in parameters
+                **{
+                    key: parameters[key]
+                    for key in ("max_tokens", "temperature", "top_p", "stop_sequences")
+                    if key in parameters
+                },
+                **({"response_format": "json_schema"} if response_schema is not None else {}),
             },
         )

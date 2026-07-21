@@ -11,16 +11,16 @@ experiment, a prespecified primary metric, and a falsifying or confidence-reduci
 | H1 | Meaning-preserving lexical variants produce repeatably different operational outcomes from a pinned model, even when every request is independently labeled adequate and unambiguous. | Full-call accuracy by lexical condition; operational invariance rate by case; worst-variant accuracy. |
 | R1 (rival) | Apparent natural-language failures are primarily caused by missing, contradictory, or context-dependent information, not lexical variation; controlling adequacy/ambiguity leaves a small lexical effect. | Error attribution by adequacy/ambiguity stratum; false-action rate on inadequate requests; accuracy on adequate unambiguous noncanonical requests; inadequacy-associated vs lexical-variation-associated error. Treated as a genuine competitor to H1. |
 | H2 | Mapping flexible language into canonical entities/operations/arguments before action improves end-to-end reliability over sending raw language to the acting model. | A1-Direct-Clarify vs B-Runtime (boundary track): final-state accuracy, false-action rate, clarification precision/recall. |
-| H3 | After application meaning is fixed, a stable model-facing lexical rendering still improves execution relative to canonical IDs and definitions alone. **The load-bearing hinge.** | B-Gold vs C-Gold (post-canonical track): paired full-call and final-state deltas; operational-invariance difference. |
+| H3 | After application meaning is fixed, a stable model-facing lexical rendering still changes execution relative to canonical IDs and canonical labels alone. **The load-bearing hinge.** | B-Gold vs C-Gold, F-Model-Discovered vs C-Gold, and F-Model-Discovered vs B-Gold. All-operation and genuinely distinct-rendering subsets are reported separately. |
 | H4 | A small early lexical difference can amplify into a larger final-state difference in a multi-stage agent workflow. | First-divergence stage; conditional propagation rate; final-state delta vs single-stage delta. |
-| H5 | Terms a pinned model converges on during blind naming outperform equally valid human- or organization-selected alternatives downstream. | Lexical convergence rate and entropy; downstream accuracy by rendering category. |
+| H5 | Terms a pinned model converges on during blind operation naming may outperform equally valid canonical, human, or organization-selected alternatives downstream. | Fifty fresh samples for each of eight operations; convergence, entropy, definition-only rate, and post-canonical paired execution. Identical instantiated text is no lexical contrast. |
 | H6 | Any lexical advantage is shared, family-specific, or version-specific; rendering rank order reveals which. | Cross-model rank correlation of renderings; model-by-rendering interaction. |
 | H7 | Typed input, spoken input, human transcripts, and ASR transcripts produce different lexical artifacts from one intended concept; canonicalization recovers some but not all. | Stage of first lexical/canonical change; canonical resolution accuracy by modality artifact; clarification on plausible substitutions. Not evidence of shared mechanism. |
 | H8 | For inadequate/ambiguous requests, an explicit clarification policy reduces false action; a separate adequacy gate must beat the integrated A1 baseline to justify itself. | Adequacy classification accuracy; clarification P/R; false-action rate; turns to resolved intent; unresolved rate. Comparisons: A0 vs A1; A1 vs B-External-Gate; gate vs gate-gold. |
 | H9 | Glossaries, retrieved memory, canonical resolution, or personalized mappings may help boundary interpretation — or gain nothing over a strong direct baseline given the same information. | Canonical resolution and final-state accuracy; retrieval quality; false-action rate; incremental latency/cost/calls/dependencies. |
 | H10 | Overengineering null: a strong direct baseline (A1) with full context performs within prespecified practical-equivalence margins of more complex architectures. | Decision rule: quality/safety differences inside equivalence margins; complex conditions materially costlier; no high-consequence subgroup overrides. |
 | H11 | Reliability improves at different formalization transitions (clarification, canonical intent, procedure, typed interface); the largest practically meaningful marginal gain locates the useful boundary. | Paired final-state, false-action/policy, adherence, and parse/validation deltas per transition, plus marginal burden. A statement about where gains occur, not a universal boundary. |
-| H12 | After intent is resolved, repeated free-form prose handoffs create more reinterpretation and divergence than typed canonical state; a frozen procedure may reduce variance further. | LP0G vs LP1 (primary controlled); LP0 vs LP1 (practical); LP1 vs LP2; LP2 vs LP3. Metrics: final state, first divergence, reinterpretation and representation-change counts, invalid intermediate state, adherence, tool validation. |
+| H12 | After intent is resolved, repeated free-form prose handoffs create more reinterpretation and divergence than typed canonical state; a frozen procedure may reduce variance further. | LP0B vs LP1 is the primary four-call final-state comparison. LP0B vs LP0BV tests a visible verbatim reminder, and LP0BV vs LP1 tests whether structure adds value beyond that reminder. LP0G vs LP1 remains the secondary extra-call comparison. |
 | R2 (rival) | Most practical gains come from clarification, procedures, or typed interfaces rather than lexical normalization or canonical intent mapping. | Supported when direct→canonical is negligible under context parity while procedure/interface transitions produce larger paired improvements. Gains are attributed per layer; a cumulative ladder never credits an earlier layer. |
 
 ## 2. Experimental tracks (spec §9.1)
@@ -36,7 +36,8 @@ experiment, a prespecified primary metric, and a falsifying or confidence-reduci
    resolver / personalized confirmed mappings, separating terminology information from its
    delivery mechanism (Experiment 9).
 5. **Progressive-formalization and persistence track** — formalization layers added cumulatively
-   (P0–P4) while natural-language persistence varies independently (LP0, LP0G, LP1–LP3); the
+   (P0-P4) while natural-language persistence varies independently (LP0, LP0B, LP0BV, LP0G,
+   LP1-LP3); the
    cumulative ladder and component ablations are reported separately (Experiment 10).
 
 ## 3. Request adequacy matrix (spec §9.2)
@@ -63,6 +64,54 @@ never execute the benchmark, the MUT has no gold-label authority, and the judge 
 artifacts. Role isolation is enforced in configuration and validated before execution: a run fails
 on a prohibited role combination unless an explicit `allow_role_overlap` research override is set
 and recorded in the run manifest.
+
+### Corrected canonical boundary contract
+
+Runtime canonicalization returns a strict control-plane envelope with `mapping_outcome` set to
+`MAPPED` or `NEEDS_CLARIFICATION`. A mapped envelope contains a nested `canonical_intent`; a
+clarification envelope contains a question and no canonical intent. The typed parser validates the
+whole response before any action stage. Only the nested intent crosses into planner, procedure,
+rendering, or executor prompts. This prevents an outcome label such as `RESOLVED` from becoming
+part of the model-facing task representation.
+
+After parsing, deterministic grounding checks enforce three source classes: request text, frozen
+shared context including visible context state, and explicitly registered state-derivation rules.
+Hidden application state may validate an anchored entity, but a unique hidden record cannot
+originate an entity reference. The only initial state-derived argument is
+`REFUND_DUPLICATE_CHARGE.amount_usd`, and only when the order is anchored and the duplicate amount
+is confirmed. Grounding provenance is stored per canonical field.
+
+The legacy v1 envelope remains readable for historical verification. A standalone diagnostic
+compares `status: RESOLVED`, `mapping_outcome: MAPPED`, and no outcome field while holding the flat
+canonical payload fixed. That diagnostic is never headline-eligible.
+
+### Cohort isolation and interpretation gates
+
+Every aggregate cohort is keyed by `track`, `architecture`, `intent_mode`,
+`procedure_selection`, and `procedure_packaging`. Runtime and gold injection therefore cannot
+share a headline row. Paired comparisons select both exact cohorts. Gold-injected cells are scored
+against case gold while the original request labels remain audit metadata.
+
+Clarification and false-action metrics use direct or runtime user-request conditions only. The
+evaluator reports raw failures from every cohort, but causal interpretation is withheld when a
+paired cohort has no matched observations or falls below the configured schema-validity gate.
+
+Independent-case and family gates apply after schema validation. The default v0.2.1 thresholds are
+six independent canonical cases for causal interpretation and three operation families for broader
+generalization. Additional request variants and repetitions do not satisfy either threshold.
+
+### Argument preservation and divergence
+
+Each operation argument has a preservation mode. `VERBATIM` requires exact protected content,
+`CANONICAL` permits only the registered deterministic normalizer, and `SEMANTIC` is reserved for
+tasks whose gold contract permits semantic equivalence. The primary v0.2.1 protected field is the
+public RMI `message`.
+
+The evaluator reports `first_operation_divergence`, `first_argument_divergence`, and
+`first_verbatim_argument_divergence`. For prose handoffs, a case-sensitive word-and-punctuation
+token sequence locates whether the protected literal survives within the larger handoff. Final
+arguments use exact value comparison for `VERBATIM`. These diagnostics make no model call and do
+not infer private reasoning.
 
 ## 5. Statistical methodology (spec §39)
 

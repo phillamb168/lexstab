@@ -219,7 +219,9 @@ class MockProvider(BaseAdapter):
             or brain.extract_section(text, "KNOWN STATE")
         )
         if self._precondition_refusal(op_id, arguments, known_state):
-            return _json_response({"decision": "REFUSE", "reason_code": "FAILED_PRECONDITION"})
+            return _json_response(
+                {"decision": "REFUSE", "question": None, "reason_code": "FAILED_PRECONDITION"}
+            )
         return _tool_response(tool, arguments)
 
     _kind_rendered_executor = _kind_canonical_executor
@@ -236,9 +238,13 @@ class MockProvider(BaseAdapter):
             ]
             return _json_response(
                 {
-                    "status": "CLARIFY",
+                    "mapping_outcome": "NEEDS_CLARIFICATION",
+                    "canonical_intent": None,
                     "candidate_mappings": candidates,
                     "question": "Which operation is intended, and what are the missing details?",
+                    "preserved_user_terms": [],
+                    "uncertainties": info.get("missing", []),
+                    "grounding": {},
                 }
             )
         op_id = ops[0]
@@ -250,13 +256,18 @@ class MockProvider(BaseAdapter):
         }.get(brain.ENTITY_PREFIX_FOR_OP[op_id], "INCIDENT")
         return _json_response(
             {
-                "status": "RESOLVED",
-                "entity_type": entity_type,
-                "entity_id": entity_id,
-                "operation_id": op_id,
-                "arguments": arguments,
+                "mapping_outcome": "MAPPED",
+                "canonical_intent": {
+                    "entity_type": entity_type,
+                    "entity_id": entity_id,
+                    "operation_id": op_id,
+                    "arguments": arguments,
+                },
+                "candidate_mappings": [],
+                "question": None,
                 "preserved_user_terms": [],
                 "uncertainties": [],
+                "grounding": {},
             }
         )
 
@@ -365,6 +376,44 @@ class MockProvider(BaseAdapter):
         )
         return _text_response(handoff)
 
+    def _kind_stage_language_handoff(self, text: str, metadata: dict) -> ProviderResponse:
+        stage = str(metadata.get("stage_id", ""))
+        if stage == "triage":
+            incoming = brain.extract_section(text, "INPUT")
+            response = self._kind_triage_result(text, metadata)
+            stage_result = json.loads(response.text or "{}")
+        elif stage == "policy":
+            incoming = brain.extract_section(text, "TRIAGE HANDOFF")
+            ops = brain.match_operations(incoming)
+            known_state = brain.extract_json_from_section(
+                brain.extract_section(text, "KNOWN STATE")
+            ) or {}
+            entity_ids = brain.find_entity_ids(incoming)
+            stage_result = (
+                self._policy_for_operation(
+                    ops[0], entity_ids[0] if entity_ids else None, known_state, {}
+                )
+                if len(ops) == 1
+                else {
+                    "decision": "CLARIFY",
+                    "policy_id": None,
+                    "missing_fact": "intended operation",
+                }
+            )
+        else:
+            incoming = brain.extract_section(text, "TRIAGE AND POLICY HANDOFF")
+            ops = brain.match_operations(incoming)
+            arguments, missing = (
+                brain.build_arguments(ops[0], incoming, "") if len(ops) == 1 else ({}, ["operation"])
+            )
+            stage_result = {
+                "decision": "ACT" if len(ops) == 1 and not missing else "CLARIFY",
+                "operation_id": ops[0] if len(ops) == 1 and not missing else None,
+                "arguments": arguments if len(ops) == 1 and not missing else {},
+                "question": None if len(ops) == 1 and not missing else "What required information is missing?",
+            }
+        return _json_response({"stage_result": stage_result, "handoff_text": incoming.strip()})
+
     def _kind_triage_result(self, text: str, metadata: dict) -> ProviderResponse:
         section = brain.extract_section(text, "INPUT")
         lowered = section.lower()
@@ -401,13 +450,63 @@ class MockProvider(BaseAdapter):
         "REQUEST_MANAGER_REVIEW": "P-18", "SUSPEND_ACCOUNT": "P-23", "REQUEST_APPROVAL": "P-22",
     }
 
+    def _policy_for_operation(
+        self,
+        op_id: str,
+        entity_id: str | None,
+        known_state: dict,
+        canonical_arguments: dict,
+    ) -> dict:
+        """Return the policy-stage result for the frozen support domain.
+
+        Operation preconditions are not themselves policies. This mock mirrors
+        the v2 prompt contract so offline tests do not train the harness to
+        require a policy where the domain has none.
+        """
+        no_policy = {
+            "decision": "NO_POLICY_REQUIRED",
+            "policy_id": None,
+            "missing_fact": None,
+        }
+        if op_id in {"ESCALATE_INCIDENT", "REASSIGN_INCIDENT"}:
+            incident = known_state.get("incidents", {}).get(entity_id or "", {})
+            if incident.get("status") == "CLOSED":
+                return {"decision": "SELECT", "policy_id": "P-20", "missing_fact": None}
+            return no_policy
+        if op_id == "CLOSE_INCIDENT":
+            incident = known_state.get("incidents", {}).get(entity_id or "", {})
+            if incident.get("information_complete") is False:
+                return {"decision": "SELECT", "policy_id": "P-21", "missing_fact": None}
+            return no_policy
+        if op_id == "REFUND_DUPLICATE_CHARGE":
+            order = known_state.get("orders", {}).get(entity_id or "", {})
+            if not order.get("duplicate_charge_confirmed"):
+                return {"decision": "SELECT", "policy_id": "P-19", "missing_fact": None}
+            amount = canonical_arguments.get("amount_usd")
+            if amount is None:
+                amount = order.get("duplicate_charge_amount_usd")
+            if isinstance(amount, (int, float)) and amount >= 500:
+                return {"decision": "SELECT", "policy_id": "P-22", "missing_fact": None}
+            return {"decision": "SELECT", "policy_id": "P-17", "missing_fact": None}
+        if op_id == "REQUEST_MANAGER_REVIEW":
+            return {"decision": "SELECT", "policy_id": "P-18", "missing_fact": None}
+        if op_id == "SUSPEND_ACCOUNT":
+            return {"decision": "SELECT", "policy_id": "P-23", "missing_fact": None}
+        return no_policy
+
     def _kind_policy_result(self, text: str, metadata: dict) -> ProviderResponse:
         triage = brain.extract_json_from_section(brain.extract_section(text, "TRIAGE RESULT")) or {}
         known_state = brain.extract_json_from_section(brain.extract_section(text, "KNOWN STATE")) or {}
         canonical = triage.get("canonical_state") or {}
-        if canonical.get("operation_id") and canonical["operation_id"] != "REFUND_DUPLICATE_CHARGE":
-            policy_id = self.OP_POLICY_MAP.get(canonical["operation_id"])
-            return _json_response({"decision": "SELECT", "policy_id": policy_id, "missing_fact": None})
+        if canonical.get("operation_id"):
+            return _json_response(
+                self._policy_for_operation(
+                    canonical["operation_id"],
+                    canonical.get("entity_id"),
+                    known_state,
+                    canonical.get("arguments", {}),
+                )
+            )
         if isinstance(triage.get("triage"), dict):
             triage = {**triage["triage"], "canonical_state": canonical}
         classification = triage.get("classification")
@@ -428,6 +527,11 @@ class MockProvider(BaseAdapter):
         policy = brain.extract_json_from_section(brain.extract_section(text, "POLICY RESULT")) or {}
         known_state = brain.extract_json_from_section(brain.extract_section(text, "KNOWN STATE")) or {}
         canonical = triage.get("canonical_state") or {}
+        if policy.get("decision") == "CLARIFY":
+            return _json_response(
+                {"decision": "CLARIFY", "operation_id": None, "arguments": {},
+                 "question": policy.get("missing_fact") or "Which policy fact is missing?"}
+            )
         if canonical.get("operation_id"):
             op_id = canonical["operation_id"]
             arguments = dict(canonical.get("arguments", {}))
@@ -441,7 +545,7 @@ class MockProvider(BaseAdapter):
             triage = triage["triage"]
         entity_id = triage.get("entity_id")
         policy_id = policy.get("policy_id")
-        if policy.get("decision") == "CLARIFY" or not entity_id:
+        if not entity_id:
             return _json_response(
                 {"decision": "CLARIFY", "operation_id": None, "arguments": {},
                  "question": policy.get("missing_fact") or "Which record is affected?"}
@@ -472,7 +576,11 @@ class MockProvider(BaseAdapter):
             if tool:
                 return _tool_response(tool, plan.get("arguments", {}))
         return _json_response(
-            {"decision": "CLARIFY", "question": plan.get("question") or "Plan did not authorize action."}
+            {
+                "decision": "CLARIFY",
+                "question": plan.get("question") or "Plan did not authorize action.",
+                "reason_code": None,
+            }
         )
 
     # ------------------------------------------------------------ authoring kinds
@@ -661,6 +769,12 @@ class MockProvider(BaseAdapter):
             ("assigned team", ("reassign incident", ["team transfer"])),
             ("owning team", ("reassign incident", ["team transfer", "incident reassignment"])),
             ("duplicate", ("refund duplicate charge", ["duplicate charge refund"])),
+            ("second charge", ("refund duplicate charge", ["duplicate charge refund"])),
+            ("active work queue", ("close incident", ["finish support record"])),
+            ("asked to supply missing details", ("request more information", ["ask for details"])),
+            ("pending authorization item", ("request approval", ["route for authorization"])),
+            ("manager for examination", ("request manager review", ["send for manager review"])),
+            ("prevented from normal use", ("suspend account", ["disable account"])),
         ]
         sample_index = int(metadata.get("sample_index", 0))
         for needle, (term, alternatives) in table:

@@ -67,6 +67,13 @@
           "default": null,
           "title": "Parent Request Id"
         },
+        "supersedes_request_ids": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Supersedes Request Ids",
+          "type": "array"
+        },
         "content_hash": {
           "anyOf": [
             {
@@ -413,7 +420,8 @@
             "APPROVE",
             "REJECT",
             "EDIT_AND_APPROVE",
-            "NEEDS_SECOND_REVIEW"
+            "NEEDS_SECOND_REVIEW",
+            "SUPERSEDE"
           ],
           "title": "Decision",
           "type": "string"

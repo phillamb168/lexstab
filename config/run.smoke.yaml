@@ -37,6 +37,7 @@ tracks:
     persistence_conditions:
       - "LP0_LANGUAGE_THROUGHOUT"
       - "LP0G_GOLD_START_LANGUAGE"
+      - "LP0B_GOLD_START_LANGUAGE_BALANCED"
       - "LP1_CANONICAL_ONCE"
       - "LP2_CANONICAL_PROCEDURE"
       - "LP3_CANONICAL_PROCEDURE_TOOL"
@@ -54,6 +55,7 @@ tracks:
       - "C_GOLD"
       - "D_DEFINITION_ONLY"
       - "E_ORGANIZATION_TERM"
+      - "F_MODEL_DISCOVERED"
   agent_loop:
     enabled: false
     intent_modes: ["gold"]
@@ -85,6 +87,7 @@ execution:
 
 evaluation:
   deterministic_first: true
+  minimum_schema_validity_for_interpretation: 0.99
   optional_llm_judge: true
   human_review_on_judge_disagreement: true
   blind_condition_labels: true

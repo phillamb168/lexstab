@@ -1,0 +1,49 @@
+{
+  "candidate_output": "/Users/phil/Work/lexical-harness/dataset/renderings/candidate/discovery-opus-v0.2.0-rmi-corrected.jsonl",
+  "checkpoint_audit": {
+    "attempt_rows": 50,
+    "by_operation": {
+      "REQUEST_MORE_INFORMATION": {
+        "attempt_rows": 50,
+        "status_counts": {
+          "VALID": 50
+        },
+        "superseded_attempts": 0,
+        "unique_sample_keys": 50
+      }
+    },
+    "status_counts": {
+      "VALID": 50
+    },
+    "superseded_attempts": 0,
+    "unique_sample_keys": 50
+  },
+  "failed_operations": [],
+  "operations": {
+    "REQUEST_MORE_INFORMATION": {
+      "attempted_sample_count": 50,
+      "convergence_rate": 0.84,
+      "definition_only_rate": 0.0,
+      "invalid_response_count": 0,
+      "modal_term": "request info",
+      "provider_error_count": 0,
+      "requested_sample_count": 50,
+      "status": "COMPLETE",
+      "term_entropy": 0.8592,
+      "valid_response_count": 50
+    }
+  },
+  "prompt_hash": "sha256:537d026db5e384342dcd3e6933cea584b98dbdb1bdf50b02de9c56ce60da3351",
+  "prompt_id": "operation-lexical-convergence.v1",
+  "provider": "anthropic",
+  "requested_model_id": "claude-opus-4-8",
+  "requested_operations": [
+    "REQUEST_MORE_INFORMATION"
+  ],
+  "response_schema": "lexical-name.schema.json",
+  "response_schema_hash": "sha256:9a7dcc5fd49c607de5043f882f2540014e95cf939d675e7ebcc15c8e93ce1d63",
+  "sample_checkpoint": "/Users/phil/Work/lexical-harness/dataset/renderings/candidate/discovery-opus-v0.2.0-rmi-corrected.samples.jsonl",
+  "samples_per_operation": 50,
+  "schema_version": "1.2.0",
+  "status": "COMPLETE"
+}

@@ -1,0 +1,52 @@
+{
+  "canonical": {
+    "arguments": {},
+    "entity_id": "INC-2450",
+    "entity_type": "INCIDENT",
+    "operation_id": "CLOSE_INCIDENT"
+  },
+  "case_id": "CLOSE_001",
+  "created_at": "2026-07-20T00:00:00Z",
+  "created_by": "human",
+  "difficulty": "basic",
+  "domain": "support",
+  "family_id": "CLOSE",
+  "gold": {
+    "arguments": {
+      "incident_id": "INC-2450"
+    },
+    "decision": "ACT",
+    "resulting_state": {
+      "incidents": {
+        "INC-2450": {
+          "assigned_team": "SERVICE_DESK",
+          "escalation_count": 0,
+          "information_complete": true,
+          "severity": "SEV-3",
+          "status": "CLOSED",
+          "support_tier": 1,
+          "updated_at": "<run_clock>"
+        }
+      }
+    },
+    "tool": "close_incident"
+  },
+  "initial_state": {
+    "incidents": {
+      "INC-2450": {
+        "assigned_team": "SERVICE_DESK",
+        "escalation_count": 0,
+        "information_complete": true,
+        "severity": "SEV-3",
+        "status": "OPEN",
+        "support_tier": 1
+      }
+    }
+  },
+  "schema_version": "1.2.0",
+  "tags": [
+    "single_turn",
+    "tool_selection"
+  ],
+  "title": "Close an open incident whose information is complete"
+}

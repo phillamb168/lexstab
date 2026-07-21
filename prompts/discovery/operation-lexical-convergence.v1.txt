@@ -1,0 +1,29 @@
+PROMPT_ID: operation-lexical-convergence.v1
+PURPOSE: Discover the concise imperative operation phrase a model naturally uses for a defined state transition.
+REQUIRED_VARIABLES: definition, positive_examples, negative_examples
+RESPONSE_SCHEMA: lexical-name.schema.json
+
+---
+
+Consider the application operation defined below. The definition and examples deliberately avoid giving the operation a name.
+
+DEFINITION
+{definition}
+
+POSITIVE EXAMPLES
+{positive_examples}
+
+NEGATIVE EXAMPLES
+{negative_examples}
+
+What concise imperative operation phrase would you naturally use to instruct an agent to perform this operation? The phrase should work before an entity identifier and required arguments.
+
+Return only:
+
+{
+  "preferred_term": "...",
+  "alternative_terms": ["...", "..."],
+  "one_sentence_definition": "..."
+}
+
+Do not reuse wording merely because it appears in an example. Do not invent a named term if no concise operation phrase fits. In that case set preferred_term to "DEFINITION_ONLY".

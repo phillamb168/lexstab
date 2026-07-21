@@ -56,6 +56,11 @@ def _comparison_lookup(metrics: dict) -> dict[str, dict]:
 def _delta_sentence(comparison: dict | None, subject: str) -> str:
     if comparison is None or (comparison.get("delta") or {}).get("estimate") is None:
         return f"{subject} was not measured in this run."
+    if not comparison.get("interpretation_allowed", True):
+        return (
+            f"{subject} was measured, but interpretation is withheld: "
+            f"{comparison.get('interpretation_warning') or 'measurement validity gate failed'}"
+        )
     delta = comparison["delta"]
     return (
         f"{subject}: delta {format_ci(delta, digits=3)} against margin "
@@ -75,6 +80,7 @@ def _largest_supported_transition(metrics: dict) -> dict | None:
     supported = [
         t for t in _adjacent_transitions(metrics)
         if (t.get("marginal_quality") or {}).get("verdict") == "exceeds_practical_margin"
+        and (t.get("marginal_quality") or {}).get("interpretation_allowed", True)
     ]
     if not supported:
         return None
@@ -93,6 +99,8 @@ def _complexity_conclusion(metrics: dict) -> tuple[str, list[str]]:
     comparisons = _vs_a1_comparisons(metrics)
     verdicts = {c["comparison"]: c.get("verdict") for c in comparisons}
     if not verdicts:
+        return _CONCLUSION_INSUFFICIENT, []
+    if any(not c.get("interpretation_allowed", True) for c in comparisons):
         return _CONCLUSION_INSUFFICIENT, []
     winners = [name for name, verdict in verdicts.items() if verdict == "exceeds_practical_margin"]
     if winners:
@@ -135,7 +143,13 @@ def _header(metrics: dict, run_manifest: dict) -> list[str]:
             "or against any hypothesis (spec §17.4).**",
             "",
         ]
-    if not run_manifest.get("baseline_eligible", False):
+    run_health = metrics.get("run_health") or {}
+    if run_health:
+        lines += [
+            f"- Run health: `{run_health.get('status', 'unknown')}`",
+            "",
+        ]
+    if not metrics.get("baseline_eligible", run_manifest.get("baseline_eligible", False)):
         lines += [
             "> This run is not baseline-eligible; every conclusion below is "
             "baseline-ineligible and cannot be promoted to a regression baseline.",
@@ -187,7 +201,12 @@ def _executive_summary(metrics: dict, scores: list[dict], run_manifest: dict) ->
         + _delta_sentence(comparisons.get("B_RUNTIME - A1_DIRECT_CLARIFY"),
                           "B_RUNTIME vs A1_DIRECT_CLARIFY (full call)"), "",
         "5. **Did a stable rendering improve post-canonical execution?** "
-        + _delta_sentence(comparisons.get("C_GOLD - B_GOLD"), "C_GOLD vs B_GOLD (full call)"), "",
+        + _delta_sentence(comparisons.get("C_GOLD - B_GOLD"), "C_GOLD vs B_GOLD (full call)")
+        + " "
+        + _delta_sentence(
+            comparisons.get("F_MODEL_DISCOVERED - C_GOLD"),
+            "F_MODEL_DISCOVERED vs C_GOLD (full call)",
+        ), "",
     ]
 
     headline_by_arch = {
@@ -249,10 +268,22 @@ def _executive_summary(metrics: dict, scores: list[dict], run_manifest: dict) ->
             "conclusion about evaluator artifacts or benchmark confounds can be drawn."
         )
     else:
+        warnings = metrics.get("measurement_warnings") or []
+        sample_warnings = [
+            comparison for comparison in metrics.get("primary_comparisons", [])
+            if comparison.get("interpretation_warning")
+        ]
         answer10 = (
-            "No automated confound detection ran; deterministic evaluation was used and "
-            "any judge records are stored separately for audit. Treat single-benchmark "
-            "effects as unreplicated."
+            f"Automated contract checks flagged {len(warnings)} cohort(s) below the "
+            "schema-validity interpretation gate and "
+            f"{len(sample_warnings)} primary comparison(s) with sample-size or "
+            "operation-family limits. "
+            + (
+                "Those cohorts remain reported but are not given causal interpretations. "
+                if warnings or sample_warnings else
+                "No cohort or comparison fell below those gates. "
+            )
+            + "Treat single-benchmark effects as unreplicated."
         )
     lines += [
         "10. **Which results may be evaluator artifacts or benchmark confounds?** "
@@ -281,8 +312,8 @@ def _executive_summary(metrics: dict, scores: list[dict], run_manifest: dict) ->
         "12. **At which progressive-formalization transition, if any, did reliability "
         "improve materially?** " + answer12, "",
         "13. **Did canonicalize-once outperform repeated natural-language handoffs?** "
-        + _delta_sentence(comparisons.get("LP1 canonical once - LP0G gold-start prose"),
-                          "LP1 vs LP0G (final state, primary persistence comparison)"), "",
+        + _delta_sentence(comparisons.get("LP1 canonical once - LP0B call-balanced prose"),
+                          "LP1 vs LP0B (final state, call-balanced primary comparison)"), "",
     ]
 
     ablations = {
@@ -330,12 +361,18 @@ def _headline_section(metrics: dict) -> list[str]:
     table = _md_table(rows, [
         ("architecture", "Architecture"),
         ("track", "Track"),
+        ("intent_mode", "Intent"),
+        ("procedure_selection", "Procedure selection"),
+        ("procedure_packaging", "Packaging"),
         ("full_call", "Full-call"),
         ("final_state", "Final-state"),
         ("invariance", "Invariance"),
         ("contrast", "Contrast"),
         ("false_action", "False action"),
         ("n_cells", "n cells"),
+        ("n_independent_cases", "Cases"),
+        ("n_operation_families", "Families"),
+        ("interpretation_scope", "Scope"),
     ])
     return [
         "## Headline results (§44.2)", "",
@@ -355,6 +392,8 @@ def _comparison_section(metrics: dict) -> list[str]:
         ("verdict", "Practical threshold met?"),
         ("n_pairs", "n pairs"),
         ("n_cases", "n cases"),
+        ("n_operation_families", "Families"),
+        ("interpretation_scope", "Scope"),
     ])
     return ["## Primary comparisons (§44.3)", "", table]
 
@@ -390,7 +429,11 @@ def _transitions_section(metrics: dict) -> list[str]:
         ablation_rows.append({
             "ablation": entry.get("ablation"),
             "delta": format_ci(delta, digits=3) if delta else "n/a",
-            "verdict": entry.get("verdict", entry.get("note", "n/a")),
+            "verdict": (
+                entry.get("verdict", entry.get("note", "n/a"))
+                if entry.get("interpretation_allowed", True)
+                else "withheld: measurement validity gate"
+            ),
             "n_pairs": entry.get("n_pairs"),
         })
     lines += [
@@ -411,11 +454,24 @@ def _persistence_section(metrics: dict) -> list[str]:
     lines = ["## Persistence and representation flow", ""]
     lines += [
         "- Primary: " + _delta_sentence(
-            comparisons.get("LP1 canonical once - LP0G gold-start prose"),
+            comparisons.get("LP1 canonical once - LP0B call-balanced prose"),
+            "LP1_CANONICAL_ONCE vs LP0B_GOLD_START_LANGUAGE_BALANCED (final state)"),
+        "- Extra-call prose control (secondary): " + _delta_sentence(
+            comparisons.get("LP1 canonical once - LP0G gold-start prose (secondary)"),
             "LP1_CANONICAL_ONCE vs LP0G_GOLD_START_LANGUAGE (final state)"),
         "- Practical end-to-end (secondary): " + _delta_sentence(
             comparisons.get("LP1 - LP0 practical end-to-end"),
             "LP1_CANONICAL_ONCE vs LP0_LANGUAGE_THROUGHOUT (final state)"),
+        "- Visible verbatim reminder effect: " + _delta_sentence(
+            comparisons.get(
+                "LP0BV visible verbatim contract - LP0B call-balanced prose"
+            ),
+            "LP0BV vs LP0B (verbatim argument preservation)"),
+        "- Canonical-once vs visible verbatim reminder: " + _delta_sentence(
+            comparisons.get(
+                "LP1 canonical once - LP0BV visible verbatim contract"
+            ),
+            "LP1 vs LP0BV (verbatim argument preservation)"),
         "",
     ]
     rows = [
@@ -425,7 +481,11 @@ def _persistence_section(metrics: dict) -> list[str]:
             "depth": entry.get("mean_nl_persistence_depth"),
             "reinterpretations": entry.get("mean_reinterpretation_count"),
             "representation_changes": entry.get("mean_representation_changes"),
+            "verbatim": entry.get("verbatim_preservation_accuracy"),
             "final_state": entry.get("final_state_accuracy"),
+            "cases": entry.get("n_independent_cases"),
+            "families": entry.get("n_operation_families"),
+            "scope": entry.get("interpretation_scope"),
         }
         for arch, entry in sorted(persistence.items())
     ]
@@ -436,16 +496,34 @@ def _persistence_section(metrics: dict) -> list[str]:
             ("depth", "Mean NL persistence depth"),
             ("reinterpretations", "Mean reinterpretations"),
             ("representation_changes", "Mean representation changes"),
+            ("verbatim", "Verbatim preservation"),
             ("final_state", "Final-state accuracy"),
+            ("cases", "Cases"),
+            ("families", "Families"),
+            ("scope", "Interpretation scope"),
         ]),
-        "First-divergence stage distribution:", "",
+        "Divergence distributions are deterministic token-level diagnostics. They do not "
+        "claim semantic equivalence or nonequivalence.", "",
     ]
-    divergence_rows = []
+    divergence_rows: list[dict[str, Any]] = []
+    divergence_fields = (
+        ("first_divergence_distribution", "any"),
+        ("first_operation_divergence_distribution", "operation"),
+        ("first_argument_divergence_distribution", "argument"),
+        ("first_verbatim_argument_divergence_distribution", "verbatim argument"),
+    )
     for arch, entry in sorted(persistence.items()):
-        for stage, count in sorted((entry.get("first_divergence_distribution") or {}).items()):
-            divergence_rows.append({"condition": arch, "stage": stage, "n": count})
+        for field, kind in divergence_fields:
+            for stage, count in sorted((entry.get(field) or {}).items()):
+                divergence_rows.append({
+                    "condition": arch,
+                    "kind": kind,
+                    "stage": stage,
+                    "n": count,
+                })
     lines += [_md_table(divergence_rows, [
-        ("condition", "Condition"), ("stage", "First divergence"), ("n", "n"),
+        ("condition", "Condition"), ("kind", "Divergence kind"),
+        ("stage", "First divergence"), ("n", "n"),
     ])]
     return lines
 
@@ -613,24 +691,38 @@ def _failure_section(metrics: dict, scores: list[dict]) -> list[str]:
 
 def _complexity_section(metrics: dict) -> list[str]:
     comparisons = {c["comparison"]: c for c in _vs_a1_comparisons(metrics)}
-    headline_by_arch: dict[str, dict] = {}
+    headline_by_arch: dict[tuple[str, str, str, str], dict] = {}
     for row in metrics.get("headline", []):
-        headline_by_arch.setdefault(row["architecture"], row)
+        headline_by_arch[
+            (
+                row["architecture"],
+                row.get("intent_mode", "none"),
+                row.get("procedure_selection", "none"),
+                row.get("procedure_packaging", "none"),
+            )
+        ] = row
     complexity = metrics.get("complexity") or {}
     robustness = metrics.get("robustness") or {}
     rows = []
-    for arch in sorted(complexity):
+    for cohort_key in sorted(complexity):
+        bom = complexity[cohort_key]
+        arch = bom.get("architecture", cohort_key)
         if arch == "A1_DIRECT_CLARIFY":
             continue
-        bom = complexity[arch]
         measured = bom.get("measured") or {}
-        headline = headline_by_arch.get(arch, {})
+        cohort = (
+            arch,
+            bom.get("intent_mode", "none"),
+            bom.get("procedure_selection", "none"),
+            bom.get("procedure_packaging", "none"),
+        )
+        headline = headline_by_arch.get(cohort, {})
         robust = robustness.get(arch, {})
         quality = next(
             (c for label, c in comparisons.items() if label.startswith(arch + " ")), None
         )
         rows.append({
-            "architecture": arch,
+            "architecture": f"{arch} [{cohort[1]}/{cohort[2]}/{cohort[3]}]",
             "quality_vs_a1": quality.get("verdict") if quality else "no primary comparison",
             "full_call": format_ci(headline.get("full_call_accuracy") or {}),
             "invariance": (headline.get("operational_invariance") or {}).get("estimate"),
@@ -778,6 +870,112 @@ def _charts_section(run_dir: Path) -> list[str]:
     return lines
 
 
+def _measurement_validity_section(metrics: dict) -> list[str]:
+    warnings = metrics.get("measurement_warnings") or []
+    rows = [
+        {
+            "architecture": warning.get("architecture"),
+            "intent": warning.get("intent_mode"),
+            "selection": warning.get("procedure_selection"),
+            "packaging": warning.get("procedure_packaging"),
+            "schema_validity": warning.get("schema_validity"),
+            "minimum": warning.get("minimum"),
+            "interpretation": warning.get("interpretation"),
+        }
+        for warning in warnings
+    ]
+    thresholds = metrics.get("interpretation_thresholds") or {}
+    comparison_warnings = [
+        {
+            "comparison": comparison.get("comparison"),
+            "cases": comparison.get("n_independent_cases"),
+            "families": comparison.get("n_operation_families"),
+            "scope": comparison.get("interpretation_scope"),
+            "warning": comparison.get("interpretation_warning"),
+        }
+        for comparison in metrics.get("primary_comparisons", [])
+        if comparison.get("interpretation_warning")
+    ]
+    return [
+        "## Measurement validity", "",
+        "Raw observations are never removed or rescored by these gates. Causal "
+        "interpretation requires at least "
+        f"{thresholds.get('minimum_independent_cases_for_interpretation', 'n/a')} "
+        "independent canonical cases. Generalization beyond the tested operations "
+        "requires at least "
+        f"{thresholds.get('minimum_operation_families_for_generalization', 'n/a')} "
+        "operation families. Cohorts below the schema-contract gate also cannot support "
+        "a causal component claim.", "",
+        _md_table(rows, [
+            ("architecture", "Architecture"),
+            ("intent", "Intent"),
+            ("selection", "Selection"),
+            ("packaging", "Packaging"),
+            ("schema_validity", "Schema validity"),
+            ("minimum", "Required"),
+            ("interpretation", "Interpretation"),
+        ]),
+        "Sample-size and operation-family interpretation warnings:", "",
+        _md_table(comparison_warnings, [
+            ("comparison", "Comparison"),
+            ("cases", "Cases"),
+            ("families", "Families"),
+            ("scope", "Scope"),
+            ("warning", "Warning"),
+        ]),
+    ]
+
+
+def _rendering_contrast_section(metrics: dict) -> list[str]:
+    rendering = metrics.get("rendering_contrast") or {}
+    comparisons = [
+        rendering.get("all_cases_comparison") or {},
+        rendering.get("lexically_distinct_comparison") or {},
+    ]
+    rows = [
+        {
+            "comparison": entry.get("comparison"),
+            "delta": format_ci(entry.get("delta"), digits=3),
+            "verdict": (
+                entry.get("verdict")
+                if entry.get("interpretation_allowed", True)
+                else "withheld: measurement validity gate"
+            ),
+            "n_pairs": entry.get("n_pairs"),
+        }
+        for entry in comparisons if entry
+    ]
+    operation_rows = [
+        {
+            "operation": operation_id,
+            "n": entry.get("n"),
+            "accuracy": entry.get("full_call_accuracy"),
+            "distinct_n": entry.get("lexically_distinct_n"),
+        }
+        for operation_id, entry in sorted((rendering.get("by_operation") or {}).items())
+    ]
+    return [
+        "## Model-discovered rendering contrast", "",
+        f"Model-discovered cells: {rendering.get('n_model_discovered_cells', 0)}; "
+        f"lexically distinct from the canonical rendering: {rendering.get('n_lexically_distinct_cells', 0)}; "
+        f"identical: {rendering.get('n_identical_to_canonical_cells', 0)}.", "",
+        str(rendering.get("interpretation") or ""), "",
+        _md_table(rows, [
+            ("comparison", "Comparison"),
+            ("delta", "Delta [95% CI]"),
+            ("verdict", "Verdict"),
+            ("n_pairs", "n pairs"),
+        ]),
+        "Operation coverage:", "",
+        _md_table(operation_rows, [
+            ("operation", "Operation"),
+            ("n", "n"),
+            ("accuracy", "Full-call accuracy"),
+            ("distinct_n", "Lexically distinct n"),
+        ]),
+    ]
+
+
 def _completion_section(metrics: dict) -> list[str]:
     completion = metrics.get("completion") or {}
     missing = metrics.get("missing_cells") or []
@@ -802,6 +1000,8 @@ def render_report(run_dir: Path, metrics: dict[str, Any], scores: list[dict],
     lines += _adequacy_section(metrics)
     lines += _robustness_section(metrics)
     lines += _failure_section(metrics, scores)
+    lines += _measurement_validity_section(metrics)
+    lines += _rendering_contrast_section(metrics)
     lines += _complexity_section(metrics)
     lines += _null_results_section(metrics)
     lines += _analysis_labels_section(metrics)

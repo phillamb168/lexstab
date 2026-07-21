@@ -6,7 +6,13 @@
       "additionalProperties": false,
       "properties": {
         "entity_type": {
-          "pattern": "^[A-Z][A-Z0-9_]+$",
+          "enum": [
+            "ACCOUNT",
+            "APPROVAL_REQUEST",
+            "CUSTOMER",
+            "INCIDENT",
+            "ORDER"
+          ],
           "title": "Entity Type",
           "type": "string"
         },
@@ -15,7 +21,16 @@
           "type": "string"
         },
         "operation_id": {
-          "pattern": "^[A-Z][A-Z0-9_]+$",
+          "enum": [
+            "CLOSE_INCIDENT",
+            "ESCALATE_INCIDENT",
+            "REASSIGN_INCIDENT",
+            "REFUND_DUPLICATE_CHARGE",
+            "REQUEST_APPROVAL",
+            "REQUEST_MANAGER_REVIEW",
+            "REQUEST_MORE_INFORMATION",
+            "SUSPEND_ACCOUNT"
+          ],
           "title": "Operation Id",
           "type": "string"
         },

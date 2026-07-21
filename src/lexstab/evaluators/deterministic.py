@@ -10,14 +10,16 @@ from __future__ import annotations
 
 import copy
 import json
+import re
 from typing import Any
 
-from lexstab import models
+from lexstab import domaintext, models
 from lexstab.artifacts import DomainStore
 from lexstab.freeze import FrozenBenchmark
 from lexstab.simulators.support_domain import SupportSimulator, normalize_state
 
 NORMALIZER_VERSION = "support-normalizer.v1"
+VERBATIM_COMPARISON_VERSION = "deterministic-token-sequence.v1"
 RUN_CLOCK_PLACEHOLDER = "<run_clock>"
 
 
@@ -56,26 +58,62 @@ def normalize_argument(name: str, value: Any) -> Any:
     return value
 
 
+def _verbatim_tokens(value: Any) -> list[str]:
+    """Deterministic, case-sensitive word-and-punctuation tokenization."""
+    return re.findall(r"\w+|[^\w\s]", str(value), flags=re.UNICODE)
+
+
+def _contains_verbatim_tokens(container: str, literal: Any) -> bool:
+    expected = _verbatim_tokens(literal)
+    observed = _verbatim_tokens(container)
+    if not expected:
+        return True
+    width = len(expected)
+    return any(
+        observed[index:index + width] == expected
+        for index in range(len(observed) - width + 1)
+    )
+
+
 def _score_arguments(
-    gold_arguments: dict[str, Any], actual_arguments: dict[str, Any], required: set[str]
-) -> tuple[dict[str, bool], bool, dict[str, bool], bool]:
+    gold_arguments: dict[str, Any], actual_arguments: dict[str, Any], required: set[str],
+    specs: dict[str, models.ArgumentSpec],
+) -> tuple[dict[str, bool], bool, dict[str, bool], bool, dict[str, Any]]:
     raw_fields, norm_fields = {}, {}
+    preservation_fields = {}
     for name, gold_value in gold_arguments.items():
         actual_value = actual_arguments.get(name)
         raw_fields[name] = actual_value == gold_value
-        norm_fields[name] = (
+        spec = specs.get(name)
+        mode = (
+            spec.preservation
+            if spec is not None else models.ArgumentPreservation.SEMANTIC
+        )
+        norm_fields[name] = raw_fields[name] if mode == models.ArgumentPreservation.VERBATIM else (
             normalize_argument(name, actual_value) == normalize_argument(name, gold_value)
         )
+        preservation_fields[name] = {
+            "mode": mode.value,
+            "correct": norm_fields[name],
+            "raw_exact": raw_fields[name],
+        }
     raw_all = all(raw_fields.get(name, False) for name in required | set(gold_arguments))
     norm_all = all(norm_fields.get(name, False) for name in required | set(gold_arguments))
-    return raw_fields, raw_all, norm_fields, norm_all
+    return raw_fields, raw_all, norm_fields, norm_all, preservation_fields
 
 
 def expected_outcome(
-    bench: FrozenBenchmark, case: models.CanonicalCase, request: models.NLRequest | None, run_clock: str
+    bench: FrozenBenchmark,
+    case: models.CanonicalCase,
+    request: models.NLRequest | None,
+    run_clock: str,
+    *,
+    gold_injected: bool = False,
 ) -> dict[str, Any]:
     """Resolve the gold expectation for one cell from frozen labels only."""
     domain = bench.domain
+    if gold_injected:
+        request = None
     if request is None or request.labels.semantic_role == models.SemanticRole.INVARIANT:
         gold = case.gold
         gold_behavior = {"ACT": "EXECUTE", "CLARIFY": "CLARIFY", "REFUSE": "REFUSE"}[
@@ -201,33 +239,138 @@ def _persistence_metrics(ledger_rows: list[dict]) -> dict[str, Any]:
     }
 
 
-def _first_divergence(result: dict, expected: dict, case: models.CanonicalCase) -> str | None:
-    """Earliest multi-stage output inconsistent with gold entity/operation."""
+def _first_divergences(
+    bench: FrozenBenchmark,
+    result: dict,
+    expected: dict,
+    case: models.CanonicalCase,
+) -> dict[str, str | None]:
+    """Locate deterministic entity, operation, and argument divergence.
+
+    Diagnostic stage-result schemas are checked only for fields they are
+    designed to carry. Free-form handoffs are checked for exact VERBATIM
+    literals because their prompts make the handoff authoritative and require
+    supplied arguments to survive. Semantic equivalence is never guessed.
+    """
     gold_entity = case.canonical.entity_id
     gold_op = expected.get("operation_id")
+    expected_args = expected.get("arguments") or {}
+    operation = bench.domain.operations.get(gold_op or "")
+    specs = operation.arguments if operation else {}
+    entity_divergence = None
+    operation_divergence = None
+    argument_divergence = None
+    verbatim_divergence = None
+
     for stage in result.get("stage_outputs") or []:
         output = stage.get("output")
         name = stage.get("stage")
         if isinstance(output, dict):
             entity = output.get("entity_id")
-            if entity is not None and entity != gold_entity:
-                return name
+            if entity is not None and entity != gold_entity and entity_divergence is None:
+                entity_divergence = name
             op = output.get("operation_id")
-            if op is not None and stage.get("stage") == "planner" and op != gold_op:
-                return name
-        elif isinstance(output, str) and gold_entity not in output and name.endswith("_handoff"):
-            return name
+            if op is not None and op != gold_op and operation_divergence is None:
+                operation_divergence = name
+            arguments = output.get("arguments")
+            if isinstance(arguments, dict):
+                for arg_name, gold_value in expected_args.items():
+                    spec = specs.get(arg_name)
+                    mode = (
+                        spec.preservation
+                        if spec is not None else models.ArgumentPreservation.SEMANTIC
+                    )
+                    actual_value = arguments.get(arg_name)
+                    equal = (
+                        actual_value == gold_value
+                        if mode == models.ArgumentPreservation.VERBATIM
+                        else normalize_argument(arg_name, actual_value)
+                        == normalize_argument(arg_name, gold_value)
+                    )
+                    if not equal and argument_divergence is None:
+                        argument_divergence = name
+                    if (
+                        mode == models.ArgumentPreservation.VERBATIM
+                        and actual_value != gold_value
+                        and verbatim_divergence is None
+                    ):
+                        verbatim_divergence = name
+        elif isinstance(output, str) and isinstance(name, str) and name.endswith("_handoff"):
+            if gold_entity and gold_entity not in output and entity_divergence is None:
+                entity_divergence = name
+            for arg_name, gold_value in expected_args.items():
+                spec = specs.get(arg_name)
+                if (
+                    spec is not None
+                    and spec.preservation == models.ArgumentPreservation.VERBATIM
+                    and not _contains_verbatim_tokens(output, gold_value)
+                ):
+                    if argument_divergence is None:
+                        argument_divergence = name
+                    if verbatim_divergence is None:
+                        verbatim_divergence = name
+
     if expected.get("behavior") == "EXECUTE":
         tool_call = result.get("tool_call") or {}
         proposal = result.get("proposal") or {}
         actual_op = proposal.get("operation_id")
         if actual_op is None and tool_call:
-            actual_op = tool_call.get("tool", "").upper()
+            actual_op = bench.domain.tool_to_operation().get(tool_call.get("tool", ""))
         if result.get("decision") != "ACT":
-            return "final_decision"
-        if expected.get("tool") and tool_call.get("tool") not in (None, expected["tool"]):
-            return "final_action"
-    return None
+            operation_divergence = operation_divergence or "final_decision"
+            argument_divergence = argument_divergence or "final_decision"
+            if any(
+                spec.preservation == models.ArgumentPreservation.VERBATIM
+                for spec in specs.values()
+            ):
+                verbatim_divergence = verbatim_divergence or "final_decision"
+        else:
+            if actual_op != gold_op and operation_divergence is None:
+                operation_divergence = "final_action"
+            actual_args = tool_call.get("arguments") or proposal.get("arguments") or {}
+            for arg_name, gold_value in expected_args.items():
+                spec = specs.get(arg_name)
+                mode = (
+                    spec.preservation
+                    if spec is not None else models.ArgumentPreservation.SEMANTIC
+                )
+                actual_value = actual_args.get(arg_name)
+                equal = (
+                    actual_value == gold_value
+                    if mode == models.ArgumentPreservation.VERBATIM
+                    else normalize_argument(arg_name, actual_value)
+                    == normalize_argument(arg_name, gold_value)
+                )
+                if not equal and argument_divergence is None:
+                    argument_divergence = "final_action"
+                if (
+                    mode == models.ArgumentPreservation.VERBATIM
+                    and actual_value != gold_value
+                    and verbatim_divergence is None
+                ):
+                    verbatim_divergence = "final_action"
+
+    stages = [
+        stage.get("stage") for stage in result.get("stage_outputs") or []
+        if stage.get("stage")
+    ] + ["final_decision", "final_action"]
+    rank = {name: index for index, name in enumerate(stages)}
+    present = [
+        value for value in (
+            entity_divergence, operation_divergence,
+            argument_divergence, verbatim_divergence,
+        ) if value is not None
+    ]
+    return {
+        "first_entity_divergence": entity_divergence,
+        "first_operation_divergence": operation_divergence,
+        "first_argument_divergence": argument_divergence,
+        "first_verbatim_argument_divergence": verbatim_divergence,
+        "first_divergence_stage": (
+            min(present, key=lambda value: rank.get(value, len(rank)))
+            if present else None
+        ),
+    }
 
 
 def score_cell(
@@ -240,7 +383,10 @@ def score_cell(
     run_clock = run_manifest.get("run_clock", "")
     case = bench.cases[result["case_id"]]
     request = bench.requests.get(result["request_id"]) if result.get("request_id") else None
-    expected = expected_outcome(bench, case, request, run_clock)
+    gold_injected = result.get("intent_mode") == "gold"
+    expected = expected_outcome(
+        bench, case, request, run_clock, gold_injected=gold_injected
+    )
     # An elicitation cell is scored against the resolved task only after the
     # scripted user has supplied the missing information. Before resolution,
     # the original CLARIFY expectation remains authoritative.
@@ -261,6 +407,7 @@ def score_cell(
     raw_fields: dict[str, bool] = {}
     args_all: bool | None = None
     raw_args_all: bool | None = None
+    preservation_fields: dict[str, Any] = {}
     if expected["behavior"] == "EXECUTE":
         op = bench.domain.operations[expected["operation_id"]]
         required = {name for name, spec in op.arguments.items() if spec.required}
@@ -270,14 +417,11 @@ def score_cell(
                 actual_tool = bench.domain.operations.get(proposal_op)
                 actual_tool = actual_tool.tool if actual_tool else proposal_op
             tool_correct = actual_tool == expected["tool"]
-            raw_fields, raw_args_all, norm_fields, args_all = _score_arguments(
-                expected["arguments"], actual_args, required
-            )
         else:
             tool_correct = False
-            args_all = False
-            raw_args_all = False
-            norm_fields = {}
+        raw_fields, raw_args_all, norm_fields, args_all, preservation_fields = _score_arguments(
+            expected["arguments"], actual_args, required, op.arguments
+        )
     else:
         norm_fields = {}
 
@@ -321,9 +465,10 @@ def score_cell(
         if runtime_events:
             selection_correct = all(bool(event.get("correct")) for event in runtime_events)
     persistence = _persistence_metrics(ledger_rows)
-    divergence = _first_divergence(result, expected, case)
+    divergences = _first_divergences(bench, result, expected, case)
+    divergence = divergences["first_divergence_stage"]
     if persistence:
-        persistence["first_divergence_stage"] = divergence
+        persistence.update(divergences)
 
     usage = {"prompt_tokens": 0, "completion_tokens": 0}
     latency = 0.0
@@ -368,6 +513,51 @@ def score_cell(
             == set(request.labels.missing_information)
         )
 
+    rendering_category = None
+    rendering_lexically_distinct = None
+    rendering_text = result.get("rendering_text")
+    canonical_rendering_text = None
+    rendering_id = result.get("rendering_id")
+    if rendering_id and rendering_id in bench.renderings:
+        rendering = bench.renderings[rendering_id]
+        operation = bench.domain.operations[expected["operation_id"]]
+        entity_id = next(
+            (
+                value for name, value in (expected.get("arguments") or {}).items()
+                if name.endswith("_id")
+            ),
+            case.canonical.entity_id,
+        )
+        intent = {
+            "entity_type": operation.entity_type,
+            "entity_id": entity_id,
+            "operation_id": expected["operation_id"],
+            "arguments": expected.get("arguments") or {},
+        }
+        rendering_text = rendering_text or domaintext.rendering_text(rendering, intent)
+        rendering_category = rendering.category.value
+        canonical_rendering = bench.rendering_for_operation(
+            expected["operation_id"], "CANONICAL_LABEL"
+        )
+        if canonical_rendering:
+            canonical_rendering_text = domaintext.rendering_text(canonical_rendering, intent)
+            rendering_lexically_distinct = (
+                " ".join(rendering_text.casefold().split())
+                != " ".join(canonical_rendering_text.casefold().split())
+            )
+
+    verbatim_arguments_correct = (
+        all(
+            detail["correct"]
+            for detail in preservation_fields.values()
+            if detail["mode"] == "VERBATIM"
+        )
+        if any(
+            detail["mode"] == "VERBATIM"
+            for detail in preservation_fields.values()
+        ) else None
+    )
+
     return models.ScoreRecord(
         run_id=run_manifest.get("run_id", ""),
         cell_id=result["cell_id"],
@@ -406,6 +596,12 @@ def score_cell(
             "normalizer_version": NORMALIZER_VERSION,
             "arguments_all_correct": args_all,
         },
+        argument_preservation={
+            "comparison_method": VERBATIM_COMPARISON_VERSION,
+            "fields": preservation_fields,
+            "verbatim_all_correct": verbatim_arguments_correct,
+        },
+        verbatim_arguments_correct=verbatim_arguments_correct,
         clarification_outcome=clarification_outcome,
         false_action=false_action,
         refusal_correct=refusal_correct,
@@ -420,12 +616,24 @@ def score_cell(
         metadata={
             "expected_behavior": expected["behavior"],
             "expected_tool": expected.get("tool"),
-            "semantic_role": request.labels.semantic_role.value if request else "GOLD_INJECTED",
-            "adequacy": request.labels.adequacy.value if request else "ADEQUATE",
-            "ambiguity": request.labels.ambiguity.value if request else "UNAMBIGUOUS",
-            "lexical_equivalence": request.labels.lexical_equivalence.value if request else "NOT_APPLICABLE",
-            "variation_axes": request.labels.variation_axes if request else [],
-            "missing_information": request.labels.missing_information if request else [],
+            "semantic_role": "GOLD_INJECTED" if gold_injected else (
+                request.labels.semantic_role.value if request else "GOLD_INJECTED"
+            ),
+            "adequacy": "ADEQUATE" if gold_injected else (
+                request.labels.adequacy.value if request else "ADEQUATE"
+            ),
+            "ambiguity": "UNAMBIGUOUS" if gold_injected else (
+                request.labels.ambiguity.value if request else "UNAMBIGUOUS"
+            ),
+            "lexical_equivalence": "NOT_APPLICABLE" if gold_injected else (
+                request.labels.lexical_equivalence.value if request else "NOT_APPLICABLE"
+            ),
+            "variation_axes": [] if gold_injected else (request.labels.variation_axes if request else []),
+            "missing_information": [] if gold_injected else (request.labels.missing_information if request else []),
+            "source_request_semantic_role": request.labels.semantic_role.value if request else None,
+            "source_request_adequacy": request.labels.adequacy.value if request else None,
+            "source_request_ambiguity": request.labels.ambiguity.value if request else None,
+            "source_request_expected_behavior": request.labels.expected_behavior.value if request else None,
             "clarification_targets": case.gold.clarification_targets or [],
             "expected_operation_id": expected.get("operation_id"),
             "expected_arguments": expected.get("arguments") or {},
@@ -443,10 +651,20 @@ def score_cell(
             "procedure_packaging": result.get("procedure_packaging"),
             "family_id": case.family_id,
             "first_divergence_stage": divergence,
+            **divergences,
             "turns_used": result.get("turns_used"),
             "resolved": result.get("resolved"),
             "elicitation_case_id": result.get("elicitation_case_id"),
-            "canonicalization_status": (result.get("canonicalization") or {}).get("status"),
+            "canonicalization_status": (
+                result.get("canonicalization") or {}
+            ).get("mapping_outcome"),
+            "canonical_grounding": (
+                result.get("canonicalization") or {}
+            ).get("grounding", {}),
+            "rendering_category": rendering_category,
+            "rendering_text": rendering_text,
+            "canonical_rendering_text": canonical_rendering_text,
+            "rendering_lexically_distinct": rendering_lexically_distinct,
             "adequacy_assessment_correct": adequacy_assessment_correct,
             "information_parity_verified": bool(
                 parity_evidence and parity_evidence.get("verified")

@@ -1,0 +1,43 @@
+{
+  "ESCALATE_INCIDENT": {
+    "definition": "An open support record changes from its current support tier to a numerically higher support tier, transferring responsibility to that tier while remaining open.",
+    "positive_examples": ["INC-1047 moved from Tier 1 ownership to Tier 2 ownership and remained open."],
+    "negative_examples": ["INC-1047 changed owning team while its support tier stayed fixed."]
+  },
+  "REASSIGN_INCIDENT": {
+    "definition": "An open support record changes owning team while its support tier remains fixed.",
+    "positive_examples": ["INC-1047 changed ownership from Service Desk to Billing while staying at Tier 1."],
+    "negative_examples": ["INC-1047 moved from Tier 1 to Tier 2 while keeping the same owning team."]
+  },
+  "CLOSE_INCIDENT": {
+    "definition": "An open support record with complete information leaves the active work queue because handling is finished.",
+    "positive_examples": ["INC-2450 had complete information, left the open queue, and was marked finished."],
+    "negative_examples": ["INC-2450 remained open while the reporter was asked for more details."]
+  },
+  "REQUEST_MORE_INFORMATION": {
+    "definition": "An agent adds a specified public message to an open support record, notifies its original reporter, and pauses work awaiting that reporter's response while the current support team retains ownership.",
+    "positive_examples": ["A public message specifying the missing logs was added to INC-3120, its original reporter was notified, and the service desk retained ownership while waiting for a response."],
+    "negative_examples": ["INC-3120 was merely marked as waiting without a reporter-facing message or notification.", "INC-3120 was reassigned to another support team without asking its reporter for anything."]
+  },
+  "REQUEST_APPROVAL": {
+    "definition": "A pending authorization item is sent to a named role so that role can authorize or deny it before work proceeds.",
+    "positive_examples": ["APR-0021 was sent to a manager for authorization and no work proceeded yet."],
+    "negative_examples": ["An order charge issue was sent to a manager for examination rather than authorization."]
+  },
+  "REFUND_DUPLICATE_CHARGE": {
+    "reference_template_label_span": "Refund the duplicate charge",
+    "definition": "A confirmed second charge below 500 USD is returned to the customer for the affected order.",
+    "positive_examples": ["The confirmed second 120 USD charge on ORD-0077 was returned to the customer."],
+    "negative_examples": ["The charge on ORD-0077 was disputed and sent to a manager without returning money."]
+  },
+  "REQUEST_MANAGER_REVIEW": {
+    "definition": "An order charge issue is sent to a manager for examination instead of acting on the charge directly.",
+    "positive_examples": ["ORD-0912 was sent to a manager for examination before any money was returned."],
+    "negative_examples": ["The confirmed second charge on ORD-0077 was returned directly to the customer."]
+  },
+  "SUSPEND_ACCOUNT": {
+    "definition": "An active account is prevented from normal use because of fraud, abuse, or non-payment.",
+    "positive_examples": ["ACC-4002 was prevented from transacting after fraud was confirmed."],
+    "negative_examples": ["A related support record was finished while ACC-4002 remained active."]
+  }
+}

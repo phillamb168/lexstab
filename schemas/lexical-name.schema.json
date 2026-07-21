@@ -1,0 +1,29 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://lexstab.invalid/schemas/lexical-name.schema.json",
+  "additionalProperties": false,
+  "properties": {
+    "preferred_term": {
+      "title": "Preferred Term",
+      "type": "string"
+    },
+    "alternative_terms": {
+      "items": {
+        "type": "string"
+      },
+      "title": "Alternative Terms",
+      "type": "array"
+    },
+    "one_sentence_definition": {
+      "title": "One Sentence Definition",
+      "type": "string"
+    }
+  },
+  "required": [
+    "preferred_term",
+    "alternative_terms",
+    "one_sentence_definition"
+  ],
+  "title": "LexicalNameResponse",
+  "type": "object"
+}

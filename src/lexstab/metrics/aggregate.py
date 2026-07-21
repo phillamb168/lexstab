@@ -61,16 +61,33 @@ def primary_h1_stratum(scores: list[dict]) -> list[dict]:
     return [score for score in scores if score.get("metadata", {}).get("primary_h1")]
 
 
+def lexical_h1_stratum(scores: list[dict]) -> list[dict]:
+    """Primary H1 observations whose source wording actually reached the system."""
+    return [
+        score for score in primary_h1_stratum(scores)
+        if score.get("metadata", {}).get("intent_mode") != "gold"
+    ]
+
+
 # ---------------------------------------------------------------- headline
 
 
 def headline_metrics(
     scores: list[dict], *, samples: int = 2000, seed: int = 104729,
     confidence: float = 0.95,
+    minimum_independent_cases: int = 1,
+    minimum_operation_families: int = 1,
 ) -> list[dict]:
     rows = []
-    for (track, arch), group in sorted(_group(
-        scores, lambda s: (s["track"], s["architecture"])
+    for (track, arch, intent_mode, selection, packaging), group in sorted(_group(
+        scores,
+        lambda s: (
+            s["track"],
+            s["architecture"],
+            s.get("metadata", {}).get("intent_mode") or "none",
+            s.get("metadata", {}).get("procedure_selection") or "none",
+            s.get("metadata", {}).get("procedure_packaging") or "none",
+        ),
     ).items()):
         h1 = primary_h1_stratum(group)
         clar = clarification_metrics(group)
@@ -89,7 +106,15 @@ def headline_metrics(
         row = {
             "track": track,
             "architecture": arch,
+            "intent_mode": intent_mode,
+            "procedure_selection": selection,
+            "procedure_packaging": packaging,
             "n_cells": len(group),
+            "n_independent_cases": len({score["case_id"] for score in group}),
+            "n_operation_families": len({
+                score.get("metadata", {}).get("family_id") or score["case_id"]
+                for score in group
+            }),
             "schema_validity": _ci(group, "schema_valid", samples=samples, seed=seed, confidence=confidence),
             "decision_accuracy": _ci(group, "decision_correct", samples=samples, seed=seed, confidence=confidence),
             "full_call_accuracy": _ci(h1 or group, "full_call_correct", samples=samples, seed=seed, confidence=confidence),
@@ -119,6 +144,20 @@ def headline_metrics(
             ),
             "usage": usage_metrics(group),
         }
+        row["interpretation_allowed"] = (
+            row["n_independent_cases"] >= minimum_independent_cases
+        )
+        row["generalization_allowed"] = (
+            row["interpretation_allowed"]
+            and row["n_operation_families"] >= minimum_operation_families
+        )
+        row["interpretation_scope"] = (
+            "generalizable"
+            if row["generalization_allowed"] else (
+                "tested_operation_families_only"
+                if row["interpretation_allowed"] else "exploratory"
+            )
+        )
         rows.append(row)
     return rows
 
@@ -127,7 +166,7 @@ def headline_metrics(
 
 
 def robustness_metrics(scores: list[dict]) -> dict[str, Any]:
-    h1 = primary_h1_stratum(scores)
+    h1 = lexical_h1_stratum(scores)
     by_arch = _group(h1, lambda s: s["architecture"])
     out = {}
     for arch, group in sorted(by_arch.items()):
@@ -143,15 +182,18 @@ def robustness_metrics(scores: list[dict]) -> dict[str, Any]:
                 request_accs[request_id] = sum(
                     1.0 for s in reps if s["full_call_correct"]
                 ) / len(reps)
-                request_decisions[request_id] = tuple(sorted({
-                    (
-                        s.get("decision"),
-                        s.get("actual_operation_id"),
-                        s.get("actual_tool"),
-                        repr(sorted((s.get("actual_arguments") or {}).items())),
-                    )
-                    for s in reps
-                }))
+                request_decisions[request_id] = tuple(sorted(
+                    {
+                        (
+                            s.get("decision"),
+                            s.get("actual_operation_id"),
+                            s.get("actual_tool"),
+                            repr(sorted((s.get("actual_arguments") or {}).items())),
+                        )
+                        for s in reps
+                    },
+                    key=repr,
+                ))
             accs = list(request_accs.values())
             base = [
                 acc for request_id, acc in request_accs.items()
@@ -229,6 +271,10 @@ def operational_invariance(
 
 
 def clarification_metrics(scores: list[dict]) -> dict[str, Any]:
+    scores = [
+        score for score in scores
+        if score.get("metadata", {}).get("intent_mode") != "gold"
+    ]
     outcomes = [s.get("clarification_outcome") for s in scores if s.get("clarification_outcome")]
     tp = outcomes.count("TP")
     fp = outcomes.count("FP")
@@ -296,6 +342,48 @@ def adequacy_matrix_metrics(scores: list[dict]) -> dict[str, Any]:
 # ---------------------------------------------------------------- paired comparisons
 
 
+MODELESS_ARCHITECTURES = {
+    "A0_DIRECT", "A1_DIRECT_CLARIFY",
+    "P0_RAW_PROPOSAL", "P1_CLARIFY_PROPOSAL",
+    "M0_NO_MEMORY", "M1_STATIC_GLOSSARY", "M2_RETRIEVED_MEMORY",
+    "M3_CANONICAL_RESOLVER", "M4_PERSONALIZED_MEMORY", "AL_RAW",
+}
+GOLD_ARCHITECTURES = {
+    "B_GOLD", "C_GOLD", "D_DEFINITION_ONLY", "E_ORGANIZATION_TERM",
+    "F_MODEL_DISCOVERED", "LP0G_GOLD_START_LANGUAGE",
+    "LP0B_GOLD_START_LANGUAGE_BALANCED", "LP2_CANONICAL_PROCEDURE",
+    "LP0BV_GOLD_START_LANGUAGE_BALANCED_VERBATIM",
+    "LP3_CANONICAL_PROCEDURE_TOOL",
+}
+RUNTIME_ARCHITECTURES = {"B_RUNTIME", "C_RUNTIME", "LP0_LANGUAGE_THROUGHOUT"}
+
+
+def comparison_selector(arch: str, intent_mode: str | None) -> dict[str, str]:
+    if arch in MODELESS_ARCHITECTURES:
+        mode = "none"
+    elif intent_mode is not None:
+        mode = intent_mode
+    elif arch in GOLD_ARCHITECTURES:
+        mode = "gold"
+    elif arch in RUNTIME_ARCHITECTURES:
+        mode = "runtime"
+    else:
+        mode = "none"
+    selection = "gold" if arch in {
+        "P3_CANONICAL_PROCEDURE_PROPOSAL", "P4_CANONICAL_PROCEDURE_TOOL",
+        "LP2_CANONICAL_PROCEDURE", "LP3_CANONICAL_PROCEDURE_TOOL",
+    } else "none"
+    packaging = "inline" if selection == "gold" else "none"
+    if arch == "P2F_CANONICAL_FACTS_PROPOSAL":
+        selection, packaging = "gold", "facts_only"
+    return {
+        "architecture": arch,
+        "intent_mode": mode,
+        "procedure_selection": selection,
+        "procedure_packaging": packaging,
+    }
+
+
 def _paired_values(
     scores: list[dict], arch_a: str, arch_b: str, field: str,
     *, restrict_h1: bool = True, intent_mode: str | None = None,
@@ -308,13 +396,15 @@ def _paired_values(
             return False
         if restrict_h1 and score.get("request_id") and not score.get("metadata", {}).get("primary_h1"):
             return False
-        if intent_mode and score.get("metadata", {}).get("intent_mode") not in (intent_mode, "none", None):
-            return False
-        if score.get("metadata", {}).get("procedure_packaging") == "packaged":
-            return False
-        if score.get("metadata", {}).get("procedure_selection") == "runtime":
-            return False
-        return True
+        meta = score.get("metadata", {})
+        expected = comparison_selector(arch, intent_mode)
+        return (
+            (meta.get("intent_mode") or "none") == expected["intent_mode"]
+            and (meta.get("procedure_selection") or "none")
+            == expected["procedure_selection"]
+            and (meta.get("procedure_packaging") or "none")
+            == expected["procedure_packaging"]
+        )
 
     side_a = {_key(s): s for s in scores if _eligible(s, arch_a)}
     side_b = {_key(s): s for s in scores if _eligible(s, arch_b)}
@@ -340,11 +430,27 @@ def paired_comparison(
     )
     decision = practical_equivalence(label or f"{arch_b} - {arch_a}", delta, margin)
     discordance = paired_discordance(paired)
+    case_ids = sorted({case_id for case_id, _a, _b in paired})
+    family_by_case = {
+        score["case_id"]: (
+            score.get("metadata", {}).get("family_id") or score["case_id"]
+        )
+        for score in scores
+    }
+    family_ids = sorted({family_by_case.get(case_id, case_id) for case_id in case_ids})
     return {
         **decision.to_dict(),
         "field": field,
         "n_pairs": len(paired),
+        "n_independent_cases": len(case_ids),
+        "independent_case_ids": case_ids,
+        "n_operation_families": len(family_ids),
+        "operation_family_ids": family_ids,
         "secondary_mcnemar": discordance,
+        "pairing_cohorts": [
+            comparison_selector(arch_a, intent_mode),
+            comparison_selector(arch_b, intent_mode),
+        ],
     }
 
 
@@ -354,21 +460,26 @@ def primary_comparisons(scores: list[dict], equivalence: dict[str, float],
     margin = float(equivalence.get("success_margin", 0.01))
     fs_margin = float(equivalence.get("final_state_margin", margin))
     comparisons = [
-        ("A1_DIRECT_CLARIFY - A0_DIRECT", "A0_DIRECT", "A1_DIRECT_CLARIFY", "full_call_correct", margin, None),
-        ("B_RUNTIME - A1_DIRECT_CLARIFY", "A1_DIRECT_CLARIFY", "B_RUNTIME", "full_call_correct", margin, None),
-        ("C_RUNTIME - A1_DIRECT_CLARIFY", "A1_DIRECT_CLARIFY", "C_RUNTIME", "full_call_correct", margin, None),
-        ("C_GOLD - B_GOLD", "B_GOLD", "C_GOLD", "full_call_correct", margin, None),
-        ("C_GOLD - B_GOLD (final state)", "B_GOLD", "C_GOLD", "final_state_correct", fs_margin, None),
-        ("P1 - P0 clarification transition", "P0_RAW_PROPOSAL", "P1_CLARIFY_PROPOSAL", "final_state_correct", fs_margin, None),
+        ("A1_DIRECT_CLARIFY - A0_DIRECT", "A0_DIRECT", "A1_DIRECT_CLARIFY", "full_call_correct", margin, "none"),
+        ("B_RUNTIME - A1_DIRECT_CLARIFY", "A1_DIRECT_CLARIFY", "B_RUNTIME", "full_call_correct", margin, "runtime"),
+        ("C_RUNTIME - A1_DIRECT_CLARIFY", "A1_DIRECT_CLARIFY", "C_RUNTIME", "full_call_correct", margin, "runtime"),
+        ("C_GOLD - B_GOLD", "B_GOLD", "C_GOLD", "full_call_correct", margin, "gold"),
+        ("C_GOLD - B_GOLD (final state)", "B_GOLD", "C_GOLD", "final_state_correct", fs_margin, "gold"),
+        ("F_MODEL_DISCOVERED - C_GOLD", "C_GOLD", "F_MODEL_DISCOVERED", "full_call_correct", margin, "gold"),
+        ("F_MODEL_DISCOVERED - B_GOLD", "B_GOLD", "F_MODEL_DISCOVERED", "full_call_correct", margin, "gold"),
+        ("P1 - P0 clarification transition", "P0_RAW_PROPOSAL", "P1_CLARIFY_PROPOSAL", "final_state_correct", fs_margin, "none"),
         ("P2 - P1 canonical-intent transition", "P1_CLARIFY_PROPOSAL", "P2_CANONICAL_PROPOSAL", "final_state_correct", fs_margin, "runtime"),
         ("P3 - P2 reusable-procedure transition", "P2_CANONICAL_PROPOSAL", "P3_CANONICAL_PROCEDURE_PROPOSAL", "final_state_correct", fs_margin, "runtime"),
         ("P4 - P3 typed-interface transition", "P3_CANONICAL_PROCEDURE_PROPOSAL", "P4_CANONICAL_PROCEDURE_TOOL", "final_state_correct", fs_margin, "runtime"),
-        ("LP1 canonical once - LP0G gold-start prose", "LP0G_GOLD_START_LANGUAGE", "LP1_CANONICAL_ONCE", "final_state_correct", fs_margin, "gold"),
+        ("LP1 canonical once - LP0B call-balanced prose", "LP0B_GOLD_START_LANGUAGE_BALANCED", "LP1_CANONICAL_ONCE", "final_state_correct", fs_margin, "gold"),
+        ("LP0BV visible verbatim contract - LP0B call-balanced prose", "LP0B_GOLD_START_LANGUAGE_BALANCED", "LP0BV_GOLD_START_LANGUAGE_BALANCED_VERBATIM", "verbatim_arguments_correct", fs_margin, "gold"),
+        ("LP1 canonical once - LP0BV visible verbatim contract", "LP0BV_GOLD_START_LANGUAGE_BALANCED_VERBATIM", "LP1_CANONICAL_ONCE", "verbatim_arguments_correct", fs_margin, "gold"),
+        ("LP1 canonical once - LP0G gold-start prose (secondary)", "LP0G_GOLD_START_LANGUAGE", "LP1_CANONICAL_ONCE", "final_state_correct", fs_margin, "gold"),
         ("LP1 - LP0 practical end-to-end", "LP0_LANGUAGE_THROUGHOUT", "LP1_CANONICAL_ONCE", "final_state_correct", fs_margin, "runtime"),
         ("LP2 - LP1 procedure", "LP1_CANONICAL_ONCE", "LP2_CANONICAL_PROCEDURE", "final_state_correct", fs_margin, "gold"),
         ("LP3 - LP2 typed action", "LP2_CANONICAL_PROCEDURE", "LP3_CANONICAL_PROCEDURE_TOOL", "final_state_correct", fs_margin, "gold"),
-        ("Retrieved memory - Static glossary", "M1_STATIC_GLOSSARY", "M2_RETRIEVED_MEMORY", "full_call_correct", margin, None),
-        ("Stable - Lexical drift", "AL_DRIFT", "AL_CANONICAL", "final_state_correct", fs_margin, None),
+        ("Retrieved memory - Static glossary", "M1_STATIC_GLOSSARY", "M2_RETRIEVED_MEMORY", "full_call_correct", margin, "none"),
+        ("Stable - Lexical drift", "AL_DRIFT", "AL_CANONICAL", "final_state_correct", fs_margin, "gold"),
     ]
     out = []
     for label, arch_a, arch_b, field, cmp_margin, mode in comparisons:
@@ -387,6 +498,24 @@ def primary_comparisons(scores: list[dict], equivalence: dict[str, float],
 
 def formalization_transitions(scores: list[dict], *, samples: int = 2000, seed: int = 104729,
                               margin: float = 0.02, confidence: float = 0.95) -> list[dict]:
+    expected_cohort = {
+        "P0_RAW_PROPOSAL": ("none", "none", "none"),
+        "P1_CLARIFY_PROPOSAL": ("none", "none", "none"),
+        "P2_CANONICAL_PROPOSAL": ("runtime", "none", "none"),
+        "P3_CANONICAL_PROCEDURE_PROPOSAL": ("runtime", "gold", "inline"),
+        "P4_CANONICAL_PROCEDURE_TOOL": ("runtime", "gold", "inline"),
+    }
+
+    def runtime_cohort(architecture: str) -> list[dict]:
+        mode, selection, packaging = expected_cohort[architecture]
+        return [
+            score for score in scores
+            if score["architecture"] == architecture
+            and (score.get("metadata", {}).get("intent_mode") or "none") == mode
+            and (score.get("metadata", {}).get("procedure_selection") or "none") == selection
+            and (score.get("metadata", {}).get("procedure_packaging") or "none") == packaging
+        ]
+
     out = []
     ladder = [arch for arch in P_LADDER]
     for arch_a, arch_b in zip(ladder, ladder[1:]):
@@ -395,8 +524,8 @@ def formalization_transitions(scores: list[dict], *, samples: int = 2000, seed: 
             samples=samples, seed=seed, intent_mode="runtime",
             label=f"{arch_b} - {arch_a} (final state)", confidence=confidence,
         )
-        group_a = [s for s in scores if s["architecture"] == arch_a]
-        group_b = [s for s in scores if s["architecture"] == arch_b]
+        group_a = runtime_cohort(arch_a)
+        group_b = runtime_cohort(arch_b)
         fa_a = clarification_metrics(group_a)["false_action_rate"]
         fa_b = clarification_metrics(group_b)["false_action_rate"]
         cost_a = usage_metrics(group_a)
@@ -461,9 +590,25 @@ def component_ablations(scores: list[dict], *, samples: int = 2000, seed: int = 
             delta = cluster_bootstrap_delta(
                 paired, samples=samples, seed=seed, confidence=confidence
             )
+            case_ids = sorted({case_id for case_id, _a, _b in paired})
+            family_by_case = {
+                score["case_id"]: (
+                    score.get("metadata", {}).get("family_id") or score["case_id"]
+                )
+                for score in scores
+            }
+            family_ids = sorted({family_by_case.get(case_id, case_id) for case_id in case_ids})
             out.append({"ablation": label,
                         **practical_equivalence("P2 gold - P2 runtime", delta, margin).to_dict(),
-                        "n_pairs": len(paired)})
+                        "n_pairs": len(paired),
+                        "n_independent_cases": len(case_ids),
+                        "independent_case_ids": case_ids,
+                        "n_operation_families": len(family_ids),
+                        "operation_family_ids": family_ids,
+                        "pairing_cohorts": [
+                            comparison_selector("P2_CANONICAL_PROPOSAL", "runtime"),
+                            comparison_selector("P2_CANONICAL_PROPOSAL", "gold"),
+                        ]})
             continue
         result = paired_comparison(scores, arch_a, arch_b, "final_state_correct", margin,
                                    samples=samples, seed=seed, intent_mode=mode, label=label,
@@ -491,9 +636,32 @@ def component_ablations(scores: list[dict], *, samples: int = 2000, seed: int = 
         delta = cluster_bootstrap_delta(
             paired, samples=samples, seed=seed, confidence=confidence
         )
+        case_ids = sorted({case_id for case_id, _a, _b in paired})
+        family_by_case = {
+            score["case_id"]: (
+                score.get("metadata", {}).get("family_id") or score["case_id"]
+            )
+            for score in scores
+        }
+        family_ids = sorted({family_by_case.get(case_id, case_id) for case_id in case_ids})
         out.append({"ablation": "procedure packaging (inline vs packaged skill)",
                     **practical_equivalence("packaged - inline", delta, margin).to_dict(),
-                    "n_pairs": len(paired)})
+                    "n_pairs": len(paired),
+                    "n_independent_cases": len(case_ids),
+                    "independent_case_ids": case_ids,
+                    "n_operation_families": len(family_ids),
+                    "operation_family_ids": family_ids,
+                    "pairing_cohorts": [
+                        comparison_selector(
+                            "P3_CANONICAL_PROCEDURE_PROPOSAL", "gold"
+                        ),
+                        {
+                            **comparison_selector(
+                                "P3_CANONICAL_PROCEDURE_PROPOSAL", "gold"
+                            ),
+                            "procedure_packaging": "packaged",
+                        },
+                    ]})
     # selection ablation
     runtime_selected = [s for s in scores if s.get("metadata", {}).get("procedure_selection") == "runtime"]
     if runtime_selected:
@@ -517,30 +685,294 @@ def component_ablations(scores: list[dict], *, samples: int = 2000, seed: int = 
 # ---------------------------------------------------------------- persistence (§38.11)
 
 
-def persistence_metrics(scores: list[dict]) -> dict[str, Any]:
+def persistence_metrics(
+    scores: list[dict], *, minimum_independent_cases: int = 1,
+    minimum_operation_families: int = 1,
+) -> dict[str, Any]:
     lp_scores = [s for s in scores if s["architecture"].startswith("LP")]
     out = {}
-    for arch, group in sorted(_group(lp_scores, lambda s: s["architecture"]).items()):
+    grouped = _group(
+        lp_scores,
+        lambda s: (
+            s["architecture"],
+            s.get("metadata", {}).get("intent_mode") or "none",
+            s.get("metadata", {}).get("procedure_selection") or "none",
+            s.get("metadata", {}).get("procedure_packaging") or "none",
+        ),
+    )
+    for (arch, mode, selection, packaging), group in sorted(grouped.items()):
         persists = [s.get("persistence") or {} for s in group]
         depths = [p.get("nl_persistence_depth") for p in persists if p.get("nl_persistence_depth") is not None]
         reinterp = [p.get("reinterpretation_count") for p in persists if p.get("reinterpretation_count") is not None]
         changes = [p.get("representation_change_count") for p in persists if p.get("representation_change_count") is not None]
         divergences = [s.get("metadata", {}).get("first_divergence_stage") for s in group]
+        operation_divergences = [
+            s.get("metadata", {}).get("first_operation_divergence") for s in group
+        ]
+        argument_divergences = [
+            s.get("metadata", {}).get("first_argument_divergence") for s in group
+        ]
+        verbatim_divergences = [
+            s.get("metadata", {}).get("first_verbatim_argument_divergence")
+            for s in group
+        ]
         final_states = [s for s in group if s.get("final_state_correct") is not None]
-        out[arch] = {
+        cohort_id = f"{arch}|{mode}|{selection}|{packaging}"
+        case_ids = {score["case_id"] for score in group}
+        family_ids = {
+            score.get("metadata", {}).get("family_id") or score["case_id"]
+            for score in group
+        }
+        interpretation_allowed = len(case_ids) >= minimum_independent_cases
+        generalization_allowed = (
+            interpretation_allowed
+            and len(family_ids) >= minimum_operation_families
+        )
+        out[cohort_id] = {
+            "architecture": arch,
+            "intent_mode": mode,
+            "procedure_selection": selection,
+            "procedure_packaging": packaging,
             "n": len(group),
+            "n_independent_cases": len(case_ids),
+            "n_operation_families": len(family_ids),
+            "interpretation_allowed": interpretation_allowed,
+            "generalization_allowed": generalization_allowed,
+            "interpretation_scope": (
+                "generalizable" if generalization_allowed else (
+                    "tested_operation_families_only"
+                    if interpretation_allowed else "exploratory"
+                )
+            ),
+            "interpretation_warning": (
+                f"Causal interpretation withheld: {len(case_ids)} independent "
+                f"canonical case(s) were available; at least "
+                f"{minimum_independent_cases} are required."
+                if not interpretation_allowed else (
+                    f"Interpretation is limited to {len(family_ids)} tested "
+                    "operation family or families."
+                    if not generalization_allowed else None
+                )
+            ),
             "mean_nl_persistence_depth": sum(depths) / len(depths) if depths else None,
             "mean_reinterpretation_count": sum(reinterp) / len(reinterp) if reinterp else None,
             "mean_representation_changes": sum(changes) / len(changes) if changes else None,
             "first_divergence_distribution": {
                 stage or "none": divergences.count(stage) for stage in set(divergences)
             },
+            "first_operation_divergence_distribution": {
+                stage or "none": operation_divergences.count(stage)
+                for stage in set(operation_divergences)
+            },
+            "first_argument_divergence_distribution": {
+                stage or "none": argument_divergences.count(stage)
+                for stage in set(argument_divergences)
+            },
+            "first_verbatim_argument_divergence_distribution": {
+                stage or "none": verbatim_divergences.count(stage)
+                for stage in set(verbatim_divergences)
+            },
+            "verbatim_preservation_accuracy": (
+                sum(
+                    1 for score in group
+                    if (score.get("argument_preservation") or {}).get(
+                        "verbatim_all_correct"
+                    ) is True
+                )
+                / sum(
+                    1 for score in group
+                    if (score.get("argument_preservation") or {}).get(
+                        "verbatim_all_correct"
+                    ) is not None
+                )
+                if any(
+                    (score.get("argument_preservation") or {}).get(
+                        "verbatim_all_correct"
+                    ) is not None
+                    for score in group
+                ) else None
+            ),
             "final_state_accuracy": (
                 sum(1 for s in final_states if s["final_state_correct"]) / len(final_states)
                 if final_states else None
             ),
         }
     return out
+
+
+# ---------------------------------------------------------------- measurement validity / rendering contrast
+
+
+def measurement_warnings(
+    scores: list[dict], *, minimum_schema_validity: float = 0.99
+) -> list[dict[str, Any]]:
+    warnings = []
+    grouped = _group(
+        scores,
+        lambda s: (
+            s["track"],
+            s["architecture"],
+            s.get("metadata", {}).get("intent_mode") or "none",
+            s.get("metadata", {}).get("procedure_selection") or "none",
+            s.get("metadata", {}).get("procedure_packaging") or "none",
+        ),
+    )
+    for cohort, group in sorted(grouped.items()):
+        rate = sum(1 for score in group if score.get("schema_valid")) / len(group)
+        if rate < minimum_schema_validity:
+            warnings.append({
+                "kind": "schema_contract_degraded",
+                "track": cohort[0],
+                "architecture": cohort[1],
+                "intent_mode": cohort[2],
+                "procedure_selection": cohort[3],
+                "procedure_packaging": cohort[4],
+                "schema_validity": rate,
+                "minimum": minimum_schema_validity,
+                "n": len(group),
+                "interpretation": "Report outcomes, but do not attribute a causal gain to this condition.",
+            })
+    return warnings
+
+
+def apply_interpretation_gate(
+    comparison: dict[str, Any], warnings: list[dict[str, Any]],
+    *, minimum_independent_cases: int = 1,
+    minimum_operation_families: int = 1,
+) -> dict[str, Any]:
+    """Mark a paired result as descriptive-only when either exact cohort failed.
+
+    The observations and calculated interval remain unchanged. Only causal
+    interpretation is withheld, which preserves raw failures for audit.
+    """
+    warning_keys = {
+        (
+            warning.get("architecture"),
+            warning.get("intent_mode"),
+            warning.get("procedure_selection"),
+            warning.get("procedure_packaging"),
+        )
+        for warning in warnings
+    }
+    cohorts = comparison.get("pairing_cohorts") or []
+    failed = [
+        cohort for cohort in cohorts
+        if (
+            cohort.get("architecture"),
+            cohort.get("intent_mode"),
+            cohort.get("procedure_selection"),
+            cohort.get("procedure_packaging"),
+        ) in warning_keys
+    ]
+    n_cases = int(comparison.get("n_independent_cases") or 0)
+    n_families = int(comparison.get("n_operation_families") or 0)
+    insufficient_cases = n_cases < minimum_independent_cases
+    insufficient_families = n_families < minimum_operation_families
+    reasons = []
+    if failed:
+        reasons.append(
+            "an exact comparison cohort failed the schema-validity gate"
+        )
+    if not comparison.get("n_pairs"):
+        reasons.append("no paired observations were available")
+    if insufficient_cases:
+        reasons.append(
+            f"{n_cases} independent canonical case(s) were available; "
+            f"at least {minimum_independent_cases} are required"
+        )
+    return {
+        **comparison,
+        "minimum_independent_cases_for_interpretation": minimum_independent_cases,
+        "minimum_operation_families_for_generalization": minimum_operation_families,
+        "interpretation_allowed": (
+            bool(comparison.get("n_pairs")) and not failed and not insufficient_cases
+        ),
+        "generalization_allowed": (
+            bool(comparison.get("n_pairs")) and not failed
+            and not insufficient_cases and not insufficient_families
+        ),
+        "interpretation_scope": (
+            "exploratory" if insufficient_cases else (
+                "tested_operation_families_only" if insufficient_families
+                else "generalizable"
+            )
+        ),
+        "interpretation_warning": (
+            "Causal interpretation withheld because " + "; ".join(reasons) + "."
+            if reasons else (
+                f"Interpretation is limited to the tested operation families because "
+                f"{n_families} family or families were available; at least "
+                f"{minimum_operation_families} are required for generalization."
+                if insufficient_families else None
+            )
+        ),
+        "failed_interpretation_cohorts": failed,
+    }
+
+
+def rendering_contrast_metrics(
+    scores: list[dict], *, samples: int = 2000, seed: int = 104729,
+    confidence: float = 0.95, margin: float = 0.01,
+) -> dict[str, Any]:
+    discovered = [s for s in scores if s["architecture"] == "F_MODEL_DISCOVERED"]
+    distinct = [
+        s for s in discovered
+        if s.get("metadata", {}).get("rendering_lexically_distinct") is True
+    ]
+    distinct_cases = {s["case_id"] for s in distinct}
+    distinct_pool = [s for s in scores if s["case_id"] in distinct_cases]
+    by_operation = {}
+    for operation_id, group in sorted(_group(
+        discovered,
+        lambda score: score.get("metadata", {}).get("expected_operation_id") or "UNKNOWN",
+    ).items()):
+        by_operation[operation_id] = {
+            "n": len(group),
+            "full_call_accuracy": (
+                sum(1 for score in group if score.get("full_call_correct")) / len(group)
+                if group else None
+            ),
+            "lexically_distinct_n": sum(
+                1 for score in group
+                if score.get("metadata", {}).get("rendering_lexically_distinct") is True
+            ),
+        }
+    return {
+        "n_model_discovered_cells": len(discovered),
+        "n_lexically_distinct_cells": len(distinct),
+        "n_identical_to_canonical_cells": len(discovered) - len(distinct),
+        "distinct_case_ids": sorted(distinct_cases),
+        "by_operation": by_operation,
+        "all_cases_comparison": paired_comparison(
+            scores,
+            "C_GOLD",
+            "F_MODEL_DISCOVERED",
+            "full_call_correct",
+            margin,
+            samples=samples,
+            seed=seed,
+            restrict_h1=False,
+            intent_mode="gold",
+            label="F_MODEL_DISCOVERED - C_GOLD (all renderings)",
+            confidence=confidence,
+        ),
+        "lexically_distinct_comparison": paired_comparison(
+            distinct_pool,
+            "C_GOLD",
+            "F_MODEL_DISCOVERED",
+            "full_call_correct",
+            margin,
+            samples=samples,
+            seed=seed,
+            restrict_h1=False,
+            intent_mode="gold",
+            label="F_MODEL_DISCOVERED - C_GOLD (lexically distinct only)",
+            confidence=confidence,
+        ),
+        "interpretation": (
+            "Identical instantiated renderings are recorded as no lexical contrast and are not evidence of lexical equivalence."
+        ),
+    }
 
 
 # ---------------------------------------------------------------- elicitation (§38.5)
@@ -651,11 +1083,26 @@ def typed_interface_metrics(
     ]
     if not eligible:
         return {}
+    grouped = _group(
+        eligible,
+        lambda score: (
+            score.get("metadata", {}).get("intent_mode") or "none",
+            score.get("metadata", {}).get("procedure_selection") or "none",
+            score.get("metadata", {}).get("procedure_packaging") or "none",
+        ),
+    )
     return {
-        "P4_CANONICAL_PROCEDURE_TOOL": _ci(
-            eligible, "typed_interface_valid", samples=samples, seed=seed,
-            confidence=confidence,
-        )
+        f"P4_CANONICAL_PROCEDURE_TOOL|{mode}|{selection}|{packaging}": {
+            "architecture": "P4_CANONICAL_PROCEDURE_TOOL",
+            "intent_mode": mode,
+            "procedure_selection": selection,
+            "procedure_packaging": packaging,
+            **_ci(
+                group, "typed_interface_valid", samples=samples, seed=seed,
+                confidence=confidence,
+            ),
+        }
+        for (mode, selection, packaging), group in sorted(grouped.items())
     }
 
 
@@ -696,6 +1143,7 @@ ARCHITECTURE_BOM: dict[str, dict[str, Any]] = {
     "C_GOLD": {"mutable_model_stages": 1, "external_services": ["execution provider"], "persisted_stores": ["rendering registry"], "nl_handoffs": 0},
     "D_DEFINITION_ONLY": {"mutable_model_stages": 1, "external_services": ["execution provider"], "persisted_stores": ["rendering registry"], "nl_handoffs": 0},
     "E_ORGANIZATION_TERM": {"mutable_model_stages": 1, "external_services": ["execution provider"], "persisted_stores": ["rendering registry"], "nl_handoffs": 0},
+    "F_MODEL_DISCOVERED": {"mutable_model_stages": 1, "external_services": ["execution provider"], "persisted_stores": ["rendering registry"], "nl_handoffs": 0},
     "B_EXTERNAL_GATE": {"mutable_model_stages": 3, "external_services": ["execution provider", "assessor provider", "canonicalizer provider"], "persisted_stores": [], "nl_handoffs": 1},
     "B_EXTERNAL_GATE_GOLD": {"mutable_model_stages": 2, "external_services": ["execution provider", "canonicalizer provider"], "persisted_stores": [], "nl_handoffs": 1},
     "M0_NO_MEMORY": {"mutable_model_stages": 1, "external_services": ["execution provider"], "persisted_stores": [], "nl_handoffs": 0},
@@ -711,16 +1159,52 @@ ARCHITECTURE_BOM: dict[str, dict[str, Any]] = {
     "P4_CANONICAL_PROCEDURE_TOOL": {"mutable_model_stages": 2, "external_services": ["execution provider", "canonicalizer provider"], "persisted_stores": ["procedure registry", "typed tool registry"], "nl_handoffs": 0},
     "LP0_LANGUAGE_THROUGHOUT": {"mutable_model_stages": 7, "external_services": ["execution provider"], "persisted_stores": [], "nl_handoffs": 4},
     "LP0G_GOLD_START_LANGUAGE": {"mutable_model_stages": 7, "external_services": ["execution provider"], "persisted_stores": [], "nl_handoffs": 4},
-    "LP1_CANONICAL_ONCE": {"mutable_model_stages": 5, "external_services": ["execution provider", "canonicalizer provider"], "persisted_stores": [], "nl_handoffs": 0},
-    "LP2_CANONICAL_PROCEDURE": {"mutable_model_stages": 5, "external_services": ["execution provider", "canonicalizer provider"], "persisted_stores": ["procedure registry"], "nl_handoffs": 0},
-    "LP3_CANONICAL_PROCEDURE_TOOL": {"mutable_model_stages": 5, "external_services": ["execution provider", "canonicalizer provider"], "persisted_stores": ["procedure registry", "typed tool registry"], "nl_handoffs": 0},
+    "LP0B_GOLD_START_LANGUAGE_BALANCED": {"mutable_model_stages": 4, "external_services": ["execution provider"], "persisted_stores": [], "nl_handoffs": 4},
+    "LP0BV_GOLD_START_LANGUAGE_BALANCED_VERBATIM": {"mutable_model_stages": 4, "external_services": ["execution provider"], "persisted_stores": [], "nl_handoffs": 4},
+    "LP1_CANONICAL_ONCE": {"mutable_model_stages": 4, "external_services": ["execution provider", "canonicalizer provider"], "persisted_stores": [], "nl_handoffs": 0},
+    "LP2_CANONICAL_PROCEDURE": {"mutable_model_stages": 4, "external_services": ["execution provider", "canonicalizer provider"], "persisted_stores": ["procedure registry"], "nl_handoffs": 0},
+    "LP3_CANONICAL_PROCEDURE_TOOL": {"mutable_model_stages": 4, "external_services": ["execution provider", "canonicalizer provider"], "persisted_stores": ["procedure registry", "typed tool registry"], "nl_handoffs": 0},
 }
 
 
 def complexity_bill_of_materials(scores: list[dict]) -> dict[str, Any]:
     out = {}
-    for arch, group in sorted(_group(scores, lambda s: s["architecture"]).items()):
+    grouped = _group(
+        scores,
+        lambda s: (
+            s["architecture"],
+            s.get("metadata", {}).get("intent_mode") or "none",
+            s.get("metadata", {}).get("procedure_selection") or "none",
+            s.get("metadata", {}).get("procedure_packaging") or "none",
+        ),
+    )
+    for (arch, mode, selection, packaging), group in sorted(grouped.items()):
         bom = dict(ARCHITECTURE_BOM.get(arch, {}))
-        bom["measured"] = usage_metrics(group)
-        out[arch] = bom
+        measured = usage_metrics(group)
+        configured_stages = bom.get("mutable_model_stages")
+        configured_handoffs = bom.get("nl_handoffs")
+        persistence_depths = [
+            (score.get("persistence") or {}).get("nl_persistence_depth")
+            for score in group
+            if (score.get("persistence") or {}).get("nl_persistence_depth") is not None
+        ]
+        services = list(bom.get("external_services") or [])
+        if mode == "gold":
+            services = [service for service in services if service != "canonicalizer provider"]
+        bom.update({
+            "architecture": arch,
+            "intent_mode": mode,
+            "procedure_selection": selection,
+            "procedure_packaging": packaging,
+            "configured_mutable_model_stages": configured_stages,
+            "mutable_model_stages": measured.get("mean_model_calls"),
+            "configured_nl_handoffs": configured_handoffs,
+            "nl_handoffs": (
+                sum(persistence_depths) / len(persistence_depths)
+                if persistence_depths else 0
+            ),
+            "external_services": services,
+        })
+        bom["measured"] = measured
+        out[f"{arch}|{mode}|{selection}|{packaging}"] = bom
     return out

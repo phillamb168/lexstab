@@ -17,13 +17,18 @@ from lexstab.freeze import FrozenBenchmark
 from lexstab.hashing import canonical_json, sha256_text
 
 BOUNDARY_ARCHS = {"A0_DIRECT", "A1_DIRECT_CLARIFY", "B_RUNTIME", "C_RUNTIME"}
-POST_CANONICAL_ARCHS = {"B_GOLD", "C_GOLD", "D_DEFINITION_ONLY", "E_ORGANIZATION_TERM"}
+POST_CANONICAL_ARCHS = {
+    "B_GOLD", "C_GOLD", "D_DEFINITION_ONLY", "E_ORGANIZATION_TERM",
+    "F_MODEL_DISCOVERED",
+}
 INTENT_ARCHS = {"A0_DIRECT", "A1_DIRECT_CLARIFY", "B_EXTERNAL_GATE", "B_EXTERNAL_GATE_GOLD"}
 MEMORY_ARCHS = {"M0_NO_MEMORY", "M1_STATIC_GLOSSARY", "M2_RETRIEVED_MEMORY", "M3_CANONICAL_RESOLVER", "M4_PERSONALIZED_MEMORY"}
 P_CONDITIONS = ["P0_RAW_PROPOSAL", "P1_CLARIFY_PROPOSAL", "P2_CANONICAL_PROPOSAL",
                 "P3_CANONICAL_PROCEDURE_PROPOSAL", "P4_CANONICAL_PROCEDURE_TOOL"]
 P_FACT_CONTROL = "P2F_CANONICAL_FACTS_PROPOSAL"
-LP_CONDITIONS = ["LP0_LANGUAGE_THROUGHOUT", "LP0G_GOLD_START_LANGUAGE", "LP1_CANONICAL_ONCE",
+LP_CONDITIONS = ["LP0_LANGUAGE_THROUGHOUT", "LP0G_GOLD_START_LANGUAGE",
+                 "LP0B_GOLD_START_LANGUAGE_BALANCED", "LP1_CANONICAL_ONCE",
+                 "LP0BV_GOLD_START_LANGUAGE_BALANCED_VERBATIM",
                  "LP2_CANONICAL_PROCEDURE", "LP3_CANONICAL_PROCEDURE_TOOL"]
 AGENT_LOOP_CONDITIONS = ["AL_RAW", "AL_CANONICAL", "AL_RENDERED", "AL_DRIFT"]
 
@@ -32,7 +37,12 @@ RENDERING_CATEGORY_FOR_ARCH = {
     "C_GOLD": "CANONICAL_LABEL",
     "D_DEFINITION_ONLY": "DEFINITION_ONLY",
     "E_ORGANIZATION_TERM": "ORGANIZATION_PREFERRED",
+    "F_MODEL_DISCOVERED": "MODEL_DISCOVERED",
 }
+
+
+class MatrixSelectionError(ValueError):
+    """The requested benchmark slice cannot be represented without dropping inputs."""
 
 
 @dataclass(frozen=True)
@@ -51,6 +61,8 @@ class MatrixCell:
     repetition: int
     model_role: str
     elicitation_case_id: str | None = None
+    rendering_category: str | None = None
+    procedure_selector: str | None = None
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -68,6 +80,8 @@ class MatrixCell:
             "repetition": self.repetition,
             "model_role": self.model_role,
             "elicitation_case_id": self.elicitation_case_id,
+            "rendering_category": self.rendering_category,
+            "procedure_selector": self.procedure_selector,
         }
 
 
@@ -93,16 +107,78 @@ def _cell_id(parts: list[Any]) -> str:
 
 def select_cases(bench: FrozenBenchmark, config: RunConfig) -> list[str]:
     split = config.selection.get("split") or "development"
-    case_ids = list(bench.manifest.splits.get(split, []))
+    if split not in bench.manifest.splits:
+        raise MatrixSelectionError(
+            f"unknown benchmark split {split!r}; expected one of "
+            f"{sorted(bench.manifest.splits)}"
+        )
+    split_case_ids = list(bench.manifest.splits[split])
+    case_ids = list(split_case_ids)
     explicit = config.selection.get("case_ids") or []
     if explicit:
-        case_ids = [cid for cid in case_ids if cid in explicit] or [
-            cid for cid in explicit if cid in bench.cases
-        ]
+        unknown = sorted(set(explicit) - set(bench.cases))
+        if unknown:
+            raise MatrixSelectionError(
+                "selection references unknown case IDs: " + ", ".join(unknown)
+            )
+        outside_split = sorted(set(explicit) - set(split_case_ids))
+        if outside_split:
+            raise MatrixSelectionError(
+                f"explicit case IDs are outside the selected {split!r} split: "
+                + ", ".join(outside_split)
+                + "; use a separate run configuration for that split"
+            )
+        explicit_set = set(explicit)
+        case_ids = [cid for cid in split_case_ids if cid in explicit_set]
     limit = config.selection.get("limit_cases")
     if limit:
         case_ids = case_ids[: int(limit)]
     return case_ids
+
+
+def _validate_explicit_requests(
+    bench: FrozenBenchmark, config: RunConfig, case_ids: list[str]
+) -> None:
+    """Refuse to pretend an explicitly requested stimulus entered the matrix.
+
+    Case/split conflicts used to disappear during intersection. Label filters
+    could produce the same failure mode for request IDs. Both are measurement
+    errors, so explicit inputs are audited before any architecture expansion.
+    """
+    explicit = set(config.selection.get("request_ids") or [])
+    if not explicit:
+        return
+    unknown = sorted(explicit - set(bench.requests))
+    if unknown:
+        raise MatrixSelectionError(
+            "selection references unknown request IDs: " + ", ".join(unknown)
+        )
+    selected_cases = set(case_ids)
+    outside_cases = sorted(
+        request_id
+        for request_id in explicit
+        if bench.requests[request_id].case_id not in selected_cases
+    )
+    if outside_cases:
+        detail = ", ".join(
+            f"{request_id} ({bench.requests[request_id].case_id})"
+            for request_id in outside_cases
+        )
+        raise MatrixSelectionError(
+            "explicit request IDs belong to cases outside the selected case slice: "
+            + detail
+        )
+    selected_after_filters = {
+        request.request_id
+        for case_id in case_ids
+        for request in _filter_requests(bench.requests_for_case(case_id), config)
+    }
+    filtered_out = sorted(explicit - selected_after_filters)
+    if filtered_out:
+        raise MatrixSelectionError(
+            "explicit request IDs were excluded by request-label filters: "
+            + ", ".join(filtered_out)
+        )
 
 
 def _filter_requests(
@@ -134,14 +210,17 @@ def expand_matrix(bench: FrozenBenchmark, config: RunConfig, model_role: str = "
     cells: list[MatrixCell] = []
     skipped: list[dict] = []
     case_ids = select_cases(bench, config)
+    _validate_explicit_requests(bench, config, case_ids)
     repetitions = config.repetitions
     tracks = config.tracks
 
-    def add(track, arch, case_id, request_id, *, rendering=None, procedure=None,
+    def add(track, arch, case_id, request_id, *, rendering=None, rendering_category=None,
+            procedure=None, procedure_selector=None,
             interface=None, intent_mode="none", selection_mode="none", packaging="none",
             elicitation=None):
         for repetition in range(repetitions):
-            parts = [track, arch, case_id, request_id, rendering, procedure, interface,
+            parts = [track, arch, case_id, request_id, rendering, rendering_category,
+                     procedure, procedure_selector, interface,
                      intent_mode, selection_mode, packaging, repetition, model_role, elicitation]
             cells.append(
                 MatrixCell(
@@ -159,6 +238,8 @@ def expand_matrix(bench: FrozenBenchmark, config: RunConfig, model_role: str = "
                     repetition=repetition,
                     model_role=model_role,
                     elicitation_case_id=elicitation,
+                    rendering_category=rendering_category,
+                    procedure_selector=procedure_selector,
                 )
             )
 
@@ -176,12 +257,17 @@ def expand_matrix(bench: FrozenBenchmark, config: RunConfig, model_role: str = "
             for case_id in case_ids:
                 case = bench.cases[case_id]
                 for request in _filter_requests(bench.requests_for_case(case_id), config):
-                    rendering = rendering_for(arch, case.canonical.operation_id)
-                    if arch.startswith("C_") and rendering is None:
+                    rendering_category = RENDERING_CATEGORY_FOR_ARCH.get(arch)
+                    rendering = (
+                        None if arch == "C_RUNTIME"
+                        else rendering_for(arch, case.canonical.operation_id)
+                    )
+                    if arch.startswith("C_") and rendering is None and rendering_category is None:
                         skipped.append({"reason": "no rendering", "architecture": arch, "case_id": case_id})
                         continue
                     add("boundary", arch, case_id, request.request_id,
                         rendering=rendering,
+                        rendering_category=rendering_category,
                         intent_mode="runtime" if arch in ("B_RUNTIME", "C_RUNTIME") else "none")
 
     # ---------------- post-canonical track (gold injection; request optional §25.5)
@@ -248,8 +334,10 @@ def expand_matrix(bench: FrozenBenchmark, config: RunConfig, model_role: str = "
                                      "P4_CANONICAL_PROCEDURE_TOOL") and ablations:
                         intent_modes.append("gold")
                     for mode in intent_modes:
+                        runtime_resolved = needs_procedure and mode == "runtime"
                         add("progressive_formalization", condition, case_id, request.request_id,
-                            procedure=procedure_id if needs_procedure else None,
+                            procedure=(procedure_id if needs_procedure and not runtime_resolved else None),
+                            procedure_selector=("resolved_operation" if runtime_resolved else None),
                             interface=interface,
                             intent_mode=mode if condition not in ("P0_RAW_PROPOSAL", "P1_CLARIFY_PROPOSAL") else "none",
                             selection_mode="gold" if needs_procedure else "none",
@@ -282,7 +370,11 @@ def expand_matrix(bench: FrozenBenchmark, config: RunConfig, model_role: str = "
                         interface = typed_id if condition == "LP3_CANONICAL_PROCEDURE_TOOL" else generic_id
                         if condition == "LP0_LANGUAGE_THROUGHOUT":
                             modes = ["runtime"]
-                        elif condition == "LP0G_GOLD_START_LANGUAGE":
+                        elif condition in (
+                            "LP0G_GOLD_START_LANGUAGE",
+                            "LP0B_GOLD_START_LANGUAGE_BALANCED",
+                            "LP0BV_GOLD_START_LANGUAGE_BALANCED_VERBATIM",
+                        ):
                             modes = ["gold"]
                         elif condition == "LP1_CANONICAL_ONCE":
                             modes = ["gold", "runtime"]  # D-027: gold primary, runtime practical
@@ -318,8 +410,16 @@ def expand_matrix(bench: FrozenBenchmark, config: RunConfig, model_role: str = "
                                 "intent_mode": mode,
                             })
                             continue
+                        runtime_rendered = condition == "AL_RENDERED" and mode == "runtime"
                         add("agent_loop", condition, case_id, request.request_id,
-                            rendering=rendering.rendering_id if (rendering and condition == "AL_RENDERED") else None,
+                            rendering=(
+                                rendering.rendering_id
+                                if rendering and condition == "AL_RENDERED" and not runtime_rendered
+                                else None
+                            ),
+                            rendering_category=(
+                                "CANONICAL_LABEL" if runtime_rendered else None
+                            ),
                             intent_mode=mode)
 
     ordered = sorted(cells, key=lambda cell: cell.cell_id)

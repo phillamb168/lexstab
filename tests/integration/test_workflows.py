@@ -1,19 +1,43 @@
 """Integration tests: authoring, discovery, red team, regression promotion,
 experiments, and CLI help (spec §49.3, §49.13, §49.15)."""
 
+import copy
 import subprocess
 import sys
 from pathlib import Path
 
 import pytest
 
-from lexstab.artifacts import DomainStore, find_repo_root, jsonl_read, load_cases
+from lexstab.artifacts import (
+    DomainStore,
+    find_repo_root,
+    json_read,
+    jsonl_read,
+    jsonl_write,
+    load_cases,
+)
 from lexstab.authoring import AuthoringContext
 from lexstab.config import load_models_config
 from lexstab.prompts import PromptLibrary
 from lexstab.providers.registry import build_provider
 
 ROOT = find_repo_root(Path(__file__))
+
+
+def _request_review_fixture(request_id: str) -> dict:
+    """Return a completed source row reset to the pre-review candidate state."""
+    approved = jsonl_read(ROOT / "dataset/requests/approved/support.jsonl")
+    row = copy.deepcopy(next(row for row in approved if row["request_id"] == request_id))
+    row["validation"] = {
+        **row["validation"],
+        "status": "CANDIDATE",
+        "reviewers": [],
+        "approved_by": None,
+        "approved_at": None,
+        "adequacy_verified": None,
+        "ambiguity_verified": None,
+    }
+    return row
 
 
 @pytest.fixture()
@@ -59,24 +83,270 @@ def test_authoring_graph_produces_reviewable_candidates(authoring_ctx, tmp_path)
         assert row["validation"]["reviewers"]
 
 
+def test_request_approval_atomically_supersedes_named_active_rows(tmp_path):
+    from lexstab.authoring import review_candidates
+
+    existing = jsonl_read(ROOT / "dataset/requests/approved/support.jsonl")
+    target = next(
+        row for row in existing
+        if row["request_id"] == "REQ-CLOSE-001-CONTRAST-0002"
+    )
+    target = copy.deepcopy(target)
+    target["validation"] = {**target["validation"], "status": "APPROVED"}
+    candidate = _request_review_fixture("REQ-CLOSE-001-CONTRAST-0003")
+    approved_path = tmp_path / "approved.jsonl"
+    candidate_path = tmp_path / "candidate.jsonl"
+    jsonl_write(approved_path, [target])
+    jsonl_write(candidate_path, [candidate])
+
+    result = review_candidates(
+        candidate_path,
+        reviewer_id="phillip",
+        default_decision="APPROVE",
+        approved_output=approved_path,
+        rejected_output=tmp_path / "rejected.jsonl",
+    )
+
+    assert result == {"approved": 1, "rejected": 0, "deferred": 0}
+    by_id = {row["request_id"]: row for row in jsonl_read(approved_path)}
+    assert by_id[target["request_id"]]["validation"]["status"] == "SUPERSEDED"
+    assert by_id[candidate["request_id"]]["validation"]["status"] == "APPROVED"
+    assert any(
+        review["decision"] == "SUPERSEDE"
+        for review in by_id[target["request_id"]]["validation"]["reviewers"]
+    )
+
+
+def test_request_approval_refuses_unknown_supersession_target(tmp_path):
+    from lexstab.authoring import review_candidates
+
+    candidate = _request_review_fixture("REQ-ESCALATE-001-0009")
+    candidate = {
+        **candidate,
+        "provenance": {
+            **candidate["provenance"],
+            "supersedes_request_ids": ["REQ-DOES-NOT-EXIST-0001"],
+        },
+    }
+    candidate_path = tmp_path / "candidate.jsonl"
+    approved_path = tmp_path / "approved.jsonl"
+    jsonl_write(candidate_path, [candidate])
+    jsonl_write(approved_path, [])
+
+    with pytest.raises(ValueError, match="unknown superseded requests"):
+        review_candidates(
+            candidate_path,
+            reviewer_id="phillip",
+            default_decision="APPROVE",
+            approved_output=approved_path,
+        )
+
+
+def test_interactive_request_review_shows_complete_decision_context(
+    tmp_path, monkeypatch,
+):
+    import lexstab.cli as cli
+    from typer.testing import CliRunner
+
+    candidates = [
+        _request_review_fixture("REQ-ESCALATE-001-0009"),
+        _request_review_fixture("REQ-CLOSE-001-CONTRAST-0003"),
+    ]
+    candidate_path = tmp_path / "corrective-v0.2.1.jsonl"
+    jsonl_write(candidate_path, candidates)
+    monkeypatch.setattr(cli, "_root", lambda: tmp_path)
+
+    result = CliRunner().invoke(
+        cli.app,
+        [
+            "review", "requests",
+            "--input", str(candidate_path),
+            "--reviewer", "phillip",
+            "--interactive",
+        ],
+        input="d\nd\n",
+    )
+
+    assert result.exit_code == 0, result.output
+    assert "semantic role: INVARIANT" in result.output
+    assert "expected behavior: EXECUTE" in result.output
+    assert "lexical equivalence: INVARIANT" in result.output
+    assert "variation axes: indirect_request, syntactic_paraphrase" in result.output
+    assert (
+        "supersedes on approval: REQ-ESCALATE-001-CLARIFY-OWNERSHIP-0001"
+        in result.output
+    )
+    assert "contrast operation: REQUEST_MORE_INFORMATION" in result.output
+    assert (
+        "Which version of the client was installed when the incident occurred?"
+        in result.output
+    )
+    assert "[d]efer" in result.output
+    assert "contains_organizatio" not in result.output
+
+
 def test_rendering_discovery_blind_and_statistical(tmp_path):
     from lexstab.discovery import discover_renderings
 
     models_config = load_models_config(ROOT / "config/models.mock.yaml")
     provider = build_provider(models_config.role("execution_primary"))
     prompts = PromptLibrary(ROOT / "prompts")
-    prompt = prompts.get("lexical-convergence.v1")
+    prompt = prompts.get("operation-lexical-convergence.v1")
     assert "candidate" not in prompt.body.lower().split("do not")[0].split("preferred_term")[0]
+    operation_ids = [
+        "ESCALATE_INCIDENT", "REASSIGN_INCIDENT", "CLOSE_INCIDENT",
+        "REQUEST_MORE_INFORMATION", "REQUEST_APPROVAL", "REFUND_DUPLICATE_CHARGE",
+        "REQUEST_MANAGER_REVIEW", "SUSPEND_ACCOUNT",
+    ]
     renderings = discover_renderings(
         ROOT, DomainStore.load(ROOT), models_config, provider,
-        operation_ids=["ESCALATE_INCIDENT", "REASSIGN_INCIDENT"], samples=20,
+        operation_ids=operation_ids, samples=20,
         output=tmp_path / "discovered.jsonl",
     )
-    assert len(renderings) == 2
+    assert len(renderings) == len(operation_ids)
     for rendering in renderings:
         assert rendering["discovery"]["sample_count"] == 20
         assert 0 < rendering["discovery"]["convergence_rate"] <= 1
         assert rendering["validation"]["status"] == "CANDIDATE"
+        canonical = next(
+            row for row in jsonl_read(ROOT / "dataset/renderings/approved/support.jsonl")
+            if row["operation_id"] == rendering["operation_id"]
+            and row["category"] == "CANONICAL_LABEL"
+        )
+        reference_span = rendering["discovery"].get(
+            "reference_template_label_span", canonical["label"]
+        )
+        assert rendering["template"][len(rendering["label"]):] == canonical["template"][len(reference_span):]
+
+
+def test_rendering_discovery_checkpoints_and_resumes_paid_samples(tmp_path):
+    from lexstab.discovery import discover_renderings
+    from lexstab.providers.local import MockProvider
+
+    class CountingMockProvider(MockProvider):
+        def __init__(self):
+            super().__init__()
+            self.calls = 0
+
+        def _call_once(self, **kwargs):
+            self.calls += 1
+            return super()._call_once(**kwargs)
+
+    models_config = load_models_config(ROOT / "config/models.mock.yaml")
+    provider = CountingMockProvider()
+    output = tmp_path / "resumable.jsonl"
+    operation_ids = ["ESCALATE_INCIDENT", "CLOSE_INCIDENT"]
+    first = discover_renderings(
+        ROOT,
+        DomainStore.load(ROOT),
+        models_config,
+        provider,
+        operation_ids=operation_ids,
+        samples=3,
+        output=output,
+    )
+    assert len(first) == 2
+    assert provider.calls == 6
+    assert len(jsonl_read(tmp_path / "resumable.samples.jsonl")) == 6
+
+    second = discover_renderings(
+        ROOT,
+        DomainStore.load(ROOT),
+        models_config,
+        provider,
+        operation_ids=operation_ids,
+        samples=3,
+        output=output,
+    )
+    assert len(second) == 2
+    assert provider.calls == 6
+    audit = json_read(tmp_path / "resumable.summary.json")["checkpoint_audit"]
+    assert audit["attempt_rows"] == 6
+    assert audit["unique_sample_keys"] == 6
+    assert audit["superseded_attempts"] == 0
+
+
+def test_rendering_discovery_preserves_invalid_samples_and_fails_fast(tmp_path):
+    from lexstab.discovery import DiscoveryError, discover_renderings
+    from lexstab.providers.base import ProviderResponse
+    from lexstab.providers.local import MockProvider
+
+    class InvalidMockProvider(MockProvider):
+        def __init__(self):
+            super().__init__()
+            self.calls = 0
+
+        def _kind_lexical_name(self, text, metadata):
+            self.calls += 1
+            return ProviderResponse(
+                raw={"mock": True, "content": "not-json"},
+                text="not-json",
+                tool_calls=[],
+                tool_call_mode="mock",
+                usage={"prompt_tokens": 1, "completion_tokens": 1},
+                finish_reason="stop",
+                reported_model_id="mock",
+            )
+
+    models_config = load_models_config(ROOT / "config/models.mock.yaml")
+    provider = InvalidMockProvider()
+    output = tmp_path / "invalid.jsonl"
+    with pytest.raises(DiscoveryError, match="no valid structured responses"):
+        discover_renderings(
+            ROOT,
+            DomainStore.load(ROOT),
+            models_config,
+            provider,
+            operation_ids=["CLOSE_INCIDENT"],
+            samples=50,
+            output=output,
+        )
+    assert provider.calls == 5
+    checkpoint = jsonl_read(tmp_path / "invalid.samples.jsonl")
+    assert len(checkpoint) == 5
+    assert {row["status"] for row in checkpoint} == {"INVALID"}
+
+
+def test_rendering_review_can_approve_and_defer_independently(tmp_path):
+    from lexstab.discovery import discover_renderings, review_rendering_candidates
+
+    models_config = load_models_config(ROOT / "config/models.mock.yaml")
+    provider = build_provider(models_config.role("execution_primary"))
+    candidates_path = tmp_path / "candidates.jsonl"
+    candidates = discover_renderings(
+        ROOT,
+        DomainStore.load(ROOT),
+        models_config,
+        provider,
+        operation_ids=["ESCALATE_INCIDENT", "CLOSE_INCIDENT"],
+        samples=2,
+        output=candidates_path,
+    )
+    existing_discovered = next(
+        row for row in jsonl_read(ROOT / "dataset/renderings/approved/support.jsonl")
+        if row["category"] == "MODEL_DISCOVERED"
+    )
+    approved_path = tmp_path / "approved.jsonl"
+    rejected_path = tmp_path / "rejected.jsonl"
+    jsonl_write(approved_path, [existing_discovered])
+    by_operation = {row["operation_id"]: row for row in candidates}
+
+    result = review_rendering_candidates(
+        candidates_path,
+        approved_path,
+        rejected_path,
+        reviewer="phillip",
+        decisions={
+            by_operation["ESCALATE_INCIDENT"]["rendering_id"]: "DEFER",
+            by_operation["CLOSE_INCIDENT"]["rendering_id"]: "APPROVE",
+        },
+    )
+    assert result == {"approved": 1, "rejected": 0, "deferred": 1}
+    remaining = jsonl_read(candidates_path)
+    assert [row["operation_id"] for row in remaining] == ["ESCALATE_INCIDENT"]
+    assert remaining[0]["validation"]["status"] == "NEEDS_REVIEW"
+    approved = jsonl_read(approved_path)
+    assert any(row["operation_id"] == "CLOSE_INCIDENT" for row in approved)
 
 
 def test_regression_promotion_requires_approval(tmp_path):
@@ -126,6 +396,7 @@ def test_regression_suite_is_executable_as_frozen_overlay(tmp_path):
 
 
 def test_experiments_run_offline(tmp_path):
+    from lexstab.experiments.canonical_envelope import run_canonical_envelope_diagnostic
     from lexstab.experiments.code import run_code_experiment
     from lexstab.experiments.grammar import run_grammar_experiment
     from lexstab.experiments.modality import run_modality_experiment
@@ -147,6 +418,15 @@ def test_experiments_run_offline(tmp_path):
     )
     assert modality["chains"] == 3
     assert set(modality["accuracy_by_artifact"]) == {"typed_text", "human_transcript", "asr_transcript"}
+    envelope = run_canonical_envelope_diagnostic(
+        ROOT,
+        ROOT / "dataset/manifests/benchmark-v0.1.0.json",
+        ROOT / "config/models.mock.yaml",
+        tmp_path / "canonical-envelope.jsonl",
+        case_ids=["ESCALATE_001"],
+    )
+    assert envelope["headline_eligible"] is False
+    assert len(jsonl_read(tmp_path / "canonical-envelope.jsonl")) == 3
 
 
 DOCUMENTED_COMMANDS = [
@@ -184,6 +464,7 @@ DOCUMENTED_COMMANDS = [
     ["experiment", "grammar", "--help"],
     ["experiment", "code", "--help"],
     ["experiment", "modality", "--help"],
+    ["experiment", "canonical-envelope", "--help"],
     ["langsmith-export", "--help"],
 ]
 

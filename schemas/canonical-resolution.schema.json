@@ -1,0 +1,234 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://lexstab.invalid/schemas/canonical-resolution.schema.json",
+  "$defs": {
+    "CandidateMapping": {
+      "additionalProperties": false,
+      "properties": {
+        "entity_type": {
+          "anyOf": [
+            {
+              "enum": [
+                "ACCOUNT",
+                "APPROVAL_REQUEST",
+                "CUSTOMER",
+                "INCIDENT",
+                "ORDER"
+              ],
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Entity Type"
+        },
+        "operation_id": {
+          "anyOf": [
+            {
+              "enum": [
+                "CLOSE_INCIDENT",
+                "ESCALATE_INCIDENT",
+                "REASSIGN_INCIDENT",
+                "REFUND_DUPLICATE_CHARGE",
+                "REQUEST_APPROVAL",
+                "REQUEST_MANAGER_REVIEW",
+                "REQUEST_MORE_INFORMATION",
+                "SUSPEND_ACCOUNT"
+              ],
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Operation Id"
+        },
+        "missing_or_ambiguous": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Missing Or Ambiguous",
+          "type": "array"
+        }
+      },
+      "title": "CandidateMapping",
+      "type": "object"
+    },
+    "CanonicalIntent": {
+      "additionalProperties": false,
+      "properties": {
+        "entity_type": {
+          "enum": [
+            "ACCOUNT",
+            "APPROVAL_REQUEST",
+            "CUSTOMER",
+            "INCIDENT",
+            "ORDER"
+          ],
+          "title": "Entity Type",
+          "type": "string"
+        },
+        "entity_id": {
+          "title": "Entity Id",
+          "type": "string"
+        },
+        "operation_id": {
+          "enum": [
+            "CLOSE_INCIDENT",
+            "ESCALATE_INCIDENT",
+            "REASSIGN_INCIDENT",
+            "REFUND_DUPLICATE_CHARGE",
+            "REQUEST_APPROVAL",
+            "REQUEST_MANAGER_REVIEW",
+            "REQUEST_MORE_INFORMATION",
+            "SUSPEND_ACCOUNT"
+          ],
+          "title": "Operation Id",
+          "type": "string"
+        },
+        "arguments": {
+          "additionalProperties": true,
+          "title": "Arguments",
+          "type": "object"
+        }
+      },
+      "required": [
+        "entity_type",
+        "entity_id",
+        "operation_id",
+        "arguments"
+      ],
+      "title": "CanonicalIntent",
+      "type": "object"
+    },
+    "MappingOutcome": {
+      "enum": [
+        "MAPPED",
+        "NEEDS_CLARIFICATION"
+      ],
+      "title": "MappingOutcome",
+      "type": "string"
+    }
+  },
+  "additionalProperties": false,
+  "allOf": [
+    {
+      "if": {
+        "properties": {
+          "mapping_outcome": {
+            "const": "MAPPED"
+          }
+        },
+        "required": [
+          "mapping_outcome"
+        ]
+      },
+      "then": {
+        "properties": {
+          "canonical_intent": {
+            "not": {
+              "type": "null"
+            }
+          },
+          "question": {
+            "type": "null"
+          }
+        },
+        "required": [
+          "canonical_intent"
+        ]
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "mapping_outcome": {
+            "const": "NEEDS_CLARIFICATION"
+          }
+        },
+        "required": [
+          "mapping_outcome"
+        ]
+      },
+      "then": {
+        "properties": {
+          "canonical_intent": {
+            "type": "null"
+          },
+          "question": {
+            "minLength": 1,
+            "type": "string"
+          }
+        },
+        "required": [
+          "question"
+        ]
+      }
+    }
+  ],
+  "description": "Control-plane result produced by the boundary canonicalizer.\n\nThe nested canonical intent is the only part permitted to cross into the\nacting model's task representation. Envelope fields remain audit/control\nmetadata so terms such as ``RESOLVED`` cannot collide with entity state.",
+  "properties": {
+    "mapping_outcome": {
+      "$ref": "#/$defs/MappingOutcome"
+    },
+    "canonical_intent": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/CanonicalIntent"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null
+    },
+    "candidate_mappings": {
+      "items": {
+        "$ref": "#/$defs/CandidateMapping"
+      },
+      "title": "Candidate Mappings",
+      "type": "array"
+    },
+    "question": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Question"
+    },
+    "preserved_user_terms": {
+      "items": {
+        "type": "string"
+      },
+      "title": "Preserved User Terms",
+      "type": "array"
+    },
+    "uncertainties": {
+      "items": {
+        "type": "string"
+      },
+      "title": "Uncertainties",
+      "type": "array"
+    },
+    "grounding": {
+      "additionalProperties": {
+        "type": "string"
+      },
+      "title": "Grounding",
+      "type": "object"
+    }
+  },
+  "required": [
+    "mapping_outcome"
+  ],
+  "title": "CanonicalResolution",
+  "type": "object"
+}

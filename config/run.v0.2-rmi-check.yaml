@@ -1,0 +1,98 @@
+schema_version: "1.2.0"
+run_name: "v0.2-rmi-validation-check"
+benchmark_manifest: "dataset/manifests/benchmark-v0.2.0.json"
+model_config: "config/models.local.yaml"
+
+tracks:
+  boundary:
+    enabled: true
+    architectures: ["A1_DIRECT_CLARIFY", "B_RUNTIME", "C_RUNTIME"]
+  intent_elicitation:
+    enabled: false
+    architectures: []
+  memory_ablation:
+    enabled: false
+    architectures: []
+  progressive_formalization:
+    enabled: true
+    conditions:
+      - "P2_CANONICAL_PROPOSAL"
+      - "P3_CANONICAL_PROCEDURE_PROPOSAL"
+      - "P4_CANONICAL_PROCEDURE_TOOL"
+    persistence_conditions:
+      - "LP0B_GOLD_START_LANGUAGE_BALANCED"
+      - "LP1_CANONICAL_ONCE"
+      - "LP3_CANONICAL_PROCEDURE_TOOL"
+    procedure_registry: "dataset/procedures/frozen/support-v0.2.0.jsonl"
+    generic_action_interface: "dataset/interfaces/v0.2.0/generic-action-proposal.json"
+    typed_action_interfaces: "dataset/interfaces/v0.2.0/typed-tools/support.jsonl"
+    run_cumulative_ladder: true
+    run_component_ablations: false
+    run_language_persistence_ablation: true
+  post_canonical:
+    enabled: true
+    architectures: ["B_GOLD", "C_GOLD", "F_MODEL_DISCOVERED"]
+  agent_loop:
+    enabled: false
+    intent_modes: ["gold"]
+    conditions: []
+    case_ids: []
+
+selection:
+  split: "validation"
+  case_ids:
+    - "RMI_001"
+    - "CLOSE_001"
+  request_ids:
+    - "REQ-RMI-001-0004"
+    - "REQ-RMI-001-0005"
+    - "REQ-RMI-001-0006"
+    - "REQ-RMI-001-INADEQUATE-0003"
+    - "REQ-CLOSE-001-CONTRAST-0002"
+  variation_axes: []
+  adequacy: []
+  ambiguity: []
+  expected_behavior: []
+
+execution:
+  repetitions: 1
+  concurrency: 4
+  randomize_matrix_order: true
+  random_seed: 104729
+  transport_retries: 3
+  semantic_retries: 0
+  cache_responses: false
+  run_clock: "2026-07-20T12:00:00Z"
+
+evaluation:
+  minimum_schema_validity_for_interpretation: 1.0
+  deterministic_first: true
+  optional_llm_judge: false
+  human_review_on_judge_disagreement: true
+  blind_condition_labels: true
+  bootstrap_samples: 1000
+  confidence_level: 0.95
+  multiple_comparison_method: "benjamini-hochberg"
+  practical_equivalence:
+    baseline_architecture: "A1_DIRECT_CLARIFY"
+    success_margin: 0.01
+    false_action_margin: 0.0
+    operational_invariance_margin: 0.02
+  complexity_accounting:
+    enabled: true
+    include_model_calls: true
+    include_external_services: true
+    include_persisted_state: true
+    include_operator_runbook_steps: true
+  formalization_accounting:
+    record_representation_ledger: true
+    record_procedure_adherence: true
+    record_action_boundary_errors: true
+    require_information_parity_check: true
+
+tracing:
+  local_jsonl: true
+  langsmith: false
+  redact_secrets: true
+  include_prompts: true
+  include_raw_responses: true

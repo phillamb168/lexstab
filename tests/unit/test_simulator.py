@@ -15,6 +15,11 @@ def domain():
     return DomainStore.load(ROOT)
 
 
+@pytest.fixture(scope="module")
+def corrected_domain():
+    return DomainStore.load(ROOT, "dataset/domain/v0.2.0")
+
+
 def _state():
     return {"incidents": {"INC-1047": {
         "status": "OPEN", "severity": "SEV-2", "support_tier": 1,
@@ -72,6 +77,42 @@ def test_argument_validation(domain):
     ).error_category == "invalid_arguments"
 
 
+def test_request_more_information_requires_message_and_preserves_ownership(corrected_domain):
+    state = {
+        "incidents": {
+            "INC-3120": {
+                "status": "OPEN",
+                "severity": "SEV-2",
+                "support_tier": 1,
+                "assigned_team": "SERVICE_DESK",
+                "information_complete": False,
+                "escalation_count": 0,
+                "reporter_id": "USR-3120",
+                "awaiting_party": "NONE",
+                "reporter_notification_sent": False,
+            }
+        }
+    }
+    sim = SupportSimulator(corrected_domain, state, "T0")
+    missing = sim.call_tool("request_more_information", {"incident_id": "INC-3120"})
+    assert not missing.accepted
+    assert missing.error_category == "invalid_arguments"
+
+    message = "Please attach the missing application logs."
+    accepted = sim.call_tool(
+        "request_more_information",
+        {"incident_id": "INC-3120", "message": message},
+    )
+    assert accepted.accepted
+    incident = sim.snapshot()["incidents"]["INC-3120"]
+    assert incident["assigned_team"] == "SERVICE_DESK"
+    assert incident["support_tier"] == 1
+    assert incident["status"] == "PENDING_INFO"
+    assert incident["awaiting_party"] == "REPORTER"
+    assert incident["last_public_comment"] == message
+    assert incident["reporter_notification_sent"] is True
+
+
 def test_reset_restores_exact_initial_state(domain):
     sim = SupportSimulator(domain, _state(), "T0")
     sim.call_tool("escalate_incident", {"incident_id": "INC-1047", "destination_tier": 2})
@@ -98,6 +139,24 @@ def test_gold_recompute_matches_case_artifacts(domain):
             continue
         accepted, resulting, detail = recompute_gold_state(
             domain, case.initial_state, case.gold.tool, case.gold.arguments, "<run_clock>"
+        )
+        assert accepted, f"{case.case_id}: {detail}"
+        assert resulting == case.gold.resulting_state, case.case_id
+
+
+def test_corrected_gold_recompute_matches_versioned_case_artifacts(corrected_domain):
+    from lexstab.artifacts import load_cases
+    from lexstab.models import GoldDecision
+
+    for case in load_cases(ROOT, "dataset/cases/support-v0.2.0").values():
+        if case.gold.decision != GoldDecision.ACT:
+            continue
+        accepted, resulting, detail = recompute_gold_state(
+            corrected_domain,
+            case.initial_state,
+            case.gold.tool,
+            case.gold.arguments,
+            "<run_clock>",
         )
         assert accepted, f"{case.case_id}: {detail}"
         assert resulting == case.gold.resulting_state, case.case_id

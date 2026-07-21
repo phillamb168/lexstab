@@ -10,6 +10,7 @@ from __future__ import annotations
 import copy
 import datetime as _dt
 from pathlib import Path
+from string import Formatter
 from typing import Any
 
 from lexstab import models
@@ -45,21 +46,100 @@ PROMPT_VERSIONS = {
     "direct_clarify_executor": "direct-clarify-executor.v1",
     "adequacy_assessor": "adequacy-assessor.v1",
     "clarification_resolver": "clarification-resolver.v1",
-    "canonicalizer": "canonicalizer.v1",
+    "canonicalizer": "canonicalizer.v2",
     "canonical_executor": "canonical-executor.v1",
     "rendered_executor": "rendered-executor.v1",
     "action_proposal_executor": "action-proposal-executor.v1",
-    "procedure_executor": "procedure-executor.v1",
+    "procedure_proposal_executor": "procedure-proposal-executor.v2",
+    "procedure_tool_executor": "procedure-tool-executor.v2",
     "language_handoff": "language-handoff.v1",
+    "triage_language_handoff": "triage-language-handoff.v1",
+    "policy_language_handoff": "policy-language-handoff.v2",
+    "planner_language_handoff": "planner-language-handoff.v2",
+    "triage_language_handoff_verbatim": "triage-language-handoff-verbatim.v1",
+    "policy_language_handoff_verbatim": "policy-language-handoff-verbatim.v1",
+    "planner_language_handoff_verbatim": "planner-language-handoff-verbatim.v1",
+    "action_proposal_executor_verbatim": "action-proposal-executor-verbatim.v1",
     "triage": "triage.v1",
-    "policy": "policy.v1",
-    "planner": "planner.v1",
-    "executor": "executor.v1",
+    "policy": "policy.v2",
+    "planner": "planner.v2",
+    "executor": "executor.v2",
 }
 
 
 class FreezeError(Exception):
     pass
+
+
+def _corrected_benchmark_version(version: str) -> bool:
+    try:
+        return tuple(int(part) for part in version.split(".")) >= (0, 2, 0)
+    except ValueError:
+        return False
+
+
+def _template_fields(template: str) -> list[str]:
+    return sorted(
+        field_name
+        for _literal, field_name, _format_spec, _conversion in Formatter().parse(template)
+        if field_name
+    )
+
+
+def _validate_real_discovered_renderings(
+    domain: DomainStore, renderings: dict[str, models.Rendering]
+) -> None:
+    by_operation: dict[str, list[models.Rendering]] = {}
+    canonical_by_operation: dict[str, models.Rendering] = {}
+    for rendering in renderings.values():
+        if rendering.category == models.RenderingCategory.MODEL_DISCOVERED:
+            by_operation.setdefault(rendering.operation_id, []).append(rendering)
+        elif rendering.category == models.RenderingCategory.CANONICAL_LABEL:
+            canonical_by_operation[rendering.operation_id] = rendering
+    errors = []
+    for operation_id in sorted(domain.operations):
+        discovered = by_operation.get(operation_id, [])
+        if len(discovered) != 1:
+            errors.append(
+                f"{operation_id}: expected exactly one active MODEL_DISCOVERED rendering, "
+                f"found {len(discovered)}"
+            )
+            continue
+        rendering = discovered[0]
+        provider = (rendering.discovery.provider if rendering.discovery else "").lower()
+        model_id = (rendering.discovery.model_id if rendering.discovery else "").lower()
+        if provider in {"mock", "local"} or model_id == "mock":
+            errors.append(
+                f"{operation_id}: active MODEL_DISCOVERED rendering is mock-derived"
+            )
+        canonical_rendering = canonical_by_operation.get(operation_id)
+        if canonical_rendering is None or not canonical_rendering.label or not rendering.label:
+            errors.append(f"{operation_id}: canonical and discovered labels are required")
+            continue
+        reference_label_span = (
+            rendering.discovery.reference_template_label_span
+            if rendering.discovery and rendering.discovery.reference_template_label_span
+            else canonical_rendering.label
+        )
+        if not canonical_rendering.template.casefold().startswith(
+            reference_label_span.casefold()
+        ):
+            errors.append(
+                f"{operation_id}: canonical template does not begin with its reviewed label span"
+            )
+            continue
+        expected_template = (
+            rendering.label
+            + canonical_rendering.template[len(reference_label_span):]
+        )
+        if rendering.template != expected_template:
+            errors.append(
+                f"{operation_id}: discovered template changed more than the lexical label"
+            )
+        if _template_fields(rendering.template) != _template_fields(canonical_rendering.template):
+            errors.append(f"{operation_id}: discovered template changed canonical placeholders")
+    if errors:
+        raise FreezeError("corrected rendering validation failed:\n" + "\n".join(errors))
 
 
 def _freeze_rows(rows: list[dict], status_field_path: str = "validation.status") -> list[dict]:
@@ -81,6 +161,14 @@ def _freeze_rows(rows: list[dict], status_field_path: str = "validation.status")
     return frozen
 
 
+def active_approved_rows(rows: list[dict]) -> list[dict]:
+    """Keep auditable superseded rows in source while excluding them from freezes."""
+    return [
+        row for row in rows
+        if (row.get("validation") or {}).get("status") in ("APPROVED", "FROZEN")
+    ]
+
+
 def _stamp_rows(rows: list[dict]) -> list[dict]:
     return [stamp_content_hash(copy.deepcopy(row)) for row in rows]
 
@@ -93,6 +181,7 @@ def freeze_benchmark(
     description: str = "Support-domain lexical stability benchmark",
     dev_overwrite: bool = False,
     created_at: str | None = None,
+    changelog: list[dict[str, Any]] | None = None,
 ) -> Path:
     manifest_path = root / "dataset" / "manifests" / f"benchmark-v{version}.json"
     if manifest_path.exists() and not dev_overwrite:
@@ -101,8 +190,35 @@ def freeze_benchmark(
             "version (development-only --dev-overwrite exists for local iteration)"
         )
 
-    domain = DomainStore.load(root)
-    cases = load_cases(root)
+    versioned_domain_dir = Path(f"dataset/domain/v{version}")
+    domain_dir = (
+        versioned_domain_dir
+        if (root / versioned_domain_dir).is_dir()
+        else Path("dataset/domain")
+    )
+    versioned_cases_dir = Path(f"dataset/cases/support-v{version}")
+    cases_dir = (
+        versioned_cases_dir
+        if (root / versioned_cases_dir).is_dir()
+        else Path("dataset/cases/support")
+    )
+    versioned_interfaces_dir = Path(f"dataset/interfaces/v{version}")
+    interfaces_dir = (
+        versioned_interfaces_dir
+        if (root / versioned_interfaces_dir).is_dir()
+        else Path("dataset/interfaces")
+    )
+    versioned_elicitation_path = Path(
+        f"dataset/elicitation/approved-v{version}.jsonl"
+    )
+    elicitation_source_path = (
+        versioned_elicitation_path
+        if (root / versioned_elicitation_path).is_file()
+        else Path("dataset/elicitation/approved.jsonl")
+    )
+
+    domain = DomainStore.load(root, domain_dir)
+    cases = load_cases(root, cases_dir)
 
     def _approved_rows(directory: str) -> list[dict]:
         rows: list[dict] = []
@@ -113,9 +229,9 @@ def freeze_benchmark(
             rows.append(json_read(file))
         return rows
 
-    request_source_rows = _approved_rows("dataset/requests/approved")
-    rendering_source_rows = _approved_rows("dataset/renderings/approved")
-    procedure_source_rows = _approved_rows("dataset/procedures/approved")
+    request_source_rows = active_approved_rows(_approved_rows("dataset/requests/approved"))
+    rendering_source_rows = active_approved_rows(_approved_rows("dataset/renderings/approved"))
+    procedure_source_rows = active_approved_rows(_approved_rows("dataset/procedures/approved"))
 
     requests = {}
     for row in request_source_rows:
@@ -128,17 +244,20 @@ def freeze_benchmark(
         row["rendering_id"]: models.Rendering.model_validate(row)
         for row in rendering_source_rows
     }
+    if _corrected_benchmark_version(version):
+        _validate_real_discovered_renderings(domain, renderings)
     procedures = {}
     for row in procedure_source_rows:
         procedure = models.Procedure.model_validate(row)
         procedures[procedure.procedure_id] = procedure
-    interfaces = load_interfaces(
-        root,
-        ["dataset/interfaces/generic-action-proposal.json", "dataset/interfaces/typed-tools/support.jsonl"],
-    )
+    interface_files = [
+        str(interfaces_dir / "generic-action-proposal.json"),
+        str(interfaces_dir / "typed-tools/support.jsonl"),
+    ]
+    interfaces = load_interfaces(root, interface_files)
     memory_path = root / "dataset" / "memory" / "glossaries" / "support.jsonl"
     memory = load_memory(root, memory_path.relative_to(root)) if memory_path.exists() else {}
-    elicitation_path = root / "dataset" / "elicitation" / "approved.jsonl"
+    elicitation_path = root / elicitation_source_path
     elicitation = (
         load_elicitation_cases(root, elicitation_path.relative_to(root))
         if elicitation_path.exists()
@@ -220,12 +339,8 @@ def freeze_benchmark(
     procedure_rows = _freeze_rows(procedure_source_rows)
     _write_frozen(frozen_dirs["procedures"] / suffix, procedure_rows)
 
-    interface_files = [
-        "dataset/interfaces/generic-action-proposal.json",
-        "dataset/interfaces/typed-tools/support.jsonl",
-    ]
     memory_files = ["dataset/memory/glossaries/support.jsonl"] if memory else []
-    elicitation_files = ["dataset/elicitation/approved.jsonl"] if elicitation else []
+    elicitation_files = [str(elicitation_source_path)] if elicitation else []
 
     prompts = PromptLibrary(root / "prompts")
     prompt_errors = prompts.validate_all()
@@ -233,12 +348,19 @@ def freeze_benchmark(
         raise FreezeError("prompt validation failed:\n" + "\n".join(prompt_errors))
 
     inventory: dict[str, str] = {}
+    ontology_files = {
+        "entities": str(domain_dir / "entities.json"),
+        "operations": str(domain_dir / "operations.json"),
+        "policies": str(domain_dir / "policies.json"),
+        "initial_state": str(domain_dir / "initial-state.json"),
+    }
+    case_files = {
+        case_id: str(cases_dir / f"{case_id}.json")
+        for case_id in sorted(cases)
+    }
     tracked_files = [
-        "dataset/domain/entities.json",
-        "dataset/domain/operations.json",
-        "dataset/domain/policies.json",
-        "dataset/domain/initial-state.json",
-        *[f"dataset/cases/support/{case_id}.json" for case_id in sorted(cases)],
+        *ontology_files.values(),
+        *case_files.values(),
         f"dataset/requests/frozen/{suffix}",
         f"dataset/contexts/frozen/{suffix}",
         f"dataset/renderings/frozen/{suffix}",
@@ -258,22 +380,19 @@ def freeze_benchmark(
         "description": description,
         "artifact_root_hash": root_hash(inventory),
         "ontology": {
-            "entities_file": "dataset/domain/entities.json",
-            "operations_file": "dataset/domain/operations.json",
-            "policies_file": "dataset/domain/policies.json",
-            "initial_state_file": "dataset/domain/initial-state.json",
+            "entities_file": ontology_files["entities"],
+            "operations_file": ontology_files["operations"],
+            "policies_file": ontology_files["policies"],
+            "initial_state_file": ontology_files["initial_state"],
             "hashes": {
-                "entities": inventory["dataset/domain/entities.json"],
-                "operations": inventory["dataset/domain/operations.json"],
-                "policies": inventory["dataset/domain/policies.json"],
-                "initial_state": inventory["dataset/domain/initial-state.json"],
+                key: inventory[file] for key, file in ontology_files.items()
             },
         },
         "cases": {
-            "files": [f"dataset/cases/support/{case_id}.json" for case_id in sorted(cases)],
+            "files": list(case_files.values()),
             "ids": sorted(cases),
             "hashes": {
-                case_id: inventory[f"dataset/cases/support/{case_id}.json"] for case_id in sorted(cases)
+                case_id: inventory[file] for case_id, file in case_files.items()
             },
         },
         "requests": {
@@ -321,7 +440,7 @@ def freeze_benchmark(
             "state_transitions_valid": True,
         },
         "development_overwrite": bool(dev_overwrite),
-        "changelog": [
+        "changelog": changelog or [
             {"version": version, "change": "frozen from approved artifacts", "approved_by": "operator"}
         ],
     }
@@ -361,21 +480,28 @@ class FrozenBenchmark:
             self.manifest.elicitation_cases.hashes,
         ]
         ontology_files = {
-            "entities": "dataset/domain/entities.json",
-            "operations": "dataset/domain/operations.json",
-            "policies": "dataset/domain/policies.json",
-            "initial_state": "dataset/domain/initial-state.json",
+            "entities": self.manifest.ontology["entities_file"],
+            "operations": self.manifest.ontology["operations_file"],
+            "policies": self.manifest.ontology["policies_file"],
+            "initial_state": self.manifest.ontology["initial_state_file"],
         }
         for key, expected in self.manifest.ontology["hashes"].items():
             verify_frozen_file(root, ontology_files[key], expected)
+        case_files = {
+            Path(relative).stem: relative for relative in self.manifest.cases.files
+        }
         for case_id, expected in self.manifest.cases.hashes.items():
-            verify_frozen_file(root, f"dataset/cases/support/{case_id}.json", expected)
+            if case_id not in case_files:
+                raise ArtifactError(f"manifest has no file for case {case_id}")
+            verify_frozen_file(root, case_files[case_id], expected)
         for section in all_sections[2:]:
             for relative, expected in section.items():
                 verify_frozen_file(root, relative, expected)
 
-        self.domain = DomainStore.load(root)
-        self.cases = load_cases(root)
+        self.domain = DomainStore.load(root, Path(ontology_files["entities"]).parent)
+        self.cases = {}
+        for directory in sorted({str(Path(file).parent) for file in case_files.values()}):
+            self.cases.update(load_cases(root, directory))
         self.cases = {cid: self.cases[cid] for cid in self.manifest.cases.ids}
         self.requests: dict[str, models.NLRequest] = {}
         for file in self.manifest.requests.files:
@@ -390,6 +516,8 @@ class FrozenBenchmark:
             rows = jsonl_read(root / file)
             verify_frozen_rows(rows, file)
             self.renderings.update(load_renderings(root, file))
+        if _corrected_benchmark_version(self.manifest.benchmark_version):
+            _validate_real_discovered_renderings(self.domain, self.renderings)
         self.procedures: dict[str, models.Procedure] = {}
         for file in self.manifest.procedures.files:
             rows = jsonl_read(root / file)

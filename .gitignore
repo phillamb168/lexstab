@@ -41,6 +41,9 @@ wheelhouse/
 /runs/*
 !/runs/.gitkeep
 
+# Paid discovery response checkpoints can contain large raw provider payloads
+/dataset/renderings/candidate/*.samples.jsonl
+
 # Application and tool caches
 .cache/
 *.log

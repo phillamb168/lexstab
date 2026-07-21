@@ -331,3 +331,164 @@ later as a named condition without changing the comparison design.
 `lexstab.metrics.aggregate.ARCHITECTURE_BOM`) with measured runtime aggregates (model
 calls, tokens, latency percentiles) from the run. No default weighted score is
 computed (spec §44.8 forbids collapsing dimensions by default).
+
+## D-030: Canonical control-plane outcome is separated from canonical intent
+
+**Decision.** `canonicalizer.v2` returns `mapping_outcome` plus a nested `canonical_intent`.
+Only that nested intent reaches acting prompts. Legacy `status` envelopes are accepted only by an
+explicit compatibility parser for historical artifacts. The prior `status: RESOLVED` shape remains
+a standalone diagnostic variable, not a benchmark condition.
+
+**Reason.** A control-plane label can act as unintended model-facing vocabulary when it shares the
+same flat object as the task. Separating the objects removes that collision without assuming why
+the original word affected behavior.
+
+## D-031: Grounding is deterministic and source-provenanced
+
+**Decision.** Entity IDs must occur in the request or frozen shared context, including visible
+context state. Hidden singleton state cannot originate an entity. Required arguments may come from
+request, shared context, or an explicit state-derivation registry. The first registry contains only
+the confirmed duplicate-charge amount for an anchored order.
+
+**Reason.** This tests language resolution without granting the canonicalizer an unrealistic hidden
+database shortcut, and it makes each completed field auditable.
+
+## D-032: Runtime, gold, procedure selection, and procedure packaging are separate cohorts
+
+**Decision.** Headline and persistence aggregation keys include track, architecture, intent mode,
+procedure selection, and procedure packaging. Paired comparisons select exact cohorts. Gold cells
+use case gold and retain source request labels only as audit metadata. Safety and adequacy metrics
+exclude gold injection.
+
+**Reason.** Averaging those conditions confounds interpretation error, execution error, procedure
+selection, and packaging. The corrected structure makes such averaging impossible by construction.
+
+## D-033: P3 and typed non-action outputs use exact versioned boundaries
+
+**Decision.** P3 uses a complete flat generic proposal schema. P4 and LP3 use one native tool call
+for ACT and an exact three-field JSON decision for CLARIFY or REFUSE. Nested proposal wrappers,
+missing fields, extra fields, multiple tool calls, and free-form prose are invalid.
+
+**Reason.** Output-contract ambiguity is a measurement failure, not evidence against the tested
+architecture.
+
+## D-034: Discovered rendering comparison uses real blind operation naming
+
+**Decision.** The execution model receives a neutral card for each of eight operations in 50 fresh
+contexts. Candidate artifacts record requested and reported model identity, prompt hash, term
+counts, convergence, entropy, definition-only rate, and canonical-reference provenance. The
+canonical template frame is preserved exactly while only the lexical label changes. Human review
+is required before activation.
+
+**Reason.** A mock or grammar-oriented naming prompt cannot operationalize a model-discovered
+operation vocabulary. Identical instantiated text provides no lexical contrast and is labeled as
+such.
+
+## D-035: LP0B is the primary persistence control
+
+**Decision.** LP0B uses three exact stage envelopes and one final proposal call. Only each
+`handoff_text` continues to the next stage. LP0B gold and LP1 gold each use four execution-model
+calls. LP0G remains the realistic secondary condition with additional language rewrite calls.
+
+**Reason.** Call balancing separates representation persistence from the independent effect of
+more model-mediated translations.
+
+## D-036: Schema validity gates interpretation, not raw evidence
+
+**Decision.** Every cohort below the configured schema-validity threshold remains in raw scores,
+failure tables, and estimates. Comparisons touching that exact cohort receive
+`interpretation_allowed: false`; report prose withholds causal attribution. Missing pairs receive
+the same treatment.
+
+**Reason.** Removing failures would bias scores, while interpreting an underspecified or broken
+contract would misattribute a measurement defect to the architecture.
+
+## D-037: Corrective changes create benchmark `v0.2.0`
+
+**Decision.** `v0.1.0`, its frozen artifacts, and existing run outputs remain immutable. The
+ownership wording is superseded rather than deleted, corrected request candidates require Phillip's
+review, and `v0.2.0+` freezes require one active non-mock discovered rendering per operation.
+
+**Reason.** Corrected scores must be comparable without rewriting the historical record.
+
+## D-038: Corrected ontologies use manifest-declared versioned source paths
+
+**Decision.** `v0.1.0` retains the live paths and hashes recorded in its immutable manifest.
+Corrected `v0.2.0` domain, case, interface, and elicitation inputs live under versioned sources.
+Freeze selects matching versioned sources when present, writes those paths into the new
+manifest, and the benchmark loader verifies and loads the manifest-declared paths rather than
+hardcoded repository defaults.
+
+**Reason.** Changing a shared ontology or case path after freezing made historical verification
+correctly report tampering. Versioned source paths preserve reproducibility while allowing an
+incompatible domain correction to coexist with the first benchmark.
+
+## D-039: Requesting information pauses for the reporter without transferring support ownership
+
+**Decision.** `REQUEST_MORE_INFORMATION` requires an explicit public reporter message. Execution
+keeps the current support team and tier, changes the incident to `PENDING_INFO`, sets
+`awaiting_party` to `REPORTER`, stores the public comment, and records that the reporter
+notification was sent. If the message is missing, the boundary returns clarification and the
+elicitation track asks what the service desk needs from the reporter.
+
+**Reason.** Waiting on an external participant is a process pause, not an ownership transfer. The
+original operation modeled only the waiting state and allowed action without specifying what the
+reporter should provide.
+
+## D-040: Explicit selections fail closed and policy absence is not ambiguity
+
+**Decision.** Explicit case and request selections must be contained by the configured split and
+label filters. Any mismatch stops matrix construction with an audit error. Validation-split RMI
+stimuli run through their own checked-in configuration. Policy stage v2 adds
+`NO_POLICY_REQUIRED`, and planner stage v2 receives known state directly.
+
+Gold injection also preserves case-level clarification. A CLARIFY gold case produces a
+`NEEDS_CLARIFICATION` envelope and never exposes a fully mapped intent to an executor.
+
+**Reason.** Silently dropping selected stimuli misstates coverage. Treating an inapplicable policy
+as missing information creates false clarification, while mapping a gold clarification case creates
+an impossible scoring condition. Each is a harness defect rather than model behavior.
+
+## D-041: Runtime artifacts are selected from the resolved operation
+
+**Decision.** Runtime matrix cells carry a rendering category or procedure selector rather than a
+parent-case artifact ID. After canonicalization, the harness looks up the rendering and procedure
+for the resolved operation. Cell results record the actual rendering ID, instantiated text, and
+actual procedure ID. Gold post-canonical conditions may still prebind known artifacts.
+
+**Reason.** A semantic contrast can resolve to an operation different from its parent case. Using
+the parent artifact after resolution leaks the wrong task back into execution and invalidates the
+comparison.
+
+## D-042: Persisted operational arguments have explicit preservation modes
+
+**Decision.** Operation arguments declare `VERBATIM`, `CANONICAL`, or `SEMANTIC` preservation.
+The RMI public `message` is `VERBATIM`; IDs, enums, and numeric arguments are `CANONICAL` in
+v0.2.1. Exact protected literals are checked with a versioned deterministic token-sequence
+comparison at each authoritative prose handoff and with exact value comparison at the action
+boundary. An LLM judge is not part of this primary metric.
+
+**Reason.** Approximate semantic continuity is insufficient when a value is persisted publicly or
+sent externally. The preservation contract distinguishes acceptable normalization from operational
+data corruption.
+
+## D-043: Sample gates limit interpretation without removing observations
+
+**Decision.** Causal report prose requires at least six independent canonical cases. Broader
+generalization requires at least three operation families. Requests and repetitions derived from
+one case do not increase the independent sample count. Below a gate, raw scores, deltas, failures,
+and intervals remain available with an `exploratory` or `tested_operation_families_only` scope.
+
+**Reason.** Three wording variants from one canonical task are repeated measurements, not three
+independent confirmations. The gate prevents a small targeted check from becoming an article-level
+causal claim.
+
+## D-044: The visible preservation reminder is a call-balanced ablation
+
+**Decision.** LP0B remains the no-reminder prose condition. LP0BV uses the same four execution
+calls and the same authoritative free-form handoffs while naming protected fields at every mutable
+stage. LP1 remains the four-call canonical-once condition. Prompt overhead is measured from a
+fixed fixture without provider calls.
+
+**Reason.** This separates the value of a small explicit instruction from the value of preserving
+canonical structure. The fixed-fixture report keeps token-overhead discussion empirical.

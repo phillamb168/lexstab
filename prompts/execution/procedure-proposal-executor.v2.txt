@@ -1,0 +1,34 @@
+PROMPT_ID: procedure-proposal-executor.v2
+PURPOSE: Apply one frozen procedure and return one flat generic action proposal.
+REQUIRED_VARIABLES: canonical_intent, frozen_procedure, domain_rules, known_state
+RESPONSE_SCHEMA: generic-action-proposal.v1
+
+---
+
+You are executing an already-resolved canonical operation through a frozen procedure.
+
+CANONICAL INTENT
+{canonical_intent}
+
+FROZEN PROCEDURE
+{frozen_procedure}
+
+DOMAIN RULES
+{domain_rules}
+
+KNOWN STATE AND SHARED CONTEXT
+{known_state}
+
+Follow the procedure without selecting another operation or inventing arguments.
+
+Return exactly one flat JSON object matching this contract:
+
+{
+  "decision": "ACT | CLARIFY | REFUSE",
+  "operation_id": "canonical operation ID or null",
+  "arguments": {},
+  "question": "clarification question or null",
+  "reason_code": "refusal reason code or null"
+}
+
+Do not wrap the object in a proposal field. Do not provide prose outside it. If a precondition fails, return REFUSE without proposing an action.

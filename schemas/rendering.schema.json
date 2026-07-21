@@ -33,6 +33,13 @@
           "default": null,
           "title": "Parent Request Id"
         },
+        "supersedes_request_ids": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Supersedes Request Ids",
+          "type": "array"
+        },
         "content_hash": {
           "anyOf": [
             {
@@ -118,6 +125,147 @@
           ],
           "default": "development",
           "title": "Discovered On Split"
+        },
+        "reported_model_id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Reported Model Id"
+        },
+        "prompt_hash": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Prompt Hash"
+        },
+        "normalization_version": {
+          "default": "lexical-label-normalization.v1",
+          "title": "Normalization Version",
+          "type": "string"
+        },
+        "term_counts": {
+          "additionalProperties": {
+            "type": "integer"
+          },
+          "title": "Term Counts",
+          "type": "object"
+        },
+        "definition_only_rate": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Definition Only Rate"
+        },
+        "reference_rendering_id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Reference Rendering Id"
+        },
+        "reference_rendering_hash": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Reference Rendering Hash"
+        },
+        "reference_template_label_span": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Reference Template Label Span"
+        },
+        "discovery_outcome": {
+          "default": "LEXICAL_LABEL",
+          "enum": [
+            "LEXICAL_LABEL",
+            "DEFINITION_ONLY"
+          ],
+          "title": "Discovery Outcome",
+          "type": "string"
+        },
+        "attempted_sample_count": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Attempted Sample Count"
+        },
+        "valid_response_count": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Valid Response Count"
+        },
+        "invalid_response_count": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Invalid Response Count"
+        },
+        "provider_error_count": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Provider Error Count"
         }
       },
       "required": [

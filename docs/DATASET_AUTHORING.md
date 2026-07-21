@@ -85,8 +85,9 @@ uv run lexstab review requests \
   --notes "pilot batch, obvious invariants"
 ```
 
-Interactive mode shows each candidate's text and labels and prompts per request —
-`[a]pprove / [r]eject / [s]econd-review / [k]eep`:
+Interactive mode shows each candidate's text, complete decision-relevant labels, any
+contrast target, and any request that approval will supersede. It then prompts per
+request: `[a]pprove / [r]eject / [s]econd-review / [d]efer`:
 
 ```bash
 uv run lexstab review requests \
@@ -192,47 +193,104 @@ hold candidates for the second reviewer.
 
 ## 10. Rendering discovery, review, and freezing (spec §15, §42.8)
 
+Before freezing `v0.2.0`, review the two corrective request candidates. The file preserves the
+ambiguous ownership wording as a clarification case and adds an explicit tier-transition
+replacement. Inspect and edit the JSONL first, then record the human decision:
+
+```bash
+uv run lexstab review requests \
+  --input dataset/requests/candidate/corrective-v0.2.0.jsonl \
+  --reviewer phillip \
+  --interactive
+```
+
+The prior `REQ-ESCALATE-001-0006` row remains in the approved source corpus with status
+`SUPERSEDED`. Active-artifact filtering excludes it from new freezes without deleting its audit
+history.
+
 Discovery is blind naming: the prompt shows definitions and positive/negative examples, never
 candidate labels; each sample runs in a fresh context; only development material is used
 (spec §22.2), and discovered renderings are frozen before any downstream testing (spec §49.4).
 
 ```bash
 uv run lexstab discover renderings \
-  --operations ESCALATE_INCIDENT,REASSIGN_INCIDENT,CLOSE_INCIDENT \
+  --operations ESCALATE_INCIDENT,REASSIGN_INCIDENT,CLOSE_INCIDENT,REQUEST_MORE_INFORMATION,REQUEST_APPROVAL,REFUND_DUPLICATE_CHARGE,REQUEST_MANAGER_REVIEW,SUSPEND_ACCOUNT \
   --execution-model-role execution_primary \
   --samples 50 \
   --models config/models.local.yaml \
-  --output dataset/renderings/candidate/discovery-001.jsonl
+  --output dataset/renderings/candidate/discovery-opus-v0.2.0.jsonl
 ```
 
-The command prints, per operation, the modal normalized term, convergence rate, and term entropy
-(normalization rules per spec §38.8), and writes candidate rendering artifacts with full discovery
-provenance (model ID, prompt, sample counts). Review candidates into the approved corpus
+The command makes 400 fresh calls: 50 samples for each of eight operations. It prints the modal
+normalized term, convergence rate, entropy, and definition-only rate, then writes candidates with
+provider, requested and reported model IDs, prompt hash, normalized counts, and canonical-reference
+provenance. Each template is derived from the matching canonical frame, so only the operation label
+can change. The provider is given the generated `lexical-name.schema.json` structured-output
+contract. Every provider response is appended immediately to
+`discovery-opus-v0.2.0.samples.jsonl`, and an incremental diagnostic summary is written to
+`discovery-opus-v0.2.0.summary.json`. Repeating the same command resumes compatible checkpointed
+samples instead of paying for them again. A checkpoint with a different model, provider, prompt
+hash, or response-schema hash is rejected rather than mixed into the same distribution.
+The sample checkpoint is an append-only attempt ledger. Its physical line count may exceed the
+requested sample count when a provider-error attempt is superseded by a successful retry. Read the
+summary's `checkpoint_audit.unique_sample_keys` for experimental sample cardinality and
+`checkpoint_audit.superseded_attempts` for retry history.
+
+Review candidates into the approved corpus
 (`dataset/renderings/approved/support.jsonl`) separately from requests:
 
 ```bash
 uv run lexstab review renderings \
-  --input dataset/renderings/candidate/discovery-001.jsonl \
+  --input dataset/renderings/candidate/discovery-opus-v0.2.0.jsonl \
   --reviewer phillip \
-  --decision APPROVE
+  --interactive
 ```
 
-Renderings reference canonical IDs but never redefine them, must not add or omit required
-arguments, and are frozen into the benchmark by the freeze step below (spec §15.3).
+Interactive review prints the label, instantiated template, convergence, entropy, definition-only
+rate, and term counts for each operation. Approve, reject, or defer each rendering independently.
+Only use `--decision APPROVE` when every remaining row has already been inspected and should be
+approved as a batch. Approval supersedes the old mock discovered rendering for the same operation.
+A `v0.2.0+` freeze refuses mock-derived
+discovered renderings, missing operations, duplicate active discovered renderings, or any template
+whose placeholders or non-label text differ from its canonical frame.
+
+### Corrected request-more-information contract
+
+The initial RMI operation conflated an outbound request with its resulting waiting state. Its
+replacement retains the current support team and tier, requires the public message that says what
+the service desk needs, records that the original reporter was notified, and changes
+`awaiting_party` to `REPORTER`. Missing message content is a clarification target, not an argument
+the model may invent.
+
+The old request rows remain auditable with `SUPERSEDED` status. Review their proposed replacements:
+
+```bash
+uv run lexstab review requests \
+  --input dataset/requests/candidate/rmi-contract-v0.2.0.jsonl \
+  --reviewer phillip \
+  --interactive
+```
+
+The linked `ELICIT-RMI-001` script supplies the missing public message on the next turn. Once the
+request candidates are approved, use the single-operation discovery and rendering-review commands
+in `docs/RUNBOOK.md`. The corrected ontology, cases, interfaces, and elicitation cases live under
+versioned `v0.2.0` paths so `benchmark-v0.1.0.json` continues to verify against its original files.
 
 ## 11. Benchmark freeze (spec §16.2, §42.10)
 
 Freezing turns the approved corpora (`dataset/requests/approved/`,
 `dataset/renderings/approved/`, `dataset/procedures/approved/`, plus domain, cases, contexts, and
-interfaces) into an immutable versioned manifest:
+interfaces) into an immutable versioned manifest. When matching versioned domain, case, and
+interface directories and a matching versioned elicitation file exist, freeze selects those paths
+and records them in the manifest:
 
 ```bash
 uv run lexstab benchmark freeze \
-  --version 0.1.0 \
+  --version 0.2.0 \
   --split-config dataset/splits \
-  --output dataset/manifests/benchmark-v0.1.0.json
+  --changelog-file dataset/manifests/changelog-v0.2.0.json
 
-uv run lexstab benchmark verify --manifest dataset/manifests/benchmark-v0.1.0.json
+uv run lexstab benchmark verify --manifest dataset/manifests/benchmark-v0.2.0.json
 ```
 
 Freeze validates every schema and cross-reference, recomputes gold state transitions in the
@@ -242,6 +300,35 @@ inventory, writes frozen copies read-only, and **refuses to overwrite an existin
 the development-only `--dev-overwrite` flag is passed (recorded in the manifest; D-006, D-007).
 Note the harness derives the freeze source from the repository's `dataset/` tree; there is no
 `--source` flag (deviation from the illustrative command in spec §42.10, which §42 permits).
+
+### v0.2.1 corrective request review
+
+The v0.2.1 review file contains exactly two measurement-integrity corrections:
+
+```bash
+uv run lexstab review requests \
+  --input dataset/requests/candidate/corrective-v0.2.1.jsonl \
+  --reviewer phillip \
+  --interactive
+```
+
+Review is a label and gold-contract decision, not a prose-quality rating:
+
+- `REQ-ESCALATE-001-0009` asserts that moving an incident from Tier 1 to Tier 2 is escalation,
+  not reassignment and not clarification.
+- `REQ-CLOSE-001-CONTRAST-0003` asserts that the explicit do-not-close request is an executable
+  RMI contrast whose `message` must remain exactly
+  `Which version of the client was installed when the incident occurred?`.
+
+Each candidate names the active source request it supersedes. On approval, the review workflow
+atomically marks that source row `SUPERSEDED` and appends the approved replacement. It never edits
+the frozen v0.2.0 corpus. An unknown supersession target stops review rather than appending a
+partially valid correction.
+
+The v0.2.1 operation definitions live under `dataset/domain/v0.2.1/`. Every argument declares a
+preservation mode. Public RMI messages use `VERBATIM`; IDs, enums, tiers, and numeric amounts use
+`CANONICAL`. Candidate labels and preservation modes must be reviewed before freeze because both
+affect gold scoring.
 
 ## 12. Versioning rules (spec §41)
 

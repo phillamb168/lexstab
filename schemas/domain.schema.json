@@ -2,6 +2,15 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://lexstab.invalid/schemas/domain.schema.json",
   "$defs": {
+    "ArgumentPreservation": {
+      "enum": [
+        "VERBATIM",
+        "CANONICAL",
+        "SEMANTIC"
+      ],
+      "title": "ArgumentPreservation",
+      "type": "string"
+    },
     "ArgumentSpec": {
       "additionalProperties": false,
       "properties": {
@@ -81,6 +90,10 @@
           ],
           "default": null,
           "title": "Description"
+        },
+        "preservation": {
+          "$ref": "#/$defs/ArgumentPreservation",
+          "default": "SEMANTIC"
         }
       },
       "required": [

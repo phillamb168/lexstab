@@ -1,0 +1,75 @@
+{
+  "canonical": {
+    "arguments": {
+      "amount_usd": 120.0
+    },
+    "entity_id": "ORD-0077",
+    "entity_type": "ORDER",
+    "operation_id": "REFUND_DUPLICATE_CHARGE"
+  },
+  "case_id": "REFUND_001",
+  "created_at": "2026-07-20T00:00:00Z",
+  "created_by": "human",
+  "difficulty": "intermediate",
+  "domain": "support",
+  "family_id": "REFUND",
+  "gold": {
+    "arguments": {
+      "amount_usd": 120.0,
+      "order_id": "ORD-0077"
+    },
+    "decision": "ACT",
+    "resulting_state": {
+      "customers": {
+        "CUS-0104": {
+          "linked_accounts": [
+            "ACC-4002"
+          ],
+          "risk_flag": false,
+          "status": "ACTIVE"
+        }
+      },
+      "orders": {
+        "ORD-0077": {
+          "charge_count": 2,
+          "duplicate_charge_amount_usd": 120.0,
+          "duplicate_charge_confirmed": true,
+          "fulfillment_state": "DELIVERED",
+          "payment_state": "PARTIAL_REFUND",
+          "refund_state": "REFUNDED",
+          "refunded_amount_usd": 120.0,
+          "updated_at": "<run_clock>"
+        }
+      }
+    },
+    "tool": "refund_duplicate_charge"
+  },
+  "initial_state": {
+    "customers": {
+      "CUS-0104": {
+        "linked_accounts": [
+          "ACC-4002"
+        ],
+        "risk_flag": false,
+        "status": "ACTIVE"
+      }
+    },
+    "orders": {
+      "ORD-0077": {
+        "charge_count": 2,
+        "duplicate_charge_amount_usd": 120.0,
+        "duplicate_charge_confirmed": true,
+        "fulfillment_state": "DELIVERED",
+        "payment_state": "PAID",
+        "refund_state": "NONE"
+      }
+    }
+  },
+  "schema_version": "1.2.0",
+  "tags": [
+    "single_turn",
+    "tool_selection",
+    "policy_dependent"
+  ],
+  "title": "Refund a confirmed duplicate charge of 120 USD"
+}

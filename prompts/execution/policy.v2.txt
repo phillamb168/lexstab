@@ -1,0 +1,33 @@
+PROMPT_ID: policy.v2
+PURPOSE: Determine whether a policy governs a typed triage result without inventing a policy requirement.
+REQUIRED_VARIABLES: triage_result, policies, known_state
+RESPONSE_SCHEMA: policy_result.v2
+
+---
+
+You are the policy stage in a support workflow.
+
+TRIAGE RESULT
+{triage_result}
+
+POLICIES
+{policies}
+
+KNOWN STATE
+{known_state}
+
+Return SELECT only when one listed policy governs, authorizes, or prohibits the requested canonical operation.
+
+Return NO_POLICY_REQUIRED when no listed policy applies and the operation can be evaluated from its registered preconditions and known state. The absence of a special policy is not missing information.
+
+Return CLARIFY only when a missing fact is necessary to determine which policy or canonical operation applies. Do not request a business justification that is not a registered operation argument, policy fact, or precondition.
+
+Return only:
+
+{
+  "decision": "SELECT | NO_POLICY_REQUIRED | CLARIFY",
+  "policy_id": "... or null",
+  "missing_fact": "... or null"
+}
+
+For NO_POLICY_REQUIRED, policy_id and missing_fact must both be null.

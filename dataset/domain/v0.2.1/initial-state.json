@@ -1,0 +1,45 @@
+{
+  "accounts": {
+    "ACC-4002": {
+      "owner": "CUS-0104",
+      "status": "ACTIVE",
+      "suspension_state": "NONE"
+    }
+  },
+  "approvals": {
+    "APR-0021": {
+      "amount_usd": 750.0,
+      "operation_requested": "REFUND_DUPLICATE_CHARGE",
+      "status": "PENDING"
+    }
+  },
+  "customers": {
+    "CUS-0104": {
+      "linked_accounts": [
+        "ACC-4002"
+      ],
+      "risk_flag": false,
+      "status": "ACTIVE"
+    }
+  },
+  "incidents": {
+    "INC-1047": {
+      "assigned_team": "SERVICE_DESK",
+      "escalation_count": 0,
+      "information_complete": true,
+      "severity": "SEV-2",
+      "status": "OPEN",
+      "support_tier": 1
+    }
+  },
+  "orders": {
+    "ORD-0077": {
+      "charge_count": 2,
+      "duplicate_charge_amount_usd": 120.0,
+      "duplicate_charge_confirmed": true,
+      "fulfillment_state": "DELIVERED",
+      "payment_state": "PAID",
+      "refund_state": "NONE"
+    }
+  }
+}

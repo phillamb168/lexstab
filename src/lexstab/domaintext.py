@@ -59,12 +59,31 @@ def context_text(context: FrozenContext) -> str:
 
 def gold_canonical_resolution(case: CanonicalCase) -> dict[str, Any]:
     """Gold injection structure (spec §25.5); no canonicalizer output allowed."""
+    if case.gold.decision.value == "CLARIFY":
+        targets = list(case.gold.clarification_targets or ["intended operation"])
+        return {
+            "mapping_outcome": "NEEDS_CLARIFICATION",
+            "canonical_intent": None,
+            "candidate_mappings": [
+                {
+                    "entity_type": case.canonical.entity_type,
+                    "operation_id": case.canonical.operation_id,
+                    "missing_or_ambiguous": targets,
+                }
+            ],
+            "question": "Please clarify: " + ", ".join(targets) + ".",
+            "preserved_user_terms": [],
+            "uncertainties": targets,
+            "grounding": {"source": "frozen_case_gold"},
+        }
     return {
-        "status": "RESOLVED",
-        "entity_type": case.canonical.entity_type,
-        "entity_id": case.canonical.entity_id,
-        "operation_id": case.canonical.operation_id,
-        "arguments": case.canonical.arguments,
+        "mapping_outcome": "MAPPED",
+        "canonical_intent": case.canonical.model_dump(mode="json"),
+        "candidate_mappings": [],
+        "question": None,
+        "preserved_user_terms": [],
+        "uncertainties": [],
+        "grounding": {"source": "frozen_case_gold"},
     }
 
 
@@ -90,11 +109,26 @@ def operation_definitions_text(domain: DomainStore, operation_ids: list[str] | N
     return "\n".join(lines)
 
 
-def rendering_text(rendering: Rendering, resolution: dict[str, Any]) -> str:
+def preservation_contract_text(operation: Any) -> str:
+    """Compact model-facing contract for arguments requiring exact retention.
+
+    Only preservation modes stronger than SEMANTIC are emitted. The value is
+    already present in the authoritative task input, so this contract names
+    fields without duplicating user-authored literals.
+    """
+    protected = [
+        name
+        for name, spec in operation.arguments.items()
+        if spec.preservation.value != "SEMANTIC"
+    ]
+    return ", ".join(protected) if protected else "(none)"
+
+
+def rendering_text(rendering: Rendering, canonical_intent: dict[str, Any]) -> str:
     """Instantiate a rendering template from a canonical resolution (§15.3)."""
-    values = {"entity_id": resolution.get("entity_id"), "entity_type": resolution.get("entity_type"),
-              "operation_id": resolution.get("operation_id")}
-    values.update(resolution.get("arguments", {}))
+    values = {"entity_id": canonical_intent.get("entity_id"), "entity_type": canonical_intent.get("entity_type"),
+              "operation_id": canonical_intent.get("operation_id")}
+    values.update(canonical_intent.get("arguments", {}))
     text = rendering.template
     for name, value in values.items():
         text = text.replace("{" + str(name) + "}", str(value))

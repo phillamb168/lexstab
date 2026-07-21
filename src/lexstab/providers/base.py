@@ -17,7 +17,7 @@ from typing import Any, Protocol
 from lexstab.hashing import sha256_text
 from lexstab.models import InvocationRecord
 
-ADAPTER_VERSION = "1.0.0"
+ADAPTER_VERSION = "1.1.0"
 
 
 class TransportError(Exception):
@@ -58,6 +58,38 @@ class ModelProvider(Protocol):
 
 
 _JSON_BLOCK_RE = re.compile(r"\{.*\}", re.DOTALL)
+
+
+def provider_failure_category(finish_reason: str | None) -> str | None:
+    """Return a stable infrastructure-failure label for terminal provider errors."""
+    if finish_reason == "transport_error":
+        return "provider_transport_error"
+    if finish_reason and finish_reason.startswith("http_"):
+        return f"provider_{finish_reason}"
+    return None
+
+
+def _provider_error_message(response: ProviderResponse) -> str:
+    """Extract a concise provider error without losing the raw response artifact."""
+    status = response.finish_reason or "provider_error"
+    raw = response.raw if isinstance(response.raw, dict) else {}
+    body: Any = raw.get("body")
+    if isinstance(body, str):
+        try:
+            body = json.loads(body)
+        except json.JSONDecodeError:
+            body = body.strip()
+    detail: Any = body
+    if isinstance(body, dict):
+        error = body.get("error")
+        if isinstance(error, dict):
+            detail = error.get("message") or error.get("type") or error
+        else:
+            detail = body.get("message") or body
+    if not isinstance(detail, str):
+        detail = json.dumps(detail, ensure_ascii=False, sort_keys=True) if detail else ""
+    detail = detail[:500]
+    return f"provider {status.replace('_', ' ').upper()}" + (f": {detail}" if detail else "")
 
 
 def extract_json_object(text: str | None) -> tuple[dict | None, str | None]:
@@ -182,7 +214,10 @@ class BaseAdapter:
 
         parse_status = "ok"
         parse_error = None
-        if not response.tool_calls and (response.text is None or not response.text.strip()):
+        if provider_failure_category(response.finish_reason):
+            parse_status = "error"
+            parse_error = _provider_error_message(response)
+        elif not response.tool_calls and (response.text is None or not response.text.strip()):
             parse_status = "empty"
             parse_error = "no text and no tool calls"
 

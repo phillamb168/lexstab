@@ -1,0 +1,70 @@
+{
+  "canonical": {
+    "arguments": {
+      "reason_code": "FRAUD"
+    },
+    "entity_id": "ACC-4002",
+    "entity_type": "ACCOUNT",
+    "operation_id": "SUSPEND_ACCOUNT"
+  },
+  "case_id": "SUSPEND_001",
+  "created_at": "2026-07-20T00:00:00Z",
+  "created_by": "human",
+  "difficulty": "intermediate",
+  "domain": "support",
+  "family_id": "SUSPEND",
+  "gold": {
+    "arguments": {
+      "account_id": "ACC-4002",
+      "reason_code": "FRAUD"
+    },
+    "decision": "ACT",
+    "resulting_state": {
+      "accounts": {
+        "ACC-4002": {
+          "owner": "CUS-0104",
+          "status": "SUSPENDED",
+          "suspension_reason": "FRAUD",
+          "suspension_state": "SUSPENDED",
+          "updated_at": "<run_clock>"
+        }
+      },
+      "incidents": {
+        "INC-4410": {
+          "assigned_team": "SERVICE_DESK",
+          "escalation_count": 0,
+          "information_complete": true,
+          "severity": "SEV-3",
+          "status": "OPEN",
+          "support_tier": 1
+        }
+      }
+    },
+    "tool": "suspend_account"
+  },
+  "initial_state": {
+    "accounts": {
+      "ACC-4002": {
+        "owner": "CUS-0104",
+        "status": "ACTIVE",
+        "suspension_state": "NONE"
+      }
+    },
+    "incidents": {
+      "INC-4410": {
+        "assigned_team": "SERVICE_DESK",
+        "escalation_count": 0,
+        "information_complete": true,
+        "severity": "SEV-3",
+        "status": "OPEN",
+        "support_tier": 1
+      }
+    }
+  },
+  "schema_version": "1.2.0",
+  "tags": [
+    "single_turn",
+    "tool_selection"
+  ],
+  "title": "Suspend an active account for confirmed fraud"
+}

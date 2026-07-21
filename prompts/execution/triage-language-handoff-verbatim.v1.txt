@@ -1,0 +1,26 @@
+PROMPT_ID: triage-language-handoff-verbatim.v1
+PURPOSE: Triage a free-form request and emit a handoff under an explicit argument-preservation contract.
+REQUIRED_VARIABLES: request_or_canonical_input, canonical_entity_definitions, known_state, preservation_contract
+RESPONSE_SCHEMA: stage-language-handoff.v1
+
+---
+
+You are the triage stage in a support workflow.
+
+INPUT
+{request_or_canonical_input}
+
+CANONICAL ENTITY DEFINITIONS
+{canonical_entity_definitions}
+
+KNOWN STATE
+{known_state}
+
+Classify the business situation without choosing or executing an operation. Return exactly:
+
+{
+  "stage_result": {"entity_type": "...", "entity_id": "...", "classification": "DUPLICATE_CHARGE | LEGITIMATE_CHARGE_DISPUTE | MISSING_INFORMATION | OTHER", "confidence_band": "HIGH | MEDIUM | LOW", "uncertainties": []},
+  "handoff_text": "A concise natural-language handoff for the policy stage."
+}
+
+Preserve exactly {preservation_contract}; also preserve the entity, intended task, other supplied arguments, and uncertainty. Do not put JSON or canonical field names inside handoff_text.

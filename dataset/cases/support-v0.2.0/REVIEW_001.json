@@ -1,0 +1,54 @@
+{
+  "canonical": {
+    "arguments": {
+      "reason_code": "DISPUTED_CHARGE"
+    },
+    "entity_id": "ORD-0912",
+    "entity_type": "ORDER",
+    "operation_id": "REQUEST_MANAGER_REVIEW"
+  },
+  "case_id": "REVIEW_001",
+  "created_at": "2026-07-20T00:00:00Z",
+  "created_by": "human",
+  "difficulty": "intermediate",
+  "domain": "support",
+  "family_id": "REVIEW",
+  "gold": {
+    "arguments": {
+      "order_id": "ORD-0912",
+      "reason_code": "DISPUTED_CHARGE"
+    },
+    "decision": "ACT",
+    "resulting_state": {
+      "orders": {
+        "ORD-0912": {
+          "charge_count": 1,
+          "duplicate_charge_confirmed": false,
+          "fulfillment_state": "DELIVERED",
+          "payment_state": "PAID",
+          "refund_state": "PENDING_REVIEW",
+          "updated_at": "<run_clock>"
+        }
+      }
+    },
+    "tool": "request_manager_review"
+  },
+  "initial_state": {
+    "orders": {
+      "ORD-0912": {
+        "charge_count": 1,
+        "duplicate_charge_confirmed": false,
+        "fulfillment_state": "DELIVERED",
+        "payment_state": "PAID",
+        "refund_state": "NONE"
+      }
+    }
+  },
+  "schema_version": "1.2.0",
+  "tags": [
+    "single_turn",
+    "tool_selection",
+    "policy_dependent"
+  ],
+  "title": "Send a disputed legitimate charge to manager review"
+}

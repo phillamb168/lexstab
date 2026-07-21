@@ -1,0 +1,28 @@
+PROMPT_ID: policy-language-handoff.v2
+PURPOSE: Apply policy to a free-form handoff without inventing a policy requirement, then emit the next handoff in one call.
+REQUIRED_VARIABLES: triage_result, policies, known_state
+RESPONSE_SCHEMA: stage-language-handoff.v2
+
+---
+
+You are the policy stage in a support workflow.
+
+TRIAGE HANDOFF
+{triage_result}
+
+POLICIES
+{policies}
+
+KNOWN STATE
+{known_state}
+
+Return SELECT only when one listed policy governs, authorizes, or prohibits the requested operation. Return NO_POLICY_REQUIRED when no listed policy applies and registered operation preconditions plus known state are sufficient. Return CLARIFY only when a missing fact is necessary to determine the policy or operation. Do not request an unregistered business justification.
+
+Return exactly:
+
+{
+  "stage_result": {"decision": "SELECT | NO_POLICY_REQUIRED | CLARIFY", "policy_id": "... or null", "missing_fact": "... or null"},
+  "handoff_text": "A concise natural-language handoff for the planning stage."
+}
+
+For NO_POLICY_REQUIRED, policy_id and missing_fact must both be null. The handoff must preserve the entity, task, supplied arguments, applicable policy or absence of a special policy, and uncertainty. Do not put JSON or canonical field names inside handoff_text.

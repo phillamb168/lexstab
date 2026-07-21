@@ -17,6 +17,27 @@ OPERATION_ID_PATTERN = r"^[A-Z][A-Z0-9_]+$"
 ENTITY_TYPE_PATTERN = r"^[A-Z][A-Z0-9_]+$"
 TOOL_PATTERN = r"^[a-z][a-z0-9_]+$"
 
+# The frozen support benchmark's canonical namespace. These literals make the
+# provider-facing canonical-resolution schema constrain decoded values to
+# registered identifiers instead of accepting any uppercase token sequence.
+SupportEntityTypeId = Literal[
+    "ACCOUNT",
+    "APPROVAL_REQUEST",
+    "CUSTOMER",
+    "INCIDENT",
+    "ORDER",
+]
+SupportOperationId = Literal[
+    "CLOSE_INCIDENT",
+    "ESCALATE_INCIDENT",
+    "REASSIGN_INCIDENT",
+    "REFUND_DUPLICATE_CHARGE",
+    "REQUEST_APPROVAL",
+    "REQUEST_MANAGER_REVIEW",
+    "REQUEST_MORE_INFORMATION",
+    "SUSPEND_ACCOUNT",
+]
+
 VARIATION_AXES = [
     "canonical_terminology",
     "entity_synonym",
@@ -57,6 +78,7 @@ ARCHITECTURES = [
     "C_GOLD",
     "D_DEFINITION_ONLY",
     "E_ORGANIZATION_TERM",
+    "F_MODEL_DISCOVERED",
     "B_EXTERNAL_GATE",
     "B_EXTERNAL_GATE_GOLD",
     "HUMAN_ORACLE",
@@ -73,6 +95,8 @@ ARCHITECTURES = [
     "P4_CANONICAL_PROCEDURE_TOOL",
     "LP0_LANGUAGE_THROUGHOUT",
     "LP0G_GOLD_START_LANGUAGE",
+    "LP0B_GOLD_START_LANGUAGE_BALANCED",
+    "LP0BV_GOLD_START_LANGUAGE_BALANCED_VERBATIM",
     "LP1_CANONICAL_ONCE",
     "LP2_CANONICAL_PROCEDURE",
     "LP3_CANONICAL_PROCEDURE_TOOL",
@@ -137,6 +161,17 @@ class GoldDecision(str, Enum):
     REFUSE = "REFUSE"
 
 
+class MappingOutcome(str, Enum):
+    MAPPED = "MAPPED"
+    NEEDS_CLARIFICATION = "NEEDS_CLARIFICATION"
+
+
+class ArgumentPreservation(str, Enum):
+    VERBATIM = "VERBATIM"
+    CANONICAL = "CANONICAL"
+    SEMANTIC = "SEMANTIC"
+
+
 class RenderingCategory(str, Enum):
     CANONICAL_LABEL = "CANONICAL_LABEL"
     MODEL_DISCOVERED = "MODEL_DISCOVERED"
@@ -163,6 +198,7 @@ class ArgumentSpec(StrictModel):
     maximum: float | None = None
     enum: list[Any] | None = None
     description: str | None = None
+    preservation: ArgumentPreservation = ArgumentPreservation.SEMANTIC
 
 
 class EntityType(StrictModel):
@@ -208,10 +244,83 @@ class DomainFile(StrictModel):
 
 
 class CanonicalIntent(StrictModel):
-    entity_type: str = Field(pattern=ENTITY_TYPE_PATTERN)
+    entity_type: SupportEntityTypeId
     entity_id: str
-    operation_id: str = Field(pattern=OPERATION_ID_PATTERN)
+    operation_id: SupportOperationId
     arguments: dict[str, Any]
+
+
+class CandidateMapping(StrictModel):
+    entity_type: SupportEntityTypeId | None = None
+    operation_id: SupportOperationId | None = None
+    missing_or_ambiguous: list[str] = Field(default_factory=list)
+
+
+class CanonicalResolution(StrictModel):
+    """Control-plane result produced by the boundary canonicalizer.
+
+    The nested canonical intent is the only part permitted to cross into the
+    acting model's task representation. Envelope fields remain audit/control
+    metadata so terms such as ``RESOLVED`` cannot collide with entity state.
+    """
+
+    model_config = ConfigDict(
+        extra="forbid",
+        json_schema_extra={
+            "allOf": [
+                {
+                    "if": {
+                        "properties": {"mapping_outcome": {"const": "MAPPED"}},
+                        "required": ["mapping_outcome"],
+                    },
+                    "then": {
+                        "required": ["canonical_intent"],
+                        "properties": {
+                            "canonical_intent": {"not": {"type": "null"}},
+                            "question": {"type": "null"},
+                        },
+                    },
+                },
+                {
+                    "if": {
+                        "properties": {
+                            "mapping_outcome": {"const": "NEEDS_CLARIFICATION"}
+                        },
+                        "required": ["mapping_outcome"],
+                    },
+                    "then": {
+                        "required": ["question"],
+                        "properties": {
+                            "canonical_intent": {"type": "null"},
+                            "question": {"type": "string", "minLength": 1},
+                        },
+                    },
+                },
+            ]
+        },
+    )
+
+    mapping_outcome: MappingOutcome
+    canonical_intent: CanonicalIntent | None = None
+    candidate_mappings: list[CandidateMapping] = Field(default_factory=list)
+    question: str | None = None
+    preserved_user_terms: list[str] = Field(default_factory=list)
+    uncertainties: list[str] = Field(default_factory=list)
+    grounding: dict[str, str] = Field(default_factory=dict)
+
+    @model_validator(mode="after")
+    def _shape(self) -> "CanonicalResolution":
+        if self.mapping_outcome == MappingOutcome.MAPPED:
+            if self.canonical_intent is None:
+                raise ValueError("MAPPED resolutions require canonical_intent")
+            if self.question is not None:
+                raise ValueError("MAPPED resolutions may not contain a clarification question")
+        else:
+            if self.canonical_intent is not None:
+                raise ValueError("NEEDS_CLARIFICATION resolutions may not contain canonical_intent")
+            if not self.question:
+                raise ValueError("NEEDS_CLARIFICATION resolutions require a question")
+        return self
 
 
 class GoldSpec(StrictModel):
@@ -356,7 +465,9 @@ class RequestLabels(StrictModel):
 
 class ReviewerDecision(StrictModel):
     reviewer_id: str
-    decision: Literal["APPROVE", "REJECT", "EDIT_AND_APPROVE", "NEEDS_SECOND_REVIEW"]
+    decision: Literal[
+        "APPROVE", "REJECT", "EDIT_AND_APPROVE", "NEEDS_SECOND_REVIEW", "SUPERSEDE"
+    ]
     notes: str = ""
     reviewed_at: str | None = None
     label_assessment: dict[str, str] | None = None
@@ -390,6 +501,7 @@ class Provenance(StrictModel):
     created_at: str
     source_run_id: str | None = None
     parent_request_id: str | None = None
+    supersedes_request_ids: list[str] = Field(default_factory=list)
     content_hash: str | None = None
 
 
@@ -428,6 +540,12 @@ class NLRequest(StrictModel):
 # ---------------------------------------------------------------- renderings
 
 
+class LexicalNameResponse(StrictModel):
+    preferred_term: str
+    alternative_terms: list[str]
+    one_sentence_definition: str
+
+
 class RenderingDiscovery(StrictModel):
     provider: str
     model_id: str
@@ -438,6 +556,19 @@ class RenderingDiscovery(StrictModel):
     seed_policy: str
     term_entropy: float | None = None
     discovered_on_split: str | None = "development"
+    reported_model_id: str | None = None
+    prompt_hash: str | None = None
+    normalization_version: str = "lexical-label-normalization.v1"
+    term_counts: dict[str, int] = Field(default_factory=dict)
+    definition_only_rate: float | None = None
+    reference_rendering_id: str | None = None
+    reference_rendering_hash: str | None = None
+    reference_template_label_span: str | None = None
+    discovery_outcome: Literal["LEXICAL_LABEL", "DEFINITION_ONLY"] = "LEXICAL_LABEL"
+    attempted_sample_count: int | None = None
+    valid_response_count: int | None = None
+    invalid_response_count: int | None = None
+    provider_error_count: int | None = None
 
 
 class RenderingValidation(StrictModel):
@@ -685,6 +816,8 @@ class ScoreRecord(StrictModel):
     final_state_correct: bool | None
     raw_score: dict[str, Any] = Field(default_factory=dict)
     normalized_score: dict[str, Any] = Field(default_factory=dict)
+    argument_preservation: dict[str, Any] = Field(default_factory=dict)
+    verbatim_arguments_correct: bool | None = None
     clarification_outcome: str | None = None
     false_action: bool = False
     refusal_correct: bool | None = None

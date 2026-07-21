@@ -31,6 +31,10 @@ Top-level `metrics.json` bookkeeping keys: `run_id`, `benchmark_root_hash`, `moc
 `primary`, `secondary`, or `exploratory` (spec §39.12, §46.22). If `mocked` is true, stop: the run
 is a wiring smoke test, not evidence (spec §17.4).
 
+`run-summary.json` is the pre-evaluation health gate. Any provider error, harness error, aborted
+cell, or length-terminated invocation sets `healthy: false` and `baseline_eligible: false`. A
+length-terminated run uses `status: length_terminated` even when every scheduled cell completed.
+
 ## 2. Metric families (spec §38 → `metrics.json`)
 
 All rate estimates carry case-clustered bootstrap confidence intervals and denominators
@@ -39,7 +43,9 @@ UNAMBIGUOUS + EXECUTE + lexical INVARIANT requests) where applicable.
 
 ### Invocation metrics (§38.1) — `metrics.json → headline[]`
 
-One row per `(track, architecture)` with `n_cells` and interval dicts:
+One row per exact `(track, architecture, intent_mode, procedure_selection,
+procedure_packaging)` cohort with `n_cells` and interval dicts. Runtime and gold-injected cells
+cannot be averaged into one headline row:
 
 - `schema_validity` — valid responses / attempted responses.
 - `decision_accuracy` — correct ACT/CLARIFY/REFUSE decision.
@@ -112,12 +118,13 @@ case-clustered interval and denominator.
 ### Architecture metrics (§38.6) — `primary_comparisons[]`, `formalization_transitions[]`
 
 `primary_comparisons` holds the prespecified paired comparisons (spec §39.6): A1−A0, B-Runtime−A1,
-C-Runtime−A1, C-Gold−B-Gold (full-call and final-state), each P-transition, LP1−LP0G (primary
-persistence), LP1−LP0 (practical), LP2−LP1, LP3−LP2, retrieved-memory−static-glossary, and
+C-Runtime−A1, C-Gold−B-Gold (full-call and final-state), F-Model-Discovered−C-Gold,
+F-Model-Discovered−B-Gold, each P-transition, LP1−LP0B (primary call-balanced persistence),
+LP1−LP0G (secondary extra-call prose), LP1−LP0 (practical), LP2−LP1, LP3−LP2,
+retrieved-memory−static-glossary, and
 stable−drift. Each entry gives the delta, its case-clustered CI, whether the practical threshold
-is met, `n_pairs`, and a `secondary_mcnemar` discordance record. Pairing follows spec §39.2 (same
-case, request, repetition, etc.); comparisons automatically exclude packaged-procedure and
-runtime-selected cells so component effects are not conflated.
+is met, `n_pairs`, exact `pairing_cohorts`, and a `secondary_mcnemar` discordance record. Pairing
+follows spec §39.2 and requires the declared intent, selection, and packaging cohort on both sides.
 
 The **marginal formalization delta** (§38.6) lives in `formalization_transitions[]`: for each
 adjacent P-pair, `marginal_quality` (paired final-state delta + CI + equivalence decision),
@@ -159,7 +166,8 @@ transparent weights (spec §38.10, §46.25). `charts/complexity_frontier.*` give
 
 ### Formalization and persistence metrics (§38.11) — `persistence`, `component_ablations`
 
-`persistence[<LP condition>]`: `mean_nl_persistence_depth` (downstream model-to-model handoffs
+`persistence[<LP condition>|<intent>|<selection>|<packaging>]`:
+`mean_nl_persistence_depth` (downstream model-to-model handoffs
 after intent resolution whose authoritative representation is free-form language),
 `mean_reinterpretation_count` (model-mediated boundaries where identity fields could change),
 `mean_representation_changes` (changes among language / canonical state / +procedure / proposal /
@@ -187,6 +195,60 @@ regression gates.
 
 `exploratory_fdr` applies Benjamini–Hochberg correction to the secondary McNemar p-values and is
 labeled exploratory (spec §39.6; D-010).
+
+### Measurement validity and rendering contrast
+
+`measurement_warnings[]` lists every exact cohort below
+`evaluation.minimum_schema_validity_for_interpretation`. Raw scores, failures, and confidence
+intervals remain visible, but `interpretation_allowed` is false for any paired comparison touching
+that cohort. Reports display a withheld verdict rather than causal prose. A comparison with no
+matched pairs is also non-interpretable.
+
+`rendering_contrast` reports F-Model-Discovered cell counts and separates renderings whose
+instantiated text differs from the canonical rendering from those that are identical. Read the
+`lexically_distinct_comparison` for the actual lexical hypothesis. Identical renderings are
+recorded as `no lexical contrast`; they are not evidence that the two labels are equivalent.
+
+Gold-injected scores always use case gold. If a gold condition was expanded over a source request,
+that request's original adequacy, ambiguity, and expected behavior survive only under
+`source_request_*` metadata. Clarification, refusal, false-action, and adequacy-matrix metrics use
+direct or runtime user-request conditions, not gold injection.
+
+### v0.2.1 sample gates and protected arguments
+
+Read `interpretation_thresholds` before reading a delta as evidence. The v0.2.1 defaults require:
+
+- six independent canonical cases for `interpretation_allowed: true`;
+- three operation families for `generalization_allowed: true`.
+
+A one-case result can still show a real observed failure, but its scope is `exploratory`. Request
+variants and repetitions do not increase the independent case count. The report preserves the raw
+estimate and interval while replacing causal verdict prose with a measurement warning.
+
+For persistence experiments, read the cohort-specific block under `persistence`:
+
+```text
+first_operation_divergence_distribution
+first_argument_divergence_distribution
+first_verbatim_argument_divergence_distribution
+verbatim_preservation_accuracy
+```
+
+The corresponding score record stores `argument_preservation.fields` and the deterministic
+comparison version. `VERBATIM` means exact final value. Within a larger prose handoff, the
+case-sensitive token sequence must remain present. An operation can therefore remain correct while
+a public message first diverges at policy or planning. That is an operational argument failure,
+not merely a style difference.
+
+Compare the three call-balanced conditions separately:
+
+1. LP0B: natural-language handoffs without a field-specific reminder.
+2. LP0BV: the same four calls with protected field names visible at every stage.
+3. LP1 gold: four calls with canonical state authoritative across stages.
+
+LP0B versus LP0BV estimates the reminder effect. LP0BV versus LP1 estimates the additional effect
+of structured persistence. Do not collapse either comparison into LP0G, which also changes the
+number of model-mediated translations.
 
 ## 3. Interpretation patterns (spec §44.4)
 
@@ -244,8 +306,9 @@ operational rather than lexical. Canonical intent remains useful as typed state,
 main source of the measured reliability gain." This supports R2 and must not be rewritten as
 evidence for stable model-facing vocabulary.
 
-**Pattern K: Repeated natural-language handoffs are the main problem.** Evidence: LP0G
-underperforms LP1 on first divergence, intermediate consistency, and final state; LP1 and LP2 are
+**Pattern K: Repeated natural-language handoffs are the main problem.** Evidence: call-balanced
+LP0B underperforms LP1 on first divergence, intermediate consistency, and final state; LP0G shows
+the secondary combined effect of prose persistence plus extra calls; LP1 and LP2 are
 practically equivalent. Conclusion: "Canonicalizing once and preserving typed state matters, while
 adding a reusable procedure does not earn further complexity for these cases."
 

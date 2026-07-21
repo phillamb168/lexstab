@@ -6,12 +6,14 @@ from pathlib import Path
 
 import pytest
 
+from lexstab import models
 from lexstab.artifacts import find_repo_root, json_read, jsonl_append, jsonl_read
 from lexstab.config import load_run_config
 from lexstab.evaluate import evaluate_run
 from lexstab.freeze import FreezeError, FrozenBenchmark, freeze_benchmark
 from lexstab.hashing import hash_file
-from lexstab.run import execute_run
+from lexstab.run import build_run_context, execute_run
+from lexstab.runner import CellResult, ProviderInvocationFailure
 
 ROOT = find_repo_root(Path(__file__))
 MANIFEST = ROOT / "dataset" / "manifests" / "benchmark-v0.1.0.json"
@@ -123,6 +125,56 @@ class TestRunAndRescore:
         )
         assert score["false_action"] is True
 
+    def test_provider_failure_stops_run_and_disqualifies_baseline(self, tmp_path):
+        config = load_run_config(ROOT / "config/run.smoke.yaml")
+        for name, spec in config.raw["tracks"].items():
+            enabled = name == "boundary"
+            spec["enabled"] = enabled
+            config.tracks[name]["enabled"] = enabled
+        config.raw["selection"]["limit_cases"] = 1
+        config.selection["limit_cases"] = 1
+        config.raw["execution"]["concurrency"] = 1
+        config.execution["concurrency"] = 1
+
+        def fail_first_invocation(ctx, cell):
+            result = CellResult(cell=cell, schema_valid=False)
+            result.error_category = "provider_http_400"
+            result.invocations.append(models.InvocationRecord(
+                run_id=ctx.run_id,
+                cell_id=cell.cell_id,
+                role="execution_primary",
+                provider="anthropic",
+                requested_model_id="claude-test",
+                timestamp="2026-07-20T00:00:00Z",
+                messages=[{"role": "system", "content": "test"}],
+                requested_parameters={},
+                raw_response={"status": 400},
+                finish_reason="http_400",
+                parse_status="error",
+                parse_error="provider HTTP 400",
+            ))
+            raise ProviderInvocationFailure(
+                result, "provider_http_400", "provider HTTP 400"
+            )
+
+        run_dir = execute_run(
+            ROOT,
+            config,
+            runs_dir=tmp_path,
+            run_id="provider-failure",
+            cell_runner=fail_first_invocation,
+        )
+        summary = json_read(run_dir / "run-summary.json")
+        results = jsonl_read(run_dir / "cell-results.jsonl")
+        assert summary["status"] == "provider_failure"
+        assert summary["healthy"] is False
+        assert summary["baseline_eligible"] is False
+        assert summary["provider_error_calls"] == 1
+        assert summary["aborted_cells"] == len(results) - 1
+        assert {row["cell_id"] for row in results} == {
+            row["cell_id"] for row in jsonl_read(run_dir / "matrix.jsonl")
+        }
+
 
 class TestRunnerEquivalence:
     def test_graph_matches_procedural(self, tmp_path):
@@ -145,6 +197,210 @@ class TestRunnerEquivalence:
 
 
 class TestFormalizationControls:
+    def test_runtime_rendering_and_procedure_follow_resolved_contrast_operation(
+        self, tmp_path
+    ):
+        config = load_run_config(ROOT / "config/run.v0.2-rmi-check.yaml")
+        config.raw["model_config"] = "config/models.mock.yaml"
+        config.model_config_path = "config/models.mock.yaml"
+        for name, track in config.tracks.items():
+            track["enabled"] = name in ("boundary", "progressive_formalization")
+        config.tracks["boundary"]["architectures"] = ["C_RUNTIME"]
+        formal = config.tracks["progressive_formalization"]
+        formal["conditions"] = ["P3_CANONICAL_PROCEDURE_PROPOSAL"]
+        formal["persistence_conditions"] = []
+        formal["run_component_ablations"] = False
+        formal["run_language_persistence_ablation"] = False
+        config.selection["case_ids"] = ["CLOSE_001"]
+        config.selection["request_ids"] = ["REQ-CLOSE-001-CONTRAST-0002"]
+
+        ctx, matrix, _models = build_run_context(ROOT, config, run_id="selector-map")
+        rendered_cell = next(
+            cell for cell in matrix.cells if cell.architecture == "C_RUNTIME"
+        )
+        procedure_cell = next(
+            cell for cell in matrix.cells
+            if cell.architecture == "P3_CANONICAL_PROCEDURE_PROPOSAL"
+        )
+        assert rendered_cell.rendering_id is None
+        assert rendered_cell.rendering_category == "CANONICAL_LABEL"
+        assert procedure_cell.procedure_id is None
+        assert procedure_cell.procedure_selector == "resolved_operation"
+
+        message = "Please attach the missing diagnostic logs before we continue."
+        resolution = {
+            "mapping_outcome": "MAPPED",
+            "canonical_intent": {
+                "entity_type": "INCIDENT",
+                "entity_id": "INC-2450",
+                "operation_id": "REQUEST_MORE_INFORMATION",
+                "arguments": {"incident_id": "INC-2450", "message": message},
+            },
+            "candidate_mappings": [],
+            "question": None,
+            "preserved_user_terms": [],
+            "uncertainties": [],
+        }
+        proposal = {
+            "decision": "ACT",
+            "operation_id": "REQUEST_MORE_INFORMATION",
+            "arguments": {"incident_id": "INC-2450", "message": message},
+            "question": None,
+            "reason_code": None,
+        }
+        script = {
+            f"boundary_canonicalizer:{rendered_cell.cell_id}:canonicalizer": resolution,
+            f"execution_primary:{rendered_cell.cell_id}:executor": {
+                "__tool__": {
+                    "tool": "request_more_information",
+                    "arguments": {"incident_id": "INC-2450", "message": message},
+                }
+            },
+            f"boundary_canonicalizer:{procedure_cell.cell_id}:canonicalizer": resolution,
+            f"execution_primary:{procedure_cell.cell_id}:procedure_executor": proposal,
+        }
+        run_dir = execute_run(
+            ROOT, config, runs_dir=tmp_path,
+            run_id="runtime-resolved-artifacts", mock_script=script,
+        )
+        results = {
+            row["architecture"]: row
+            for row in jsonl_read(run_dir / "cell-results.jsonl")
+        }
+        rendered = results["C_RUNTIME"]
+        expected_rendering = ctx.bench.rendering_for_operation(
+            "REQUEST_MORE_INFORMATION", "CANONICAL_LABEL"
+        )
+        assert rendered["rendering_id"] == expected_rendering.rendering_id
+        assert rendered["rendering_text"].startswith("Request more information")
+        assert "Close incident" not in rendered["rendering_text"]
+        procedure = results["P3_CANONICAL_PROCEDURE_PROPOSAL"]
+        expected_procedure = ctx.bench.procedure_for_operation(
+            "REQUEST_MORE_INFORMATION"
+        )
+        assert procedure["procedure_id"] == expected_procedure.procedure_id
+        assert procedure["decision"] == "ACT"
+
+    def test_invalid_v1_canonical_shape_stops_before_execution(self, tmp_path):
+        config = load_run_config(ROOT / "config/run.smoke.yaml")
+        for name, track in config.tracks.items():
+            track["enabled"] = name == "boundary"
+        config.tracks["boundary"]["architectures"] = ["B_RUNTIME"]
+        config.selection["case_ids"] = ["ESCALATE_001"]
+        config.selection["request_ids"] = ["REQ-ESCALATE-001-0001"]
+
+        _ctx, matrix, _models = build_run_context(ROOT, config, run_id="find-cell")
+        assert len(matrix.cells) == 1
+        cell = matrix.cells[0]
+        legacy_ambiguous_shape = {
+            "status": "RESOLVED",
+            "entity_type": "INCIDENT",
+            "entity_id": "INC-1047",
+            "operation_id": "ESCALATE_INCIDENT",
+            "arguments": {"destination_tier": 2},
+        }
+        script = {
+            f"boundary_canonicalizer:{cell.cell_id}:canonicalizer": legacy_ambiguous_shape
+        }
+        run_dir = execute_run(
+            ROOT,
+            config,
+            runs_dir=tmp_path,
+            run_id="invalid-canonical-shape",
+            mock_script=script,
+        )
+        result = jsonl_read(run_dir / "cell-results.jsonl")[0]
+        assert result["schema_valid"] is False
+        assert result["error_category"] == "invalid_canonical_resolution"
+        assert result["decision"] is None
+        assert result["invocation_count"] == 1
+        simulator_path = run_dir / "simulator-events.jsonl"
+        simulator_events = jsonl_read(simulator_path) if simulator_path.exists() else []
+        assert not [event for event in simulator_events if event["cell_id"] == cell.cell_id]
+
+    def test_corrected_p3_lp3_and_call_balanced_persistence_contracts(self, tmp_path):
+        config = load_run_config(ROOT / "config/run.smoke.yaml")
+        for name, track in config.tracks.items():
+            track["enabled"] = name == "progressive_formalization"
+        formal = config.tracks["progressive_formalization"]
+        formal["conditions"] = ["P3_CANONICAL_PROCEDURE_PROPOSAL"]
+        formal["persistence_conditions"] = [
+            "LP0B_GOLD_START_LANGUAGE_BALANCED",
+            "LP1_CANONICAL_ONCE",
+            "LP3_CANONICAL_PROCEDURE_TOOL",
+        ]
+        formal["run_component_ablations"] = False
+        formal["run_language_persistence_ablation"] = True
+        config.selection["case_ids"] = ["ESCALATE_001", "REFUND_001"]
+        config.selection["request_ids"] = [
+            "REQ-ESCALATE-001-0001",
+            "REQ-REFUND-001-0001",
+        ]
+        run_dir = execute_run(ROOT, config, runs_dir=tmp_path, run_id="corrected-contracts")
+        results = jsonl_read(run_dir / "cell-results.jsonl")
+
+        p3 = [row for row in results if row["architecture"] == "P3_CANONICAL_PROCEDURE_PROPOSAL"]
+        assert p3 and all(row["schema_valid"] for row in p3)
+        assert all(row["proposal"] and "proposal" not in row["proposal"] for row in p3)
+
+        lp3 = [row for row in results if row["architecture"] == "LP3_CANONICAL_PROCEDURE_TOOL"]
+        assert lp3 and all(row["schema_valid"] for row in lp3)
+        assert all(row["decision"] == "ACT" for row in lp3)
+        assert {row["tool_call"]["tool"] for row in lp3} == {
+            "escalate_incident",
+            "refund_duplicate_charge",
+        }
+
+        balanced = next(
+            row for row in results
+            if row["architecture"] == "LP0B_GOLD_START_LANGUAGE_BALANCED"
+            and row["intent_mode"] == "gold"
+        )
+        canonical_once = next(
+            row for row in results
+            if row["architecture"] == "LP1_CANONICAL_ONCE"
+            and row["intent_mode"] == "gold"
+        )
+        assert balanced["invocation_count"] == canonical_once["invocation_count"] == 4
+        evaluate_run(ROOT, run_dir, bootstrap_samples=100)
+        metrics = json_read(run_dir / "metrics.json")
+        balanced_bom = metrics["complexity"][
+            "LP0B_GOLD_START_LANGUAGE_BALANCED|gold|none|none"
+        ]
+        canonical_bom = metrics["complexity"][
+            "LP1_CANONICAL_ONCE|gold|none|none"
+        ]
+        assert balanced_bom["mutable_model_stages"] == 4
+        assert canonical_bom["mutable_model_stages"] == 4
+
+    def test_gold_clarification_short_circuits_all_formalization_executors(self, tmp_path):
+        config = load_run_config(ROOT / "config/run.smoke.yaml")
+        config.raw["benchmark_manifest"] = "dataset/manifests/benchmark-v0.2.0.json"
+        config.benchmark_manifest = "dataset/manifests/benchmark-v0.2.0.json"
+        for name, track in config.tracks.items():
+            track["enabled"] = name == "progressive_formalization"
+        formal = config.tracks["progressive_formalization"]
+        formal["conditions"] = [
+            "P2_CANONICAL_PROPOSAL",
+            "P3_CANONICAL_PROCEDURE_PROPOSAL",
+            "P4_CANONICAL_PROCEDURE_TOOL",
+        ]
+        formal["persistence_conditions"] = []
+        formal["run_component_ablations"] = True
+        formal["run_language_persistence_ablation"] = False
+        config.selection["case_ids"] = ["ESCALATE_005"]
+        config.selection["request_ids"] = ["REQ-ESCALATE-005-INADEQUATE-0001"]
+        run_dir = execute_run(ROOT, config, runs_dir=tmp_path, run_id="gold-clarify")
+        results = [
+            row for row in jsonl_read(run_dir / "cell-results.jsonl")
+            if row["intent_mode"] == "gold"
+        ]
+        assert results
+        assert all(row["decision"] == "CLARIFY" for row in results)
+        assert all(row["schema_valid"] for row in results)
+        assert all(row["invocation_count"] == 0 for row in results)
+        assert not any(row["tool_call"] or row["proposal"] for row in results)
+
     def test_information_parity_fact_control_is_explicit(self, tmp_path):
         config = load_run_config(ROOT / "config/run.smoke.yaml")
         for name, track in config.tracks.items():

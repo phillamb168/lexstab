@@ -94,6 +94,12 @@ uv run lexstab interfaces build \
   operation whose name, argument schema, preconditions, and simulator effect match the generic
   proposal exactly; argument-schema and description hashes are recorded.
 
+Corrected prompt contracts are versioned separately. `procedure-proposal-executor.v2` shows P3
+the complete flat proposal schema and rejects wrappers such as `{"proposal": {...}}`.
+`procedure-tool-executor.v2` and `executor.v2` require exactly one native tool call for ACT, or an
+exact JSON object with `decision`, `question`, and `reason_code` for CLARIFY or REFUSE. A valid
+non-action decision is a typed boundary outcome, not a parse error.
+
 Comparability rules (spec §15.6): P0–P3 share identical proposal bytes and parsing logic; P3 and
 P4 receive identical canonical state, procedure content, domain facts, and model parameters; the
 typed interface must not contain extra examples, policy guidance, or hidden defaults;

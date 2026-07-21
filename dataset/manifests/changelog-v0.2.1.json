@@ -1,0 +1,42 @@
+[
+  {
+    "approved_by": "phillip",
+    "change": "Preserved benchmark v0.1.0 and v0.2.0; v0.2.1 uses isolated domain, case, interface, elicitation, request, prompt, and frozen artifact versions.",
+    "version": "0.2.1"
+  },
+  {
+    "approved_by": "phillip",
+    "change": "Relabeled the Tier 1 to Tier 2 ownership request as an ESCALATE_INCIDENT invariant under new request REQ-ESCALATE-001-0009; supersedes REQ-ESCALATE-001-CLARIFY-OWNERSHIP-0001 after human approval.",
+    "version": "0.2.1"
+  },
+  {
+    "approved_by": "phillip",
+    "change": "Replaced the state-conflicted CLOSE contrast with REQ-CLOSE-001-CONTRAST-0003, an executable REQUEST_MORE_INFORMATION contrast with an exact protected public message; supersedes REQ-CLOSE-001-CONTRAST-0002 after human approval.",
+    "version": "0.2.1"
+  },
+  {
+    "approved_by": "phillip",
+    "change": "Runtime rendering and deterministic procedure lookup now select artifacts from the resolved operation and record the actual artifact IDs and instantiated rendering text.",
+    "version": "0.2.1"
+  },
+  {
+    "approved_by": "phillip",
+    "change": "Added VERBATIM, CANONICAL, and SEMANTIC argument-preservation modes plus operation, argument, and verbatim first-divergence diagnostics using deterministic token-sequence comparison.",
+    "version": "0.2.1"
+  },
+  {
+    "approved_by": "phillip",
+    "change": "Added interpretation gates requiring six independent canonical cases and three operation families for broader generalization; raw observations remain available below the gates.",
+    "version": "0.2.1"
+  },
+  {
+    "approved_by": "phillip",
+    "change": "Added LP0BV_GOLD_START_LANGUAGE_BALANCED_VERBATIM and prompts triage-language-handoff-verbatim.v1, policy-language-handoff-verbatim.v1, planner-language-handoff-verbatim.v1, and action-proposal-executor-verbatim.v1. The fixed-fixture prompt-size report is provider-free.",
+    "version": "0.2.1"
+  },
+  {
+    "approved_by": "phillip",
+    "change": "Comparability note: v0.2.1 corrects request labels, contrast wording, runtime artifact selection, preservation scoring, and interpretation gates. Do not replace or directly merge its headline scores with v0.2.0 results.",
+    "version": "0.2.1"
+  }
+]

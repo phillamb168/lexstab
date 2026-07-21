@@ -1,0 +1,16 @@
+[
+  {
+    "version": "0.2.0",
+    "change": "Corrected the canonical-resolution envelope, execution contracts, cohort aggregation, grounding policy, rendering-discovery condition, structured discovery outputs and resumable sampling, language-persistence controls, and the request-more-information action contract.",
+    "changed_artifacts": [
+      "REQ-ESCALATE-001-0006",
+      "REQ-ESCALATE-001-CLARIFY-OWNERSHIP-0001",
+      "REQ-ESCALATE-001-0008",
+      "REQUEST_MORE_INFORMATION ontology, case, procedure, requests, elicitation, and interfaces",
+      "REN-REQUEST-MORE-INFORMATION-DISCOVERED-CLAUDE-OPUS-4-8-001 (rejected)",
+      "MODEL_DISCOVERED renderings for all operations"
+    ],
+    "comparability_impact": "v0.1.0 results remain historical and are not replaced. P3, LP3, gold/runtime headline, rendering, and persistence results are not directly comparable because their measurement contracts were corrected. REQUEST_MORE_INFORMATION results are also not directly comparable because v0.2.0 requires an explicit reporter message and models notification plus an awaiting-reporter state while preserving support ownership.",
+    "approval_source": "request and rendering artifact review records"
+  }
+]

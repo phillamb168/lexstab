@@ -23,9 +23,12 @@ H12 (natural-language persistence), R2 (procedure or interface dominates).
 6. Adequate vs inadequate error attribution by lexical stratum
 7. M0 vs M1 vs M2 memory conditions
 8. P0→P1, P1→P2, P2→P3, P3→P4 as one prespecified family (final state, paired)
-9. LP0G vs LP1 (gold-start persistence, primary); LP0 vs LP1 (practical, secondary)
-10. Inline procedure vs packaged skill (paired)
-11. Local typed tool vs MCP capability (when MCP is enabled)
+9. LP0B vs LP1 (gold-start, four calls each, primary); LP0G vs LP1 (extra-call prose,
+   secondary); LP0 vs LP1 (practical end-to-end, secondary)
+10. F-Model-Discovered vs C-Gold and B-Gold, reported for all operations and again only where
+    instantiated discovered and canonical text differ
+11. Inline procedure vs packaged skill (paired)
+12. Local typed tool vs MCP capability (when MCP is enabled)
 
 The direct P0 to P4 ladder remains the prespecified progressive-formalization family. The
 gold-injected P2 to P2F and P2F to P3 component controls separately estimate the effect of adding
