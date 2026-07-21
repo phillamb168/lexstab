@@ -5,6 +5,7 @@ import pytest
 from lexstab.metrics.aggregate import adequacy_matrix_cell
 from lexstab.metrics.statistics import (
     benjamini_hochberg,
+    case_level_sign_test,
     cluster_bootstrap_delta,
     cluster_bootstrap_rate,
     mcnemar_exact,
@@ -44,6 +45,22 @@ def test_mcnemar_known_value():
     assert mcnemar_exact(1, 9) == pytest.approx(0.021484375)
     assert mcnemar_exact(0, 0) is None
     assert mcnemar_exact(5, 5) == 1.0
+
+
+def test_case_level_sign_test_collapses_repeated_cells_before_inference():
+    paired = []
+    for case_number in range(1, 8):
+        paired.extend((f"c{case_number}", 0.0, 1.0) for _ in range(3))
+    paired.extend(("c8", 1.0, 1.0) for _ in range(3))
+
+    result = case_level_sign_test(paired)
+
+    assert result["b_better_cases"] == 7
+    assert result["a_better_cases"] == 0
+    assert result["tied_cases"] == 1
+    assert result["n_independent_cases"] == 8
+    assert result["n_non_tied_cases"] == 7
+    assert result["sign_p"] == pytest.approx(0.015625)
 
 
 def test_benjamini_hochberg():

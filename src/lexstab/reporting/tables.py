@@ -119,6 +119,18 @@ def comparison_table(metrics: dict[str, Any]) -> list[dict]:
             "n_operation_families": comparison.get("n_operation_families"),
             "interpretation_scope": comparison.get("interpretation_scope"),
             "mcnemar_p": (comparison.get("secondary_mcnemar") or {}).get("mcnemar_p"),
+            "case_b_better": (
+                comparison.get("case_level_sign_test") or {}
+            ).get("b_better_cases"),
+            "case_a_better": (
+                comparison.get("case_level_sign_test") or {}
+            ).get("a_better_cases"),
+            "case_ties": (
+                comparison.get("case_level_sign_test") or {}
+            ).get("tied_cases"),
+            "case_sign_p": (
+                comparison.get("case_level_sign_test") or {}
+            ).get("sign_p"),
         })
     return rows
 

@@ -8,7 +8,13 @@ from pathlib import Path
 import pytest
 import yaml
 
-from lexstab.artifacts import find_repo_root, json_read, jsonl_read, load_cases
+from lexstab.artifacts import (
+    find_repo_root,
+    json_read,
+    jsonl_read,
+    jsonl_write,
+    load_cases,
+)
 from lexstab.authoring import review_candidates
 from lexstab.freeze import FrozenBenchmark, freeze_benchmark
 from lexstab.replication import (
@@ -30,12 +36,21 @@ def _prepare_base(tmp_path: Path) -> None:
         "dataset/domain/v0.2.1",
         "dataset/cases/support-v0.2.1",
         "dataset/interfaces/v0.2.1",
-        "dataset/splits",
     ):
         source = ROOT / relative
         destination = tmp_path / relative
         destination.parent.mkdir(parents=True, exist_ok=True)
         shutil.copytree(source, destination)
+    # Copy only the unversioned base split documents. Once a real v0.3.0
+    # corpus exists, copying the entire directory would also copy the target
+    # under test and correctly trip the overwrite guard.
+    split_root = tmp_path / "dataset/splits"
+    split_root.mkdir(parents=True, exist_ok=True)
+    for split_name in ("development", "validation", "test"):
+        shutil.copy2(
+            ROOT / "dataset/splits" / f"{split_name}.json",
+            split_root / f"{split_name}.json",
+        )
     elicitation = tmp_path / "dataset/elicitation/approved-v0.2.1.jsonl"
     elicitation.parent.mkdir(parents=True, exist_ok=True)
     shutil.copy2(
@@ -142,7 +157,7 @@ def test_authoring_writes_exactly_three_guarded_candidates_per_case(tmp_path):
     assert len(config["selection"]["request_ids"]) == 24
 
 
-def test_noninteractive_cli_path_uses_same_guarded_builders(tmp_path, monkeypatch):
+def test_interactive_cli_path_uses_same_guarded_builders(tmp_path, monkeypatch):
     import lexstab.cli as cli
     from typer.testing import CliRunner
 
@@ -181,6 +196,37 @@ def test_versioned_split_is_used_only_when_operator_freezes(tmp_path):
     shutil.copytree(ROOT / "schemas", tmp_path / "schemas")
     shutil.copytree(ROOT / "prompts", tmp_path / "prompts")
     shutil.copytree(ROOT / "dataset", tmp_path / "dataset")
+
+    # This fixture represents the repository immediately before v0.3.0 is
+    # constructed. Remove only copied outputs in the temporary repository,
+    # while retaining the seed and every historical benchmark artifact.
+    for relative in (
+        "dataset/domain/v0.3.0",
+        "dataset/cases/support-v0.3.0",
+        "dataset/interfaces/v0.3.0",
+        "dataset/splits/v0.3.0",
+    ):
+        shutil.rmtree(tmp_path / relative, ignore_errors=True)
+    for relative in (
+        "dataset/elicitation/approved-v0.3.0.jsonl",
+        "dataset/manifests/changelog-v0.3.0.json",
+        "dataset/manifests/benchmark-v0.3.0.json",
+        "dataset/replication/rmi-v0.3.0.json",
+        "dataset/requests/candidate/rmi-replication-v0.3.0.jsonl",
+        "dataset/requests/frozen/support-v0.3.0.jsonl",
+        "dataset/contexts/frozen/support-v0.3.0.jsonl",
+        "dataset/renderings/frozen/support-v0.3.0.jsonl",
+        "dataset/procedures/frozen/support-v0.3.0.jsonl",
+    ):
+        (tmp_path / relative).unlink(missing_ok=True)
+    approved_path = tmp_path / "dataset/requests/approved/support.jsonl"
+    jsonl_write(
+        approved_path,
+        [
+            row for row in jsonl_read(approved_path)
+            if not row["case_id"].startswith("RMI_REP_")
+        ],
+    )
 
     seed = load_rmi_replication_seed(SEED_PATH)
     scaffold = scaffold_rmi_replication(

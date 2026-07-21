@@ -180,7 +180,62 @@ def practical_equivalence(
     return EquivalenceDecision(comparison, delta, margin, equivalent, exceeds, verdict)
 
 
-def paired_discordance(paired: list[tuple[str, float, float]]) -> dict[str, int]:
+def paired_discordance(paired: list[tuple[str, float, float]]) -> dict[str, Any]:
+    """Cell-level discordance retained as a descriptive compatibility metric.
+
+    The observations are not independent when multiple variants or repetitions
+    belong to one canonical case. In that situation the McNemar value must not
+    be used as the inferential test or as input to multiple-comparison control.
+    """
     b = sum(1 for _c, a, bb in paired if a == 1 and bb == 0)
     c = sum(1 for _c, a, bb in paired if a == 0 and bb == 1)
-    return {"a_only_correct": b, "b_only_correct": c, "mcnemar_p": mcnemar_exact(b, c)}
+    return {
+        "a_only_correct": b,
+        "b_only_correct": c,
+        "mcnemar_p": mcnemar_exact(b, c),
+        "unit": "paired_cell",
+        "clustered": False,
+        "interpretation": "descriptive_only_when_multiple_pairs_share_a_case",
+    }
+
+
+def case_level_sign_test(
+    paired: list[tuple[str, float, float]], *, epsilon: float = 1e-12
+) -> dict[str, Any]:
+    """Exact two-sided sign test over independent canonical-case directions.
+
+    Every variant and repetition for a case is first reduced to that case's
+    mean paired delta (B - A). The exact sign test then uses only whether each
+    independent case favors A, favors B, or ties. Magnitude is reported by the
+    case-clustered bootstrap elsewhere.
+    """
+    clusters: dict[str, list[float]] = {}
+    for case_id, value_a, value_b in paired:
+        clusters.setdefault(case_id, []).append(value_b - value_a)
+
+    deltas = {
+        case_id: sum(values) / len(values)
+        for case_id, values in sorted(clusters.items())
+    }
+    b_better = sorted(
+        case_id for case_id, delta in deltas.items() if delta > epsilon
+    )
+    a_better = sorted(
+        case_id for case_id, delta in deltas.items() if delta < -epsilon
+    )
+    tied = sorted(
+        case_id for case_id, delta in deltas.items() if abs(delta) <= epsilon
+    )
+    return {
+        "unit": "canonical_case",
+        "b_better_cases": len(b_better),
+        "a_better_cases": len(a_better),
+        "tied_cases": len(tied),
+        "n_independent_cases": len(deltas),
+        "n_non_tied_cases": len(a_better) + len(b_better),
+        "sign_p": mcnemar_exact(len(a_better), len(b_better)),
+        "b_better_case_ids": b_better,
+        "a_better_case_ids": a_better,
+        "tied_case_ids": tied,
+        "case_mean_deltas": deltas,
+    }

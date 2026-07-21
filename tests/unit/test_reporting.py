@@ -8,7 +8,12 @@ from pathlib import Path
 import pytest
 
 from lexstab.reporting.html import markdown_to_html
-from lexstab.reporting.markdown import _executive_summary
+from lexstab.reporting.markdown import (
+    _CONCLUSION_NOT_MEASURED,
+    _complexity_conclusion,
+    _executive_summary,
+    _measurement_validity_section,
+)
 from lexstab.reporting.report import generate_report
 from lexstab.reporting.tables import format_ci, headline_table
 
@@ -59,6 +64,51 @@ def test_component_summary_uses_information_parity_ablation_labels() -> None:
     )
     assert "procedure facts delta" in summary
     assert "procedure structure delta" in summary
+
+
+def test_focused_run_does_not_receive_full_complexity_verdict() -> None:
+    conclusion, winners = _complexity_conclusion({"primary_comparisons": []})
+    assert conclusion == _CONCLUSION_NOT_MEASURED
+    assert winners == []
+
+
+def test_focused_summary_says_unconfigured_transitions_were_not_measured() -> None:
+    metrics = {
+        "formalization_transitions": [{
+            "transition": "P1_CLARIFY_PROPOSAL -> P2_CANONICAL_PROPOSAL",
+            "marginal_quality": {
+                "delta": {"estimate": None},
+                "verdict": "insufficient_data",
+            },
+        }],
+    }
+    summary = "\n".join(
+        _executive_summary(metrics, [], {"mocked": False, "repetitions": 1})
+    )
+    assert "Progressive-formalization transitions were not measured" in summary
+
+
+def test_measurement_validity_reports_collapsed_source_variants() -> None:
+    metrics = {
+        "effective_input_audit": {
+            "groups": [{
+                "architecture": "LP1_CANONICAL_ONCE",
+                "intent_mode": "gold",
+                "case_id": "CASE_1",
+                "n_cells": 3,
+                "n_source_requests": 3,
+                "n_unique_first_model_inputs": 1,
+                "source_lexical_distance_bands": ["HIGH", "LOW", "MEDIUM"],
+                "classification": (
+                    "SOURCE_VARIANTS_COLLAPSED_TO_IDENTICAL_MODEL_INPUT"
+                ),
+                "claim_scope": "does_not_test_source_lexical_variation",
+            }],
+        },
+    }
+    section = "\n".join(_measurement_validity_section(metrics))
+    assert "stochastic repetitions" in section
+    assert "does_not_test_source_lexical_variation" in section
 
 
 def test_report_html_generated(generated: list[Path]) -> None:

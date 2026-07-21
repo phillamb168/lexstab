@@ -247,24 +247,32 @@ These observations generate hypotheses. They are not controlled evidence.
 
 ### 7.2 Direct harness findings so far
 
-The early v0.2 real-provider checks established that the corrected harness can execute, validate,
-trace, and score the relevant conditions without provider errors, length terminations, aborted
-cells, or schema-invalid target outputs.
+The v0.2 and v0.2.1 real-provider checks established that the corrected harness can execute,
+validate, trace, and score the relevant conditions without provider errors, length terminations,
+aborted cells, or schema-invalid target outputs.
 
-The most interesting exploratory result involved a request-more-information operation:
+The frozen v0.3.0 Opus replication expanded the request-more-information persistence test to eight
+independent canonical cases. Every case contained an exact public message that the operation would
+persist externally. The three call-balanced conditions each used four execution-model calls:
 
-- The user supplied exact text that should be persisted as a public message.
-- A call-balanced natural-language-persistence condition paraphrased that text.
-- The canonicalize-once condition preserved it exactly.
-- The two conditions used the same number of execution-model calls.
-- The high-level operation remained recognizable, but the final state differed because the stored
-  argument changed.
+- Free-form persistence preserved the exact message in 6 of 24 executions, or 25 percent.
+- Free-form persistence plus a visible verbatim reminder preserved it in 5 of 24, or 20.8 percent.
+- Canonicalize-once preserved it in 24 of 24, or 100 percent.
 
-Important limitations:
+For canonicalize-once minus free-form persistence, the paired delta was 0.75 with a case-clustered
+95 percent interval from 0.50 to 0.917. Seven cases favored canonicalize-once, none favored prose,
+and one tied. The canonical-case exact sign-test result was `p = 0.015625`. Canonicalize-once also
+beat the visible-reminder condition in seven cases with one tie and `p = 0.015625`. The reminder
+did not improve over unreminded prose: delta -0.042, interval -0.208 to 0.208, `p = 0.625`.
 
-- Three language variants came from one independent canonical case.
-- The paired McNemar result was not significant, with `p = 0.25`.
-- This is an exploratory signal, not article-grade causal evidence.
+The source corpus included canonical, natural, and high-distance request wording, but the gold-start
+conditions removed that wording before the first model call. The effective-input audit found one
+identical first model input for the three source requests inside every condition and case. Those
+rows are stochastic executions, not evidence about user-language distance.
+
+This supports a bounded finding for exact public-message preservation under one operation family
+and one pinned frontier model. It does not establish a model-native lexicon, user-language effect,
+or cross-operation generalization.
 
 Boundary-grounding checks also produced two clear observations:
 
@@ -282,7 +290,7 @@ These support further study of grounding and clarification. They do not prove le
 - No stable model-native lexicon has been demonstrated.
 - No general percentage benefit for a lexical adapter can be reported.
 - No cross-model or cross-version lexical preference has been established.
-- No article-level statistical estimate is available.
+- No cross-operation article-wide estimate is available.
 - No causal mechanism inside the model has been identified.
 
 ### 7.4 Inferences that remain testable
@@ -662,8 +670,11 @@ reliably or know when not to act.
 - **Engine:** Paired trajectory and final-state comparison.
 - **Must be true:** Call-balanced free-form handoffs lose protected values more often than
   canonicalize-once across independent cases.
-- **Evidence required:** Eight to twelve RMI cases, at least three variants each, deterministic
-  first-divergence tracking, and a visible-verbatim-contract ablation.
+- **Evidence available:** Eight RMI cases, three stochastic gold-start executions per case,
+  deterministic first-divergence tracking, and a visible-verbatim-contract ablation. LP1 beat LP0B
+  in seven cases with one tie; the visible reminder did not improve over LP0B.
+- **Remaining evidence:** Replication on another model and, for broader wording claims, a runtime
+  design in which distinct user requests actually reach the tested model.
 - **Falsifier:** A compact preservation instruction eliminates the difference, or the effect does not
   replicate.
 - **Strongest objection:** The initial signal is one task artifact, not a general persistence effect.
@@ -715,14 +726,15 @@ reliably or know when not to act.
 
 ### Before treating persistence as more than a motivating trace
 
-- Implement and validate v0.2.1 corrections.
-- Build 8 to 12 independent request-more-information cases.
-- Include at least three human-reviewed variants per case.
-- Compare call-balanced persistence without a visible preservation reminder, persistence with the
-  reminder, and canonicalize-once.
-- Track exact protected-argument preservation and first argument-divergence stage.
-- Bootstrap at the canonical-case level.
-- Report calls, tokens, latency, and cost.
+- [x] Implement and validate v0.2.1 corrections.
+- [x] Build eight independent request-more-information cases.
+- [x] Compare call-balanced persistence without a visible preservation reminder, persistence with
+  the reminder, and canonicalize-once.
+- [x] Track exact protected-argument preservation and first argument-divergence stage.
+- [x] Bootstrap at the canonical-case level and use case-level directional inference.
+- [x] Report calls, tokens, latency, and cost.
+- [ ] Replicate the frozen persistence protocol on an economical model.
+- [ ] Use a runtime input design for any claim about human wording or lexical distance.
 
 ### Before claiming a lexical-adapter benefit
 
@@ -751,8 +763,8 @@ reliably or know when not to act.
 | Equivalent wording can change LLM behavior | Prior-art-supported broad premise | Multi-prompt and robustness literature | Import with verified citations |
 | Controlled lexical variants create operational differences | Testable, not established here | H1 benchmark | Await adequate data |
 | Formal grounding can prevent hidden-state inference | Early direct observation | v0.2 inadequate-request traces | Present as exploratory trace |
-| Repeated prose handoffs can alter exact arguments | Early direct observation | v0.2 RMI trace | Present with n and limitation |
-| Canonicalize-once improves exact preservation | Exploratory paired observation | One independent RMI case | Replicate before general claim |
+| Repeated prose handoffs can alter exact arguments | Supported for one operation family and pinned Opus version | v0.3.0, eight RMI cases | Present as a bounded result |
+| Canonicalize-once improves exact preservation | Supported for exact RMI public messages in the tested protocol | v0.3.0 call-balanced comparison | Report effect, interval, case directions, and scope |
 | Model-discovered terms improve execution | Unsupported | Post-canonical v0.2 cells at ceiling | Explicit non-finding |
 | Middleware beats user training | Open Phase Two question | No participant study yet | Call to action, not conclusion |
 | Economical model plus middleware can match frontier performance | Open Phase Two question | No comparison run yet | Future experiment |
@@ -949,12 +961,15 @@ adapter hypothesis remains unsupported.
 - The honest report of the exploratory traces and non-finding.
 - The Phase Two call to action.
 
-### Better to wait for v0.2.1 replication
+### Supported after the v0.3.0 replication, with narrow scope
 
-- Any generalized claim about prose persistence.
-- Any numerical benefit attributed to canonicalization.
-- Any claim that a compact verbatim instruction is insufficient.
-- Any headline claiming a frontier model "needs" middleware.
+- Numerical reporting for exact public-message preservation in the tested RMI protocol.
+- A bounded claim that canonical authoritative state outperformed repeated free-form handoffs for
+  the pinned Opus version.
+- A bounded non-finding that the compact visible verbatim reminder did not improve over unreminded
+  prose in this run.
+
+Do not turn these into a universal claim that a frontier model "needs" middleware.
 
 ### Must wait for later research
 
@@ -1008,3 +1023,6 @@ When the next evidence checkpoint is complete:
   professional subtext while explicitly rejecting claims of academic novelty.
 - Restored the tracker in the Git-backed repository after the original project-mirror copy was
   removed during a task refresh.
+- Added the frozen v0.3.0 eight-case Opus persistence replication, corrected canonical-case
+  inference, effective-input audit, bounded publication claim, and economical-model replication
+  gate.

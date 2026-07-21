@@ -14,13 +14,27 @@ from typing import Any
 from lexstab.artifacts import json_read, json_write, jsonl_read, jsonl_write
 from lexstab.evaluators.deterministic import score_cell
 from lexstab.freeze import FrozenBenchmark
+from lexstab.hashing import hash_file, root_hash
 from lexstab.metrics import aggregate
+from lexstab.metrics.input_audit import effective_input_audit
 from lexstab.metrics.statistics import benjamini_hochberg
 from lexstab.run import summarize_run_health
 
 
 class EvaluationError(Exception):
     pass
+
+
+def _evaluation_source_hash(root: Path) -> str | None:
+    """Content hash the local harness source used for provider-free analysis."""
+    source_root = root / "src" / "lexstab"
+    if not source_root.exists():
+        return None
+    inventory = {
+        str(path.relative_to(root)): hash_file(path)
+        for path in sorted(source_root.rglob("*.py"))
+    }
+    return root_hash(inventory) if inventory else None
 
 
 def evaluate_run(
@@ -196,15 +210,17 @@ def evaluate_run(
     matrix_rows = jsonl_read(run_dir / "matrix.jsonl") if (run_dir / "matrix.jsonl").exists() else []
     scored_cells = {score["cell_id"] for score in scores}
     missing_cells = [row["cell_id"] for row in matrix_rows if row["cell_id"] not in scored_cells]
+    input_audit = effective_input_audit(scores, invocations_by_cell)
 
     exploratory_p = {}
     for comparison in primary_comparisons:
-        p = (comparison.get("secondary_mcnemar") or {}).get("mcnemar_p")
+        p = (comparison.get("case_level_sign_test") or {}).get("sign_p")
         if p is not None:
             exploratory_p[comparison["comparison"]] = p
 
     metrics: dict[str, Any] = {
         "run_id": manifest["run_id"],
+        "evaluation_harness_source_hash": _evaluation_source_hash(root),
         "benchmark_root_hash": manifest["benchmark_root_hash"],
         "mocked": manifest.get("mocked", False),
         "baseline_eligible": run_health.get("baseline_eligible", False),
@@ -254,6 +270,7 @@ def evaluate_run(
             scores, samples=samples, seed=boot_seed, confidence=confidence
         ),
         "measurement_warnings": measurement_warnings,
+        "effective_input_audit": input_audit,
         "rendering_contrast": rendering_contrast,
         "complexity": aggregate.complexity_bill_of_materials(scores),
         "exploratory_fdr": benjamini_hochberg(exploratory_p),
@@ -271,6 +288,7 @@ def evaluate_run(
             "secondary": [
                 "robustness", "persistence", "elicitation", "adequacy_matrix",
                 "adequacy_assessment", "procedure_selection", "typed_interface",
+                "effective_input_audit",
             ],
             "exploratory": ["exploratory_fdr"],
         },

@@ -4,27 +4,23 @@ Article editorial tracker: `docs/ARTICLE_OUTLINE_AND_EVIDENCE_TRACKER.md`
 
 Last updated: 2026-07-21
 
-Status: v0.2.0 exploratory runs complete. The v0.2.1 corrective release is complete: code, schemas,
-prompts, tests, versioned inputs, human review, immutable freeze, and both targeted real-provider
-validations have passed. The next research gate is an independent-case RMI replication corpus, not
-the full multi-repetition benchmark or Phase Two.
+Status: v0.2.0 exploratory runs and the v0.2.1 corrective release are complete. The frozen v0.3.0
+independent-case RMI replication also completed successfully with 72 of 72 cells, eight canonical
+cases, zero provider errors, zero length terminations, zero aborted cells, and zero missing scores.
+The provider-free evaluation correction is complete and the stored Opus run has been reanalyzed.
+The remaining Phase One gate is one broad corrected v0.2.1 frontier-model run and report review.
+Do not begin Phase Two or a five-repetition broad run automatically.
 
 This file is the durable handoff point for continuing the project in a new Codex or Claude Code
 thread. It records the evidence collected so far, approved corrective work, implementation order,
 acceptance criteria, commands, phase-two research design, and the claims that the current evidence
 does and does not support.
 
-## 1. Recommended thread boundary
+## 1. Recommended continuation boundary
 
-Fork the conversation after this file exists and before beginning the v0.2.1 implementation.
-
-Reasons:
-
-- v0.2.0 analysis is complete and should remain a stable historical checkpoint.
-- v0.2.1 has a bounded implementation scope and explicit definition of done.
-- The new thread can load this file rather than reconstructing decisions from a long conversation.
-- The current repository contains intentional uncommitted work. A fresh thread must inspect and
-  preserve it rather than assuming a clean worktree.
+The v0.2.1 implementation and v0.3.0 focused replication are complete. A new thread can begin at
+the broad Phase One baseline gate without reconstructing the earlier corrective work. It must still
+inspect and preserve the intentional uncommitted worktree before editing.
 
 Suggested prompt for the new thread:
 
@@ -33,11 +29,10 @@ Continue the lexical-harness project from:
 
 /Users/phil/Work/lexical-harness/docs/STATUS_AND_ROADMAP.md
 
-Implement the approved v0.2.1 measurement-integrity work described there. Start by inspecting the
-current dirty worktree and producing an implementation plan mapped to the six approved corrections.
-Preserve v0.1.0, v0.2.0, all historical run artifacts, and all unrelated user changes. Do not begin
-the expanded phase-one corpus or phase-two human study yet. Stop for Phillip's review at every
-dataset-approval gate.
+Inspect the current dirty worktree and read the v0.3.0 result and Phase One completion gate. Preserve
+v0.1.0, v0.2.0, v0.2.1, v0.3.0, all historical run artifacts, and unrelated user changes. Dry-run
+the broad corrected v0.2.1 one-repetition config and report its exact matrix and cost before making
+provider calls. Do not begin Phase Two or the broad five-repetition run.
 ```
 
 ## 2. Current repository and artifact state
@@ -53,6 +48,8 @@ Historical benchmark manifests that must remain immutable and verifiable:
 ```text
 dataset/manifests/benchmark-v0.1.0.json
 dataset/manifests/benchmark-v0.2.0.json
+dataset/manifests/benchmark-v0.2.1.json
+dataset/manifests/benchmark-v0.3.0.json
 ```
 
 Most recent real-provider runs:
@@ -60,6 +57,7 @@ Most recent real-provider runs:
 ```text
 runs/run-v0.2-provider-check-v2-20260721
 runs/run-v0.2-rmi-check-v2-20260721
+runs/run-v0.3.0-rmi-replication-1x-20260721
 ```
 
 Primary reports:
@@ -67,6 +65,7 @@ Primary reports:
 ```text
 runs/run-v0.2-provider-check-v2-20260721/report.md
 runs/run-v0.2-rmi-check-v2-20260721/report.md
+runs/run-v0.3.0-rmi-replication-1x-20260721/report.md
 ```
 
 Primary metrics:
@@ -74,9 +73,10 @@ Primary metrics:
 ```text
 runs/run-v0.2-provider-check-v2-20260721/metrics.json
 runs/run-v0.2-rmi-check-v2-20260721/metrics.json
+runs/run-v0.3.0-rmi-replication-1x-20260721/metrics.json
 ```
 
-Both runs were healthy and baseline-eligible:
+The two v0.2.1 targeted runs were healthy and baseline-eligible:
 
 - 154 of 154 cells scored.
 - Zero provider errors.
@@ -84,6 +84,9 @@ Both runs were healthy and baseline-eligible:
 - Zero aborted cells.
 - Zero schema-invalid cells.
 - No generated measurement warnings.
+
+The v0.3.0 focused run separately scored 72 of 72 cells with zero provider errors, length
+terminations, aborted cells, missing scores, or schema-invalid target outputs.
 
 Resolved model roles in these runs:
 
@@ -538,8 +541,8 @@ that report, and then consider a five-repetition run.
 
 ### 7.1 Guarded v0.3.0 scaffolding status
 
-The operator-facing scaffolding is implemented and tested. No real v0.3.0 source corpus or
-manifest has been created yet. Phillip retains both human approval gates.
+The operator-facing scaffolding, human approval, freeze, provider execution, and corrected
+provider-free analysis are complete.
 
 - [x] Add eight distinct RMI case-card proposals in a versioned seed.
 - [x] Add an interactive case-card review command with a final exact `CREATE` confirmation.
@@ -553,12 +556,102 @@ manifest has been created yet. Phillip retains both human approval gates.
 - [x] Ensure neither authoring command creates or edits a benchmark manifest.
 - [x] Add temporary-repository tests covering scaffold, authoring, approval, freeze, and
   historical manifest separation.
-- [ ] Phillip reviews and creates the eight case cards.
-- [ ] Phillip authors the 24 language variants.
-- [ ] Phillip reviews the candidate requests separately.
-- [ ] Freeze and verify benchmark v0.3.0.
-- [ ] Dry-run and inspect the focused matrix before any provider calls.
-- [ ] Run, evaluate, and report the focused one-repetition replication.
+- [x] Phillip reviews and creates the eight case cards.
+- [x] Phillip authors the 24 language variants.
+- [x] Phillip reviews the candidate requests separately.
+- [x] Freeze and verify benchmark v0.3.0.
+- [x] Dry-run and inspect the focused matrix before any provider calls.
+- [x] Run, evaluate, and report the focused one-repetition replication.
+
+### 7.2 v0.3.0 Opus replication result
+
+Stored run:
+
+```text
+runs/run-v0.3.0-rmi-replication-1x-20260721
+```
+
+The primary call-balanced comparison used eight independent RMI cases. Three source-request rows
+per case produced identical gold-start model inputs, so they are correctly treated as three
+stochastic executions inside each case, not as a lexical-distance experiment.
+
+Observed exact public-message preservation and final-state accuracy:
+
+- LP0B free-form persistence: 6 of 24, or 25 percent.
+- LP0BV free-form persistence with a visible verbatim reminder: 5 of 24, or 20.8 percent.
+- LP1 canonical-once persistence: 24 of 24, or 100 percent.
+
+Primary paired results:
+
+- LP1 minus LP0B: delta 0.75, case-clustered 95 percent interval 0.50 to 0.917.
+  Seven cases favored LP1, zero favored LP0B, and one tied. The canonical-case exact sign-test
+  result is `p = 0.015625`.
+- LP1 minus LP0BV: delta 0.792, interval 0.542 to 1.0. Seven cases favored LP1, zero favored LP0BV,
+  and one tied. The canonical-case exact sign-test result is `p = 0.015625`.
+- LP0BV minus LP0B: delta -0.042, interval -0.208 to 0.208. One case favored LP0BV, three favored
+  LP0B, and four tied. The result is inconclusive with case-level `p = 0.625`.
+
+The earliest-divergence diagnostic is not monotonic. LP0B had three final successes that recovered
+after an earlier exact mismatch and three pristine successes. LP0BV had three recovered successes
+and two pristine successes. LP1 had 24 pristine successes and no divergence.
+
+Bounded interpretation:
+
+> For these eight RMI cases and this pinned Opus version, repeatedly authorizing free-form language
+> handoffs caused frequent exact public-message drift. Preserving canonical authoritative state
+> prevented that drift. A short visible instruction to preserve the message verbatim did not show
+> an improvement over the unreminded prose condition.
+
+Non-claims:
+
+- The run did not test whether low-, medium-, and high-distance user wording changes behavior,
+  because the gold-start boundary removed source wording before the first model call.
+- It does not establish a model-native vocabulary or lexical-adapter advantage.
+- It covers one operation family and one execution model version.
+- It does not establish that every kind of semantic paraphrase is harmful. The protected field was
+  contractually required to remain exact because it becomes a public comment.
+
+### 7.3 Phase One completion gate
+
+Phase One is approximately 90 percent complete. The methodology needed for the scoped persistence
+claim is now functioning and has produced a real signal. One broad corrected frontier run remains:
+
+1. Dry-run `config/run.v0.2.1-frozen-1x.yaml` and review its cost and matrix composition.
+2. Run the healthy one-repetition Opus baseline.
+3. Evaluate and report it with the corrected case-level statistics and effective-input audit.
+4. Review which broad hypotheses were actually stimulated and which remained ceiling-bound or
+   unmeasured.
+5. Freeze the Phase One evidence summary and exact comparison protocol.
+
+The provider-free dry run has now completed:
+
+- 814 matrix cells.
+- 1,841 estimated model calls.
+- Placeholder cost estimate: $18.41. This is not a provider quote.
+- 156 boundary cells, 629 progressive-formalization cells, 21 post-canonical cells, and eight
+  intent-elicitation cells.
+- Four explicitly skipped post-canonical combinations because v0.2.1 has no definition-only or
+  organization-term rendering for `REASSIGN_001` and `REFUND_001`.
+
+Before paying for the run, make one explicit scope decision: accept those four post-canonical gaps
+and report their operation coverage, or create a new human-reviewed benchmark version containing
+the missing renderings. Never edit the frozen v0.2.1 artifacts in place.
+
+Recommended decision: accept the four gaps for Phase One. They affect only the supplemental
+definition-only and organization-term controls for two cases. The canonical versus real
+model-discovered comparison remains present. Record the narrower D/E coverage rather than creating
+a new benchmark solely for these controls.
+
+A five-repetition broad Opus run is not an automatic completion requirement. Use the one-repetition
+report to select uncertain or high-value comparisons for targeted repetition. This avoids paying
+Opus prices to repeat cells that are deterministic, structurally uninformative, or already at a
+ceiling.
+
+After the Phase One evidence summary is frozen, the first economical-model screen should rerun the
+same frozen v0.3.0 persistence matrix with only `execution_primary` changed. Gold-start persistence
+uses no runtime canonicalizer, which makes that comparison especially clean. For the broad v0.2.1
+matrix, keep the Gemini canonicalizer and every non-execution role fixed while changing only the
+execution model. This estimates execution-tier sensitivity before testing an all-economical stack.
 
 ## 8. Phase-two research program
 
@@ -725,11 +818,11 @@ mutual research deliverable rather than access to private prompts alone.
 
 ## 11. Immediate next action
 
-Run the two guarded interactive construction commands described in Section 7 and
-`docs/RUNBOOK.md` Section 19. First review and create the eight v0.3.0 RMI case cards. Then author
-one canonical, one natural, and one high-lexical-distance request for each case. Both commands stop
-before manifest creation, and the resulting 24 candidates still require a separate interactive
-human review. Do not begin Phase Two or the five-repetition benchmark yet.
+Review and commit the current methodology changes and frozen v0.3.0 artifacts so the next run
+records a clean, exact code revision. Accept the four supplemental-rendering gaps as explicit scope
+limits unless full D/E coverage is important. Then perform one healthy Opus run from
+`config/run.v0.2.1-frozen-1x.yaml`, evaluate it, and report it using the corrected methodology. Do
+not begin Phase Two or a five-repetition broad benchmark yet.
 
 The project should not yet:
 
@@ -740,6 +833,6 @@ The project should not yet:
 - claim a general lexical-adapter benefit;
 - mutate v0.1.0 or v0.2.0.
 
-After the focused RMI replication report is available, return to this tracker and decide whether the
-evidence supports a full frozen one-repetition run, another measurement revision, or a bounded
-article claim.
+The focused RMI replication supports a bounded persistence claim and progression to the broad
+one-repetition frontier baseline. After that report is reviewed, freeze the Phase One evidence
+summary before selecting an economical comparison model.

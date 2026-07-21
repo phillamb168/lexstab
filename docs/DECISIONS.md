@@ -492,3 +492,20 @@ fixed fixture without provider calls.
 
 **Reason.** This separates the value of a small explicit instruction from the value of preserving
 canonical structure. The fixed-fixture report keeps token-overhead discussion empirical.
+
+## D-045: Inference and lexical claims use canonical-case and effective-input audits
+
+**Decision.** Paired effect intervals continue to bootstrap at the canonical-case level. Exact
+directional inference first reduces every case's variants and repetitions to one mean paired
+direction and applies a two-sided sign test over independent cases. Cell-level McNemar remains a
+descriptive compatibility metric and is excluded from exploratory FDR whenever cells share cases.
+
+Every evaluated run also records an `effective_input_audit` over the first model-visible invocation
+inside each exact cohort and case. Multiple frozen source requests that produce one identical model
+input are reported as repetitions, not as evidence about lexical distance. Persistence reports
+distinguish earliest divergence, later exact recovery, pristine success, and unrecovered failure.
+
+**Reason.** Request variants and repetitions are correlated observations. Treating them as
+independent produces artificially small p-values. Source-corpus labels also do not establish that
+source wording survived a gold-injection or formalization boundary. The harness must verify the
+actual stimulus before attaching a lexical interpretation to a result.

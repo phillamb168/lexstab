@@ -10,6 +10,7 @@ from collections import defaultdict
 from typing import Any
 
 from lexstab.metrics.statistics import (
+    case_level_sign_test,
     Interval,
     cluster_bootstrap_delta,
     cluster_bootstrap_rate,
@@ -430,6 +431,7 @@ def paired_comparison(
     )
     decision = practical_equivalence(label or f"{arch_b} - {arch_a}", delta, margin)
     discordance = paired_discordance(paired)
+    case_sign = case_level_sign_test(paired)
     case_ids = sorted({case_id for case_id, _a, _b in paired})
     family_by_case = {
         score["case_id"]: (
@@ -447,6 +449,7 @@ def paired_comparison(
         "n_operation_families": len(family_ids),
         "operation_family_ids": family_ids,
         "secondary_mcnemar": discordance,
+        "case_level_sign_test": case_sign,
         "pairing_cohorts": [
             comparison_selector(arch_a, intent_mode),
             comparison_selector(arch_b, intent_mode),
@@ -716,6 +719,34 @@ def persistence_metrics(
             s.get("metadata", {}).get("first_verbatim_argument_divergence")
             for s in group
         ]
+        verbatim_observed = [
+            score for score in group
+            if score.get("verbatim_arguments_correct") is not None
+        ]
+        divergence_then_recovery = [
+            score for score in verbatim_observed
+            if score.get("metadata", {}).get(
+                "first_verbatim_argument_divergence"
+            ) is not None
+            and score.get("verbatim_arguments_correct") is True
+        ]
+        divergence_without_recovery = [
+            score for score in verbatim_observed
+            if score.get("metadata", {}).get(
+                "first_verbatim_argument_divergence"
+            ) is not None
+            and score.get("verbatim_arguments_correct") is False
+        ]
+        pristine_final_success = [
+            score for score in verbatim_observed
+            if score.get("metadata", {}).get(
+                "first_verbatim_argument_divergence"
+            ) is None
+            and score.get("verbatim_arguments_correct") is True
+        ]
+        divergence_observed = (
+            len(divergence_then_recovery) + len(divergence_without_recovery)
+        )
         final_states = [s for s in group if s.get("final_state_correct") is not None]
         cohort_id = f"{arch}|{mode}|{selection}|{packaging}"
         case_ids = {score["case_id"] for score in group}
@@ -791,6 +822,21 @@ def persistence_metrics(
                     ) is not None
                     for score in group
                 ) else None
+            ),
+            "intermediate_divergence_then_final_recovery_count": len(
+                divergence_then_recovery
+            ),
+            "intermediate_divergence_without_final_recovery_count": len(
+                divergence_without_recovery
+            ),
+            "pristine_final_success_count": len(pristine_final_success),
+            "recovery_rate_after_intermediate_verbatim_divergence": (
+                len(divergence_then_recovery) / divergence_observed
+                if divergence_observed else None
+            ),
+            "recovery_note": (
+                "First divergence is an earliest-stage diagnostic, not a monotonic "
+                "failure label. A later stage may restore the exact value."
             ),
             "final_state_accuracy": (
                 sum(1 for s in final_states if s["final_state_correct"]) / len(final_states)

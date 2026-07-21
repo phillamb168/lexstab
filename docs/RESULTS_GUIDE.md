@@ -123,8 +123,12 @@ F-Model-Discovered−B-Gold, each P-transition, LP1−LP0B (primary call-balance
 LP1−LP0G (secondary extra-call prose), LP1−LP0 (practical), LP2−LP1, LP3−LP2,
 retrieved-memory−static-glossary, and
 stable−drift. Each entry gives the delta, its case-clustered CI, whether the practical threshold
-is met, `n_pairs`, exact `pairing_cohorts`, and a `secondary_mcnemar` discordance record. Pairing
-follows spec §39.2 and requires the declared intent, selection, and packaging cohort on both sides.
+is met, `n_pairs`, exact `pairing_cohorts`, a `case_level_sign_test`, and a
+`secondary_mcnemar` discordance record. The sign test first reduces every independent canonical
+case to one mean paired direction, so request variants and repetitions do not create false
+independence. Cell-level McNemar is retained for backward-compatible descriptive diagnostics, but
+must not be interpreted inferentially when multiple pairs share a canonical case. Pairing follows
+spec §39.2 and requires the declared intent, selection, and packaging cohort on both sides.
 
 The **marginal formalization delta** (§38.6) lives in `formalization_transitions[]`: for each
 adjacent P-pair, `marginal_quality` (paired final-state delta + CI + equivalence decision),
@@ -193,8 +197,9 @@ interval. `typed_interface[<condition>]` reports event-backed interface validati
 the same interval shape. These blocks, rather than proxy headline measures, supply the specialized
 regression gates.
 
-`exploratory_fdr` applies Benjamini–Hochberg correction to the secondary McNemar p-values and is
-labeled exploratory (spec §39.6; D-010).
+`exploratory_fdr` applies Benjamini–Hochberg correction to canonical-case exact sign-test p-values
+and is labeled exploratory. The interval-in-margin decision remains primary (spec §39.6; D-010;
+D-045).
 
 ### Measurement validity and rendering contrast
 
@@ -203,6 +208,19 @@ labeled exploratory (spec §39.6; D-010).
 intervals remain visible, but `interpretation_allowed` is false for any paired comparison touching
 that cohort. Reports display a withheld verdict rather than causal prose. A comparison with no
 matched pairs is also non-interpretable.
+
+`effective_input_audit` hashes the first model-visible provider invocation for each exact cohort
+and canonical case. It compares the number of frozen source request IDs with the number of unique
+effective model inputs. A group classified
+`SOURCE_VARIANTS_COLLAPSED_TO_IDENTICAL_MODEL_INPUT` contains nominal language variants that were
+removed before the tested model call, as expected in some gold-injected conditions. Those cells are
+stochastic repetitions of one model input for that condition. They cannot support a claim about
+source lexical distance even though their source labels remain useful audit metadata.
+
+`evaluation_harness_source_hash` content-addresses the local `src/lexstab/**/*.py` tree used to
+produce `scores.jsonl` and `metrics.json`. The run manifest's `code_revision` continues to identify
+the execution code. This distinction matters when an immutable provider run is reanalyzed with a
+corrected provider-free evaluator.
 
 `rendering_contrast` reports F-Model-Discovered cell counts and separates renderings whose
 instantiated text differs from the canonical rendering from those that are identical. Read the
@@ -213,6 +231,10 @@ Gold-injected scores always use case gold. If a gold condition was expanded over
 that request's original adequacy, ambiguity, and expected behavior survive only under
 `source_request_*` metadata. Clarification, refusal, false-action, and adequacy-matrix metrics use
 direct or runtime user-request conditions, not gold injection.
+
+Persistence entries separately report pristine final successes, intermediate exact-value
+divergences that later recovered, and divergences that remained wrong at the action boundary.
+`first_*_divergence` is an earliest-stage diagnostic, not a monotonic failure state.
 
 ### v0.2.1 sample gates and protected arguments
 

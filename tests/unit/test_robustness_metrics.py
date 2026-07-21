@@ -4,6 +4,7 @@ from lexstab.metrics.aggregate import (
     apply_interpretation_gate,
     headline_metrics,
     paired_comparison,
+    persistence_metrics,
     robustness_metrics,
 )
 
@@ -146,12 +147,62 @@ def test_paired_comparison_uses_exact_intent_selection_and_packaging_cohorts():
         intent_mode="runtime",
     )
     assert comparison["n_pairs"] == 1
+    assert comparison["case_level_sign_test"]["n_independent_cases"] == 1
+    assert comparison["secondary_mcnemar"]["clustered"] is False
     assert comparison["pairing_cohorts"][1] == {
         "architecture": "P3_CANONICAL_PROCEDURE_PROPOSAL",
         "intent_mode": "runtime",
         "procedure_selection": "gold",
         "procedure_packaging": "inline",
     }
+
+
+def test_persistence_metrics_separate_recovery_from_pristine_success():
+    base = {
+        "track": "progressive_formalization",
+        "architecture": "LP0B_GOLD_START_LANGUAGE_BALANCED",
+        "case_id": "CASE_1",
+        "request_id": "REQ_1",
+        "repetition": 0,
+        "final_state_correct": True,
+        "persistence": {},
+        "metadata": {
+            "intent_mode": "gold",
+            "procedure_selection": "none",
+            "procedure_packaging": "none",
+            "family_id": "FAMILY_1",
+            "first_divergence_stage": "triage_handoff",
+            "first_operation_divergence": None,
+            "first_argument_divergence": "triage_handoff",
+            "first_verbatim_argument_divergence": "triage_handoff",
+        },
+    }
+    recovered = {**base, "verbatim_arguments_correct": True}
+    failed = {
+        **base,
+        "cell_id": "failed",
+        "request_id": "REQ_2",
+        "verbatim_arguments_correct": False,
+    }
+    pristine = {
+        **base,
+        "cell_id": "pristine",
+        "request_id": "REQ_3",
+        "verbatim_arguments_correct": True,
+        "metadata": {
+            **base["metadata"],
+            "first_divergence_stage": None,
+            "first_argument_divergence": None,
+            "first_verbatim_argument_divergence": None,
+        },
+    }
+
+    entry = next(iter(persistence_metrics([recovered, failed, pristine]).values()))
+
+    assert entry["intermediate_divergence_then_final_recovery_count"] == 1
+    assert entry["intermediate_divergence_without_final_recovery_count"] == 1
+    assert entry["pristine_final_success_count"] == 1
+    assert entry["recovery_rate_after_intermediate_verbatim_divergence"] == 0.5
 
 
 def test_interpretation_gate_preserves_estimate_but_withholds_claim():

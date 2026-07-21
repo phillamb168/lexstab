@@ -26,6 +26,9 @@ _CONCLUSION_EQUIVALENT = "Added architecture is practically equivalent but opera
 _CONCLUSION_INSUFFICIENT = (
     "Evidence is insufficient because equivalence margins or sample sizes were not adequate."
 )
+_CONCLUSION_NOT_MEASURED = (
+    "The configured run did not measure the full architecture-complexity comparison."
+)
 
 
 def _fmt(value: Any) -> str:
@@ -62,10 +65,20 @@ def _delta_sentence(comparison: dict | None, subject: str) -> str:
             f"{comparison.get('interpretation_warning') or 'measurement validity gate failed'}"
         )
     delta = comparison["delta"]
+    case_sign = comparison.get("case_level_sign_test") or {}
+    sign_suffix = ""
+    if case_sign.get("n_independent_cases"):
+        sign_suffix = (
+            f" Case directions favored B/A/tie in "
+            f"{case_sign.get('b_better_cases')}/{case_sign.get('a_better_cases')}/"
+            f"{case_sign.get('tied_cases')} cases; exact sign p="
+            f"{_fmt(case_sign.get('sign_p'))}."
+        )
     return (
         f"{subject}: delta {format_ci(delta, digits=3)} against margin "
         f"±{_fmt(comparison.get('margin'))}, verdict **{comparison.get('verdict')}** "
         f"({comparison.get('n_pairs')} pairs, {delta.get('n_cases')} cases)."
+        f"{sign_suffix}"
     )
 
 
@@ -73,6 +86,15 @@ def _adjacent_transitions(metrics: dict) -> list[dict]:
     return [
         t for t in metrics.get("formalization_transitions", [])
         if "->" in t["transition"] and "vs strong baseline" not in t["transition"]
+    ]
+
+
+def _measured_adjacent_transitions(metrics: dict) -> list[dict]:
+    return [
+        transition for transition in _adjacent_transitions(metrics)
+        if ((transition.get("marginal_quality") or {}).get("delta") or {}).get(
+            "estimate"
+        ) is not None
     ]
 
 
@@ -99,7 +121,7 @@ def _complexity_conclusion(metrics: dict) -> tuple[str, list[str]]:
     comparisons = _vs_a1_comparisons(metrics)
     verdicts = {c["comparison"]: c.get("verdict") for c in comparisons}
     if not verdicts:
-        return _CONCLUSION_INSUFFICIENT, []
+        return _CONCLUSION_NOT_MEASURED, []
     if any(not c.get("interpretation_allowed", True) for c in comparisons):
         return _CONCLUSION_INSUFFICIENT, []
     winners = [name for name, verdict in verdicts.items() if verdict == "exceeds_practical_margin"]
@@ -122,6 +144,8 @@ def _header(metrics: dict, run_manifest: dict) -> list[str]:
         f"- Run: `{metrics.get('run_id')}`",
         f"- Benchmark root hash: `{short_hash}`",
         f"- Code revision: `{run_manifest.get('code_revision', 'unknown')}`",
+        f"- Evaluation harness source hash: "
+        f"`{metrics.get('evaluation_harness_source_hash', 'unknown')}`",
         f"- Benchmark manifest: `{run_manifest.get('benchmark_manifest_path', 'unknown')}`",
         f"- Matrix hash: `{run_manifest.get('matrix_hash', 'unknown')}`",
         f"- Mocked: {_fmt(bool(run_manifest.get('mocked')))}",
@@ -269,6 +293,10 @@ def _executive_summary(metrics: dict, scores: list[dict], run_manifest: dict) ->
         )
     else:
         warnings = metrics.get("measurement_warnings") or []
+        input_audit = metrics.get("effective_input_audit") or {}
+        collapsed_groups = input_audit.get(
+            "n_collapsed_source_variant_groups", 0
+        )
         sample_warnings = [
             comparison for comparison in metrics.get("primary_comparisons", [])
             if comparison.get("interpretation_warning")
@@ -282,6 +310,14 @@ def _executive_summary(metrics: dict, scores: list[dict], run_manifest: dict) ->
                 "Those cohorts remain reported but are not given causal interpretations. "
                 if warnings or sample_warnings else
                 "No cohort or comparison fell below those gates. "
+            )
+            + (
+                f"The effective-input audit found {collapsed_groups} cohort-case "
+                "group(s) where multiple source request variants became one identical "
+                "first model input; those groups do not test source lexical variation. "
+                if collapsed_groups else
+                "The effective-input audit found no source-variant groups collapsed "
+                "to one identical first model input. "
             )
             + "Treat single-benchmark effects as unreplicated."
         )
@@ -304,10 +340,12 @@ def _executive_summary(metrics: dict, scores: list[dict], run_manifest: dict) ->
             f"The largest practically supported marginal gain was **{largest['transition']}** "
             f"with final-state delta {format_ci(delta, digits=3)}."
         )
-    else:
+    elif _measured_adjacent_transitions(metrics):
         answer12 = (
             "No progressive-formalization transition cleared its practical threshold in this run."
         )
+    else:
+        answer12 = "Progressive-formalization transitions were not measured in this run."
     lines += [
         "12. **At which progressive-formalization transition, if any, did reliability "
         "improve materially?** " + answer12, "",
@@ -394,8 +432,19 @@ def _comparison_section(metrics: dict) -> list[str]:
         ("n_cases", "n cases"),
         ("n_operation_families", "Families"),
         ("interpretation_scope", "Scope"),
+        ("case_b_better", "B wins (cases)"),
+        ("case_a_better", "A wins (cases)"),
+        ("case_ties", "Ties (cases)"),
+        ("case_sign_p", "Case sign p"),
     ])
-    return ["## Primary comparisons (§44.3)", "", table]
+    return [
+        "## Primary comparisons (§44.3)", "",
+        "Confidence intervals use a canonical-case cluster bootstrap. The exact "
+        "sign test reduces every case to one direction before inference. Cell-level "
+        "McNemar values remain in metrics.json for backward-compatible diagnostics "
+        "but are not inferential when variants or repetitions share a case.", "",
+        table,
+    ]
 
 
 def _transitions_section(metrics: dict) -> list[str]:
@@ -486,6 +535,16 @@ def _persistence_section(metrics: dict) -> list[str]:
             "cases": entry.get("n_independent_cases"),
             "families": entry.get("n_operation_families"),
             "scope": entry.get("interpretation_scope"),
+            "recovered": entry.get(
+                "intermediate_divergence_then_final_recovery_count"
+            ),
+            "not_recovered": entry.get(
+                "intermediate_divergence_without_final_recovery_count"
+            ),
+            "pristine_success": entry.get("pristine_final_success_count"),
+            "recovery_rate": entry.get(
+                "recovery_rate_after_intermediate_verbatim_divergence"
+            ),
         }
         for arch, entry in sorted(persistence.items())
     ]
@@ -501,9 +560,15 @@ def _persistence_section(metrics: dict) -> list[str]:
             ("cases", "Cases"),
             ("families", "Families"),
             ("scope", "Interpretation scope"),
+            ("recovered", "Diverged then recovered"),
+            ("not_recovered", "Diverged, not recovered"),
+            ("pristine_success", "Pristine success"),
+            ("recovery_rate", "Recovery after divergence"),
         ]),
         "Divergence distributions are deterministic token-level diagnostics. They do not "
-        "claim semantic equivalence or nonequivalence.", "",
+        "claim semantic equivalence or nonequivalence. First divergence is not a "
+        "monotonic failure label: a later stage may restore the exact value, which is "
+        "why recovery is reported separately.", "",
     ]
     divergence_rows: list[dict[str, Any]] = []
     divergence_fields = (
@@ -788,7 +853,7 @@ def _complexity_section(metrics: dict) -> list[str]:
             f"was **{largest['transition']}** (final-state delta {format_ci(delta, digits=3)}). "
             "No earlier cumulative layer is credited for this gain.", "",
         ]
-    elif _adjacent_transitions(metrics):
+    elif _measured_adjacent_transitions(metrics):
         lines += [
             "P ladder: no transition cleared its practical threshold; no tested "
             "formalization transition earned its complexity in this run.", "",
@@ -845,8 +910,9 @@ def _analysis_labels_section(metrics: dict) -> list[str]:
         for name, entry in sorted(fdr.items())
     ]
     lines += [
-        "Exploratory family with Benjamini-Hochberg FDR control (secondary McNemar "
-        "p-values; the primary decisions above remain the interval-in-margin verdicts):", "",
+        "Exploratory family with Benjamini-Hochberg FDR control (canonical-case exact "
+        "sign-test p-values; the primary decisions above remain the "
+        "interval-in-margin verdicts):", "",
         _md_table(rows, [
             ("comparison", "Comparison"),
             ("p", "p"),
@@ -896,6 +962,22 @@ def _measurement_validity_section(metrics: dict) -> list[str]:
         for comparison in metrics.get("primary_comparisons", [])
         if comparison.get("interpretation_warning")
     ]
+    input_audit = metrics.get("effective_input_audit") or {}
+    input_rows = [
+        {
+            "architecture": group.get("architecture"),
+            "intent": group.get("intent_mode"),
+            "case": group.get("case_id"),
+            "cells": group.get("n_cells"),
+            "source_requests": group.get("n_source_requests"),
+            "unique_inputs": group.get("n_unique_first_model_inputs"),
+            "bands": ", ".join(group.get("source_lexical_distance_bands") or []),
+            "classification": group.get("classification"),
+            "claim_scope": group.get("claim_scope"),
+        }
+        for group in input_audit.get("groups", [])
+        if group.get("n_source_requests", 0) > 1
+    ]
     return [
         "## Measurement validity", "",
         "Raw observations are never removed or rescored by these gates. Causal "
@@ -922,6 +1004,24 @@ def _measurement_validity_section(metrics: dict) -> list[str]:
             ("families", "Families"),
             ("scope", "Scope"),
             ("warning", "Warning"),
+        ]),
+        "Effective model-input identity audit:", "",
+        "Frozen source-request labels describe the source corpus, not necessarily "
+        "the text presented to the execution model. The audit hashes the first "
+        "model-visible invocation inside each exact cohort and canonical case. If "
+        "multiple source requests collapse to one identical input, those cells are "
+        "stochastic repetitions for that condition and cannot support a claim about "
+        "source lexical distance.", "",
+        _md_table(input_rows, [
+            ("architecture", "Architecture"),
+            ("intent", "Intent"),
+            ("case", "Case"),
+            ("cells", "Cells"),
+            ("source_requests", "Source requests"),
+            ("unique_inputs", "Unique first inputs"),
+            ("bands", "Nominal bands"),
+            ("classification", "Classification"),
+            ("claim_scope", "Claim scope"),
         ]),
     ]
 
