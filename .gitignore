@@ -1,4 +1,5 @@
 # Secrets and machine-local configuration
+comparison-results/
 .env
 .env.*
 !.env.example
