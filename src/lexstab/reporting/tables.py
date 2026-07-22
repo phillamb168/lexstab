@@ -31,6 +31,22 @@ def _rate(value: float | None, digits: int = 2) -> str:
     return "n/a" if value is None else f"{value:.{digits}f}"
 
 
+def interpretation_verdict(entry: dict[str, Any]) -> str:
+    """Return a concise verdict that names the gate which blocked interpretation."""
+    if entry.get("interpretation_allowed", True):
+        return entry.get("verdict", entry.get("note", "n/a"))
+    warning = str(entry.get("interpretation_warning") or "").lower()
+    if entry.get("failed_interpretation_cohorts") or "schema" in warning:
+        return "withheld: schema-validity gate"
+    if "independent canonical" in warning or "at least" in warning:
+        return "withheld: sample-size gate"
+    if "operation famil" in warning:
+        return "withheld: operation-coverage gate"
+    if "pair" in warning:
+        return "withheld: pairing gate"
+    return "withheld: interpretation gate"
+
+
 def _family(score: dict) -> str:
     family = score.get("metadata", {}).get("family_id")
     if family:
@@ -108,11 +124,8 @@ def comparison_table(metrics: dict[str, Any]) -> list[dict]:
             "ci_low": delta.get("ci_low"),
             "ci_high": delta.get("ci_high"),
             "margin": comparison.get("margin"),
-            "verdict": (
-                comparison.get("verdict")
-                if comparison.get("interpretation_allowed", True)
-                else "withheld: measurement validity gate"
-            ),
+            "verdict": interpretation_verdict(comparison),
+            "interpretation_warning": comparison.get("interpretation_warning"),
             "practically_equivalent": comparison.get("practically_equivalent"),
             "n_pairs": comparison.get("n_pairs"),
             "n_cases": comparison.get("n_independent_cases", delta.get("n_cases")),
@@ -148,11 +161,8 @@ def transition_table(metrics: dict[str, Any]) -> list[dict]:
             "quality_delta_estimate": delta.get("estimate"),
             "quality_ci_low": delta.get("ci_low"),
             "quality_ci_high": delta.get("ci_high"),
-            "verdict": (
-                quality.get("verdict")
-                if quality.get("interpretation_allowed", True)
-                else "withheld: measurement validity gate"
-            ),
+            "verdict": interpretation_verdict(quality),
+            "interpretation_warning": quality.get("interpretation_warning"),
             "n_pairs": quality.get("n_pairs"),
             "false_action_delta": safety.get("delta"),
             "calls_delta": cost.get("calls_delta"),

@@ -6,6 +6,7 @@ Working article: Model Vocabulary and Stability
 Research repository: `/Users/phil/Work/lexical-harness`  
 Harness roadmap: `docs/STATUS_AND_ROADMAP.md`  
 Harness specification: `llm-lexical-stability-harness-implementation-spec.md`
+Phase One evidence: `docs/PHASE_ONE_EVIDENCE_SUMMARY.md`
 
 ## 1. Purpose of this file
 
@@ -70,13 +71,16 @@ This plan consolidates three strands of work.
 - The experimental, statistical, and evaluation methodology.
 - The requirement that the system be able to produce evidence against the original idea.
 
-### 2.3 The implementation and early v0.2 results
+### 2.3 The implementation and Phase One results
 
 - The discovery that the strongest early signal is not yet a model-native vocabulary effect.
 - Evidence that repeated natural-language persistence can alter an exact operational argument.
 - Evidence that a formal grounding boundary can prevent action based on hidden-state guesses.
 - No current evidence that model-discovered renderings outperform canonical terminology.
-- The resulting v0.2.1 corrections and focused replication plan.
+- The v0.3.0 independent-case replication and broad v0.2.1 Opus analysis.
+- The finding that direct Opus handled every adequate boundary variant correctly.
+- The resulting separation between user-language robustness, boundary safety, and internal
+  representation persistence.
 
 ## 3. Current editorial verdict
 
@@ -107,6 +111,12 @@ stronger version of this article:
 > to the model still change downstream reliability?
 
 The current answer is: not demonstrated.
+
+Phase One instead produced a narrower positive result. Opus was robust to the current adequate
+user-language variants, but it frequently changed an exact public message when already resolved
+intent was repeatedly handed forward as free-form prose. Canonical authoritative state prevented
+that drift in the eight-case RMI replication. The article should treat this course correction as a
+result, not as a failure to confirm the opening intuition.
 
 ## 4. Purpose, audience, and intended reader change
 
@@ -282,6 +292,27 @@ Boundary-grounding checks also produced two clear observations:
    no message, while the canonicalized path asked what message should be sent.
 
 These support further study of grounding and clarification. They do not prove lexical instability.
+
+The broad v0.2.1 boundary track then supplied distinct user wording to Opus. Across five adequate
+canonical cases and three operation families, direct Opus completed all 20 executable variants
+correctly, including all eight high-distance variants. This is evidence against a useful lexical
+effect in the current Phase One corpus. It also means aggregate errors in `adequate/varied` rows
+cannot be attributed to wording without conditioning on architecture.
+
+On the 12 clarification-target boundary requests, A0 direct execution acted eight times, A1 with an
+explicit clarification policy acted five times, and both runtime canonicalization conditions acted
+zero times. The canonicalized paths clarified all 12. This supports a bounded boundary-safety
+finding while leaving one unnecessary clarification as a measured tradeoff.
+
+The broad post-canonical comparison contained five genuinely distinct model-discovered renderings
+across three operations. Bare canonical structure, canonical rendering, and model-discovered
+rendering all scored five of five. The lexical-adapter hypothesis therefore remained a null result
+under a small ceiling-bound test.
+
+One apparent rendering benefit was traced to a contract mismatch. The canonicalizer produced
+`Billing team` where the typed interface required enum `BILLING`; the bare executor refused while a
+rendered executor normalized the value and acted. This is a useful architecture diagnostic, but it
+is not clean evidence for a preferred lexical handle.
 
 ### 7.3 What current results do not show
 
@@ -523,21 +554,25 @@ presenting Phillip as an ML researcher.
 Do not turn the article into the complete harness runbook. Select only the comparisons necessary for
 the argument and link to the implementation separately.
 
-### Section 7: What the early run actually found
+### Section 7: What Phase One actually found
 
-Report three findings with their limitations.
+Report four findings with their limitations.
 
-1. A call-balanced free-form persistence path paraphrased a user-authored public message, while
-   canonicalize-once preserved it exactly. The operation remained recognizable, but external state
-   changed because an exact argument changed. This has one independent case, three variants, and
-   paired `p = 0.25`.
-2. A formal boundary prevented direct action when a request failed to identify an order or provide
-   the message required for a request-more-information operation.
-3. Model-discovered renderings did not beat canonical or bare structured representations on the
-   small post-canonical set.
+1. Direct Opus handled all 20 adequate executable boundary variants correctly across five cases,
+   including every high-distance variant. The current corpus did not produce a user-language
+   lexical effect.
+2. In the eight-case call-balanced RMI replication, canonicalize-once preserved the exact public
+   message in 24 of 24 executions. Free-form persistence preserved it in 6 of 24. Seven independent
+   cases favored canonical-once, none favored prose, one tied, and the exact case-level sign-test
+   result was `p = 0.015625`.
+3. A formal boundary eliminated false action on the 12 clarification-target boundary requests,
+   while direct Opus still acted on eight and the direct clarification-policy condition acted on
+   five. The canonicalized conditions also produced one unnecessary clarification.
+4. Model-discovered renderings did not beat canonical or bare structured representations. All were
+   at ceiling in the five-case post-canonical comparison.
 
-The third point is an important non-finding. The experiment has narrowed the original thesis. The
-current signal concerns grounding and persistence, not a model-native vocabulary.
+The first and fourth points are important non-findings. The experiment narrowed the original thesis.
+The supported signal concerns grounding and persistence, not a model-native vocabulary.
 
 ### Section 8: Where should language end?
 
@@ -714,8 +749,9 @@ reliably or know when not to act.
 2. Natural-language synonyms are rarely semantically or pragmatically identical.
 3. The original "model-native vocabulary" framing risks anthropomorphism and prompt folklore.
 4. Canonicalization is ordinary software architecture under new terminology.
-5. The strongest observed persistence result has one independent case and may disappear under
-   replication or a compact prompt instruction.
+5. The strongest observed persistence result covers eight independent cases in one operation
+   family and one pinned model. It may not generalize to other operations, models, or preservation
+   contracts.
 6. Direct and canonicalized conditions may differ in information packaging, not ontology.
 7. More architecture can manufacture more failure opportunities and operating cost.
 8. Model-discovered renderings have not produced an advantage.
@@ -761,7 +797,7 @@ reliably or know when not to act.
 | Plausible substitutions can preserve local coherence | Direct human observation | RAG verbal substitution | Opening illustration only |
 | Natural-language artifacts can change across interface layers | Defensible systems description | Artifact chain and modality analysis | Explain, do not mechanize |
 | Equivalent wording can change LLM behavior | Prior-art-supported broad premise | Multi-prompt and robustness literature | Import with verified citations |
-| Controlled lexical variants create operational differences | Testable, not established here | H1 benchmark | Await adequate data |
+| Controlled lexical variants create operational differences | Not observed for direct Opus in Phase One | v0.2.1 boundary, 20/20 adequate variants | Report as a bounded null result |
 | Formal grounding can prevent hidden-state inference | Early direct observation | v0.2 inadequate-request traces | Present as exploratory trace |
 | Repeated prose handoffs can alter exact arguments | Supported for one operation family and pinned Opus version | v0.3.0, eight RMI cases | Present as a bounded result |
 | Canonicalize-once improves exact preservation | Supported for exact RMI public messages in the tested protocol | v0.3.0 call-balanced comparison | Report effect, interval, case directions, and scope |

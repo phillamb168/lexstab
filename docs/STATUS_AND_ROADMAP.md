@@ -4,12 +4,13 @@ Article editorial tracker: `docs/ARTICLE_OUTLINE_AND_EVIDENCE_TRACKER.md`
 
 Last updated: 2026-07-21
 
-Status: v0.2.0 exploratory runs and the v0.2.1 corrective release are complete. The frozen v0.3.0
-independent-case RMI replication also completed successfully with 72 of 72 cells, eight canonical
-cases, zero provider errors, zero length terminations, zero aborted cells, and zero missing scores.
-The provider-free evaluation correction is complete and the stored Opus run has been reanalyzed.
-The remaining Phase One gate is one broad corrected v0.2.1 frontier-model run and report review.
-Do not begin Phase Two or a five-repetition broad run automatically.
+Status: Phase One is complete. The v0.2.1 broad Opus matrix and the v0.3.0 independent-case RMI
+replication have both been evaluated with the corrected methodology. The broad evidence artifact is
+a healthy provenance-linked composite: 806 retained cells from the completed broad run plus the
+complete eight-cell intent-elicitation track from a healthy response-budget repair. The focused
+v0.3.0 result remains a healthy 72-cell single-run artifact over eight independent RMI cases.
+Do not run a five-repetition broad Opus matrix. Phase Two should begin with a focused economical-model
+screen only after the Phase One code, provenance, and evidence summary are committed.
 
 This file is the durable handoff point for continuing the project in a new Codex or Claude Code
 thread. It records the evidence collected so far, approved corrective work, implementation order,
@@ -18,9 +19,10 @@ does and does not support.
 
 ## 1. Recommended continuation boundary
 
-The v0.2.1 implementation and v0.3.0 focused replication are complete. A new thread can begin at
-the broad Phase One baseline gate without reconstructing the earlier corrective work. It must still
-inspect and preserve the intentional uncommitted worktree before editing.
+The v0.2.1 implementation, v0.3.0 focused replication, broad Phase One analysis, and frozen evidence
+summary are complete. A new thread can begin with the economical execution-model design without
+reconstructing the earlier corrective work. It must still inspect and preserve the intentional
+uncommitted worktree before editing.
 
 Suggested prompt for the new thread:
 
@@ -29,10 +31,11 @@ Continue the lexical-harness project from:
 
 /Users/phil/Work/lexical-harness/docs/STATUS_AND_ROADMAP.md
 
-Inspect the current dirty worktree and read the v0.3.0 result and Phase One completion gate. Preserve
-v0.1.0, v0.2.0, v0.2.1, v0.3.0, all historical run artifacts, and unrelated user changes. Dry-run
-the broad corrected v0.2.1 one-repetition config and report its exact matrix and cost before making
-provider calls. Do not begin Phase Two or the broad five-repetition run.
+Inspect the current dirty worktree and read `docs/PHASE_ONE_EVIDENCE_SUMMARY.md` completely. Preserve
+v0.1.0, v0.2.0, v0.2.1, v0.3.0, all historical run artifacts, the provenance-linked composite, and
+unrelated user changes. Design the focused economical-model v0.3.0 comparison with only the
+execution model changed. Dry-run and report its exact matrix and cost before making provider calls.
+Do not run a broad economical-model matrix or a five-repetition broad Opus run.
 ```
 
 ## 2. Current repository and artifact state
@@ -58,6 +61,8 @@ Most recent real-provider runs:
 runs/run-v0.2-provider-check-v2-20260721
 runs/run-v0.2-rmi-check-v2-20260721
 runs/run-v0.3.0-rmi-replication-1x-20260721
+runs/run-v0.2.1-frozen-1x-20260721
+runs/run-v0.2.1-elicitation-repair-20260721
 ```
 
 Primary reports:
@@ -66,6 +71,7 @@ Primary reports:
 runs/run-v0.2-provider-check-v2-20260721/report.md
 runs/run-v0.2-rmi-check-v2-20260721/report.md
 runs/run-v0.3.0-rmi-replication-1x-20260721/report.md
+runs/run-v0.2.1-phase-one-composite-20260721/report.md
 ```
 
 Primary metrics:
@@ -74,6 +80,13 @@ Primary metrics:
 runs/run-v0.2-provider-check-v2-20260721/metrics.json
 runs/run-v0.2-rmi-check-v2-20260721/metrics.json
 runs/run-v0.3.0-rmi-replication-1x-20260721/metrics.json
+runs/run-v0.2.1-phase-one-composite-20260721/metrics.json
+```
+
+Frozen Phase One interpretation record:
+
+```text
+docs/PHASE_ONE_EVIDENCE_SUMMARY.md
 ```
 
 The two v0.2.1 targeted runs were healthy and baseline-eligible:
@@ -613,15 +626,9 @@ Non-claims:
 
 ### 7.3 Phase One completion gate
 
-Phase One is approximately 90 percent complete. The methodology needed for the scoped persistence
-claim is now functioning and has produced a real signal. One broad corrected frontier run remains:
-
-1. Dry-run `config/run.v0.2.1-frozen-1x.yaml` and review its cost and matrix composition.
-2. Run the healthy one-repetition Opus baseline.
-3. Evaluate and report it with the corrected case-level statistics and effective-input audit.
-4. Review which broad hypotheses were actually stimulated and which remained ceiling-bound or
-   unmeasured.
-5. Freeze the Phase One evidence summary and exact comparison protocol.
+Phase One is complete. The methodology needed for the scoped persistence claim produced a
+replicated signal, and the broad corrected frontier-model matrix was executed, repaired at the
+whole-track boundary, evaluated, and summarized.
 
 The provider-free dry run has now completed:
 
@@ -642,16 +649,48 @@ definition-only and organization-term controls for two cases. The canonical vers
 model-discovered comparison remains present. Record the narrower D/E coverage rather than creating
 a new benchmark solely for these controls.
 
-A five-repetition broad Opus run is not an automatic completion requirement. Use the one-repetition
-report to select uncertain or high-value comparisons for targeted repetition. This avoids paying
-Opus prices to repeat cells that are deterministic, structurally uninformative, or already at a
-ceiling.
+A five-repetition broad Opus run is not a completion requirement. The one-repetition report found
+many ceiling-bound conditions and only five independent primary cases in the broad comparisons.
+Targeted replication is methodologically stronger and less expensive than repeating all 814 cells.
 
-After the Phase One evidence summary is frozen, the first economical-model screen should rerun the
-same frozen v0.3.0 persistence matrix with only `execution_primary` changed. Gold-start persistence
-uses no runtime canonicalizer, which makes that comparison especially clean. For the broad v0.2.1
-matrix, keep the Gemini canonicalizer and every non-execution role fixed while changing only the
-execution model. This estimates execution-tier sensitivity before testing an all-economical stack.
+The first economical-model screen should rerun the same frozen v0.3.0 persistence matrix with only
+`execution_primary` changed. Gold-start persistence uses no runtime canonicalizer, which makes that
+comparison especially clean. For any later broad v0.2.1 comparison, keep the Gemini canonicalizer
+and every non-execution role fixed while changing only the execution model. This estimates
+execution-tier sensitivity before testing an all-economical stack.
+
+### 7.4 Broad v0.2.1 Phase One result
+
+The original broad run completed 814 of 814 cells but reached response limits in three invocations,
+all inside the eight-cell intent-elicitation track. The healthy repair reran that complete track
+with larger response budgets. The provider-free `compose-track-repair` command verified exact
+benchmark, code, matrix, prompt, provider, and model compatibility before creating:
+
+```text
+runs/run-v0.2.1-phase-one-composite-20260721
+```
+
+The composite is healthy and baseline-eligible with 814 scored cells, zero provider errors, zero
+length terminations, zero aborted cells, and zero missing scores. Its report identifies both source
+runs and the response-budget differences. The source runs remain immutable.
+
+Broad findings:
+
+- Direct Opus completed all 20 adequate primary lexical variants correctly, including eight of
+  eight high-distance variants. This Phase One corpus did not produce an H1 lexical effect.
+- On 12 clarification-target requests, A0 acted eight times and A1 acted five times. Both runtime
+  canonicalization conditions acted zero times and clarified all 12.
+- One B_RUNTIME miss came from the canonicalizer emitting `Billing team` instead of enum `BILLING`.
+  The C_RUNTIME rendering repaired it. Treat this as a canonical-contract defect, not a lexical win.
+- Canonical, model-discovered, and bare post-canonical renderings all scored five of five. There is
+  no evidence of a model-discovered rendering advantage.
+- Runtime language-throughout scored 13 of 20 adequate executable rows versus 17 of 20 for runtime
+  canonical-once, but the comparison had five independent cases and a canonicalizer confound. It
+  remains exploratory.
+- The strongest publishable Phase One signal remains the separate v0.3.0 eight-case RMI
+  replication, not the broad lexical comparison.
+
+Full interpretation and non-claims are frozen in `docs/PHASE_ONE_EVIDENCE_SUMMARY.md`.
 
 ## 8. Phase-two research program
 
@@ -818,21 +857,32 @@ mutual research deliverable rather than access to private prompts alone.
 
 ## 11. Immediate next action
 
-Review and commit the current methodology changes and frozen v0.3.0 artifacts so the next run
-records a clean, exact code revision. Accept the four supplemental-rendering gaps as explicit scope
-limits unless full D/E coverage is important. Then perform one healthy Opus run from
-`config/run.v0.2.1-frozen-1x.yaml`, evaluate it, and report it using the corrected methodology. Do
-not begin Phase Two or a five-repetition broad benchmark yet.
+Review and commit the provider-free composition feature, corrected report labels, generated Phase
+One composite report, `docs/PHASE_ONE_EVIDENCE_SUMMARY.md`, and the model-tier comparison tooling.
+
+The first comparison model is now pinned as `claude-sonnet-5`. The checked-in health slice has 18
+cells and 72 estimated calls. The unchanged full v0.3.0 configuration resolves to 72 cells and 288
+estimated calls, with the exact Opus matrix hash `sha256:4774655317382ac4812c52fa159d955130919c2a00fd213c8820d2aaf124ffd1`.
+The stored Opus run has been re-evaluated with evaluator source hash
+`sha256:17275a59c3a17a51aa8a6dfa8d29bb92673cff6e0905f50c76e87d9fcbe048ad`.
+
+After the commit, follow `docs/MODEL_TIER_COMPARISON_PROTOCOL.md` in order:
+
+1. run the provider-free readiness commands;
+2. run and inspect the 18-cell Sonnet health check;
+3. only after clean health, run the frozen 72-cell Sonnet matrix once;
+4. evaluate and report the Sonnet run;
+5. run `lexstab compare-runs` with Opus as the declared baseline;
+6. interpret the paired difference in differences before considering more repetitions.
 
 The project should not yet:
 
-- run the full real-provider matrix;
-- run a five-repetition benchmark;
-- select the economical comparison model;
-- begin a human-participant study;
+- run a broad economical-model matrix;
+- run a five-repetition broad Opus benchmark;
+- begin a human-participant study without a protocol and partner population;
 - claim a general lexical-adapter benefit;
-- mutate v0.1.0 or v0.2.0.
+- mutate v0.1.0, v0.2.0, v0.2.1, or v0.3.0.
 
-The focused RMI replication supports a bounded persistence claim and progression to the broad
-one-repetition frontier baseline. After that report is reviewed, freeze the Phase One evidence
-summary before selecting an economical comparison model.
+The focused model-tier comparison is now the cheapest high-value next experiment. The human
+training versus middleware study should follow as a separate runtime-language protocol rather than
+being inferred from the current gold-start data.

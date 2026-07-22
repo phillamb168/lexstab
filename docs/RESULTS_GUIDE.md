@@ -24,6 +24,7 @@ Everything for one run lives under `runs/<id>/`:
 | `charts/` | The §44.6 visualizations (PNG + SVG; D-020) |
 | `judge-*.json` (optional) | Judge outputs and `judge-calibration.json` gate (D-016) |
 | `redteam-report.json` (optional) | Red-team summary; frozen scores unchanged |
+| `composition-provenance.json` (composites only) | Source-run hashes, complete replaced tracks, replacement cell IDs, row counts, and permitted response-budget differences |
 
 Top-level `metrics.json` bookkeeping keys: `run_id`, `benchmark_root_hash`, `mocked`,
 `baseline_eligible`, `bootstrap_samples`, `bootstrap_seed`, `missing_cells`, `completion`
@@ -34,6 +35,12 @@ is a wiring smoke test, not evidence (spec §17.4).
 `run-summary.json` is the pre-evaluation health gate. Any provider error, harness error, aborted
 cell, or length-terminated invocation sets `healthy: false` and `baseline_eligible: false`. A
 length-terminated run uses `status: length_terminated` even when every scheduled cell completed.
+
+If the report begins with `PROVENANCE-LINKED TRACK COMPOSITE`, read
+`composition-provenance.json` before the metrics. A valid composite replaces one complete track
+from a separate healthy run after compatibility checks. It is not one uniform provider execution.
+The report must name the source runs, replaced tracks, and response-budget differences. Never merge
+or average source runs manually, and never describe a selected-cell splice as a recovered baseline.
 
 ## 2. Metric families (spec §38 → `metrics.json`)
 

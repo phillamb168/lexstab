@@ -1,0 +1,104 @@
+schema_version: 1.2.0
+run_name: v0.3.0-model-comparison-health
+benchmark_manifest: dataset/manifests/benchmark-v0.3.0.json
+model_config: config/models.local.yaml
+tracks:
+  boundary:
+    enabled: false
+    architectures: []
+  intent_elicitation:
+    enabled: false
+    architectures: []
+  memory_ablation:
+    enabled: false
+    architectures: []
+  progressive_formalization:
+    enabled: true
+    conditions: []
+    persistence_conditions:
+    - LP0B_GOLD_START_LANGUAGE_BALANCED
+    - LP0BV_GOLD_START_LANGUAGE_BALANCED_VERBATIM
+    - LP1_CANONICAL_ONCE
+    persistence_intent_modes:
+      LP0B_GOLD_START_LANGUAGE_BALANCED:
+      - gold
+      LP0BV_GOLD_START_LANGUAGE_BALANCED_VERBATIM:
+      - gold
+      LP1_CANONICAL_ONCE:
+      - gold
+    procedure_registry: dataset/procedures/frozen/support-v0.3.0.jsonl
+    generic_action_interface: dataset/interfaces/v0.3.0/generic-action-proposal.json
+    typed_action_interfaces: dataset/interfaces/v0.3.0/typed-tools/support.jsonl
+    run_cumulative_ladder: false
+    run_component_ablations: false
+    run_language_persistence_ablation: true
+  post_canonical:
+    enabled: false
+    architectures: []
+  agent_loop:
+    enabled: false
+    intent_modes:
+    - gold
+    conditions: []
+    case_ids: []
+selection:
+  split: validation
+  case_ids:
+  - RMI_REP_003
+  - RMI_REP_008
+  request_ids:
+  - REQ-RMI-REP-003-0001
+  - REQ-RMI-REP-003-0002
+  - REQ-RMI-REP-003-0003
+  - REQ-RMI-REP-008-0001
+  - REQ-RMI-REP-008-0002
+  - REQ-RMI-REP-008-0003
+  variation_axes: []
+  adequacy:
+  - ADEQUATE
+  ambiguity:
+  - UNAMBIGUOUS
+  expected_behavior:
+  - EXECUTE
+execution:
+  repetitions: 1
+  concurrency: 4
+  randomize_matrix_order: true
+  random_seed: 104729
+  transport_retries: 3
+  semantic_retries: 0
+  cache_responses: false
+  run_clock: '2026-07-20T12:00:00Z'
+evaluation:
+  minimum_schema_validity_for_interpretation: 1.0
+  minimum_independent_cases_for_interpretation: 6
+  minimum_operation_families_for_generalization: 3
+  deterministic_first: true
+  optional_llm_judge: false
+  human_review_on_judge_disagreement: true
+  blind_condition_labels: true
+  bootstrap_samples: 2000
+  confidence_level: 0.95
+  multiple_comparison_method: benjamini-hochberg
+  practical_equivalence:
+    baseline_architecture: LP0B_GOLD_START_LANGUAGE_BALANCED
+    success_margin: 0.01
+    false_action_margin: 0.0
+    operational_invariance_margin: 0.02
+  complexity_accounting:
+    enabled: true
+    include_model_calls: true
+    include_external_services: true
+    include_persisted_state: true
+    include_operator_runbook_steps: true
+  formalization_accounting:
+    record_representation_ledger: true
+    record_procedure_adherence: true
+    record_action_boundary_errors: true
+    require_information_parity_check: true
+tracing:
+  local_jsonl: true
+  langsmith: false
+  redact_secrets: true
+  include_prompts: true
+  include_raw_responses: true

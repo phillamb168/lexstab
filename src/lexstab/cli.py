@@ -1186,6 +1186,37 @@ def benchmark_verify(manifest: str = typer.Option(..., "--manifest")) -> None:
 # ---------------------------------------------------------------- run (§42.11-42.14)
 
 
+@app.command("compose-track-repair")
+def compose_track_repair_cmd(
+    base_run: str = typer.Option(..., "--base-run"),
+    replacement_run: str = typer.Option(..., "--replacement-run"),
+    output_run_id: str = typer.Option(..., "--output-run-id"),
+    tracks: str = typer.Option(..., "--tracks", help="Comma-separated whole tracks"),
+) -> None:
+    """Compose compatible stored runs without making provider calls."""
+    root = _root()
+    from lexstab.compose import CompositionError, compose_track_repair
+
+    selected_tracks = {item.strip() for item in tracks.split(",") if item.strip()}
+    try:
+        output = compose_track_repair(
+            root / base_run,
+            root / replacement_run,
+            _runs_root(root) / output_run_id,
+            tracks=selected_tracks,
+        )
+    except (CompositionError, ArtifactError) as exc:
+        _fail(str(exc))
+        return
+    summary = json_read(output / "run-summary.json")
+    _ok(f"composed healthy run: {output}")
+    typer.echo(
+        f"  cells: {summary['cells_executed']}  "
+        f"replacement tracks: {', '.join(sorted(selected_tracks))}"
+    )
+    typer.echo("  provider calls: 0")
+
+
 @app.command("run")
 def run_cmd(
     config: str = typer.Option("config/run.smoke.yaml", "--config"),
@@ -1364,18 +1395,41 @@ def judge_cmd(
 
 
 @app.command("compare-runs")
-def compare_runs_cmd(runs: str = typer.Option(..., "--runs", help="Comma-separated run dirs")) -> None:
-    """Experiment 6: compare completed runs of one frozen benchmark across models."""
+def compare_runs_cmd(
+    runs: str = typer.Option(..., "--runs", help="Comma-separated evaluated run dirs"),
+    baseline_model: str = typer.Option(
+        None,
+        "--baseline-model",
+        help="Execution model used as the difference-in-differences baseline",
+    ),
+    bootstrap_samples: int = typer.Option(2000, "--bootstrap-samples", min=1),
+    output: str = typer.Option(
+        None,
+        "--output",
+        help="Optional repository-relative JSON output path",
+    ),
+) -> None:
+    """Provider-free comparison of compatible evaluated runs across models."""
     root = _root()
+    from lexstab.artifacts import json_write
     from lexstab.metrics.crossmodel import compare_runs
 
     run_dirs = [root / item.strip() for item in runs.split(",") if item.strip()]
     try:
-        report = compare_runs(run_dirs)
+        report = compare_runs(
+            run_dirs,
+            baseline_model=baseline_model,
+            samples=bootstrap_samples,
+        )
     except ValueError as exc:
         _fail(str(exc))
         return
-    typer.echo(json.dumps(report, indent=2))
+    if output:
+        destination = root / output
+        json_write(destination, report)
+        _ok(f"wrote cross-model comparison to {destination}")
+    else:
+        typer.echo(json.dumps(report, indent=2))
 
 
 @review_app.command("human")

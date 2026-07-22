@@ -367,6 +367,51 @@ Runs are append-only and each run gets a fresh directory:
 - Transport failures stay in the reliability denominator; behavioral accuracy excluding them is a
   separately labeled analysis (spec §39.11).
 
+### 14.1 Whole-track response-budget repair
+
+When a broad run completed its matrix but failed health because one complete track contained
+response-limit terminations, do not repeat the entire matrix and do not splice selected failed
+cells. Rerun the complete affected track in a fresh run directory, then compose only after the
+repair is healthy.
+
+Example repair run:
+
+```bash
+uv run lexstab run \
+  --config config/run.v0.2.1-elicitation-repair.yaml \
+  --track intent_elicitation \
+  --run-id run-v0.2.1-elicitation-repair-20260721
+
+jq '{status,healthy,baseline_eligible,provider_error_calls,length_terminated_calls,aborted_cells}' \
+  runs/run-v0.2.1-elicitation-repair-20260721/run-summary.json
+```
+
+Require `healthy: true` and zero provider errors, length terminations, and aborted cells. Then create
+a new provider-free composite:
+
+```bash
+uv run lexstab compose-track-repair \
+  --base-run runs/run-v0.2.1-frozen-1x-20260721 \
+  --replacement-run runs/run-v0.2.1-elicitation-repair-20260721 \
+  --output-run-id run-v0.2.1-phase-one-composite-20260721 \
+  --tracks intent_elicitation
+
+uv run lexstab evaluate \
+  --run runs/run-v0.2.1-phase-one-composite-20260721
+
+uv run lexstab report \
+  --run runs/run-v0.2.1-phase-one-composite-20260721 \
+  --formats markdown,html,csv,parquet,json
+```
+
+The command rejects a partial track, changed benchmark, changed code revision, changed prompts,
+changed model or provider, changed sampling parameter, lower response budget, or unhealthy repair.
+Only an increased `max_tokens` budget is permitted. It writes `composition-provenance.json` and a
+visible report disclosure. Both source runs remain unchanged.
+
+This is a provenance-linked composite, not one uniform provider execution. Interpret each exact
+track and cohort under its recorded response budget.
+
 ## 15. LangSmith enablement (spec §23.4; D-015)
 
 Local JSONL traces are always the source of truth; LangSmith is an optional mirror. Enable it by
@@ -852,3 +897,24 @@ Stop on any provider error, length termination, aborted cell, or schema-invalid 
 paired LP0B versus LP1 and LP0BV versus LP1 comparisons at the canonical-case level. Eight
 independent canonical cases permit a bounded RMI-family interpretation if the quality gates pass.
 One operation family does not permit generalization across the broader ontology.
+
+## 20. Cross-model persistence comparison
+
+Use `docs/MODEL_TIER_COMPARISON_PROTOCOL.md` for the complete provider-free preparation, Sonnet 5
+health check, frozen run, and analysis sequence. The checked-in health configuration is
+`config/run.v0.3.0-model-comparison-health.yaml`. It intentionally selects two complete RMI cases,
+all three approved request rows for each case, and all three call-balanced persistence conditions.
+
+The cross-model analysis command makes no provider calls:
+
+```bash
+uv run lexstab compare-runs \
+  --runs <opus-run>,<comparison-run> \
+  --baseline-model claude-opus-4-8 \
+  --bootstrap-samples 2000 \
+  --output runs/model-comparison.json
+```
+
+The command fails closed on mismatched matrices, frozen inputs, non-execution model roles, run
+health, completion, or evaluator source hashes. Its primary result is the paired cross-model
+difference in differences for LP1 relative to LP0B and LP0BV. Raw per-model accuracy is secondary.

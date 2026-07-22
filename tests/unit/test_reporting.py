@@ -15,7 +15,11 @@ from lexstab.reporting.markdown import (
     _measurement_validity_section,
 )
 from lexstab.reporting.report import generate_report
-from lexstab.reporting.tables import format_ci, headline_table
+from lexstab.reporting.tables import (
+    format_ci,
+    headline_table,
+    interpretation_verdict,
+)
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 RUN_DIR = REPO_ROOT / "runs" / "smoke-0001"
@@ -161,6 +165,20 @@ def test_format_ci() -> None:
     assert format_ci({"estimate": 0.5, "ci_low": None, "ci_high": None}) == "0.50"
     assert format_ci({"estimate": None}) == "n/a"
     assert format_ci(None) == "n/a"
+
+
+def test_interpretation_verdict_names_the_blocking_gate() -> None:
+    assert interpretation_verdict({
+        "interpretation_allowed": False,
+        "interpretation_warning": (
+            "Causal interpretation withheld because 5 independent canonical "
+            "case(s) were available; at least 6 are required."
+        ),
+    }) == "withheld: sample-size gate"
+    assert interpretation_verdict({
+        "interpretation_allowed": False,
+        "failed_interpretation_cohorts": [{"architecture": "A0"}],
+    }) == "withheld: schema-validity gate"
 
 
 def test_headline_table_synthetic() -> None:

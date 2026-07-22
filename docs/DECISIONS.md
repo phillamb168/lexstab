@@ -509,3 +509,45 @@ distinguish earliest divergence, later exact recovery, pristine success, and unr
 independent produces artificially small p-values. Source-corpus labels also do not establish that
 source wording survived a gold-injection or formalization boundary. The harness must verify the
 actual stimulus before attaching a lexical interpretation to a result.
+
+## D-046: Recovery composes only a complete compatible track
+
+**Decision.** A completed broad run that fails global health because one track contains provider
+response-limit failures may be recovered without repeating healthy cells only by replacing that
+entire track from a separate healthy run. Composition is provider-free and writes a new run
+directory. It requires exact equality of the benchmark root, code revision, lockfile, prompt,
+procedure and interface hashes, run clock, matrix seed, provider identities, model identities, and
+every matrix row in the replaced track. The replacement may differ only by increased `max_tokens`
+budgets. The composite records all source hashes, replacement cell IDs, row counts, and parameter
+differences, and the report identifies itself as a provenance-linked composite.
+
+Source runs remain immutable. Selected failed rows may not be rerun and spliced individually. A
+partial replacement, changed model, changed prompt, changed sampling parameter, unhealthy repair,
+or mixed benchmark is rejected.
+
+**Reason.** The original v0.2.1 broad run retained 814 completed cells but three
+intent-elicitation invocations reached their response limits. Repeating the other 806 cells would
+add cost without changing their treatment. Whole-track replacement preserves the experimental
+cohort boundary while making the response-budget change visible and auditable.
+
+## D-047: Model-tier persistence uses a paired difference in differences
+
+**Decision.** The first execution-model comparison reuses the complete frozen v0.3.0 persistence
+matrix and changes only `execution_primary`. `claude-opus-4-8` is the baseline and
+`claude-sonnet-5` is the first comparison model. The primary cross-model estimand is:
+
+```text
+(comparison model LP1-minus-prose benefit) - (baseline model LP1-minus-prose benefit)
+```
+
+The comparison is computed for LP0B and LP0BV baselines, with final-state correctness and exact
+protected-argument preservation as outcomes. Runs must match on benchmark root, exact matrix,
+seed, clock, prompt, procedure, interface, non-execution roles, and evaluator source hash. Raw
+per-model condition accuracy remains descriptive. The initial response budget remains 1,024
+tokens, matching the Opus run.
+
+**Reason.** A raw model-accuracy difference cannot show whether canonical-state persistence is
+more valuable for one model tier. The paired difference in differences isolates the change in the
+architecture benefit while preserving case-level pairing. The strict compatibility gate prevents
+model-tier conclusions from absorbing changes in test stimuli, evaluator code, or other model
+roles.

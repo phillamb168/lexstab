@@ -15,6 +15,7 @@ from lexstab.reporting.tables import (
     failure_views,
     format_ci,
     headline_table,
+    interpretation_verdict,
     transition_table,
 )
 
@@ -171,6 +172,23 @@ def _header(metrics: dict, run_manifest: dict) -> list[str]:
     if run_health:
         lines += [
             f"- Run health: `{run_health.get('status', 'unknown')}`",
+            "",
+        ]
+    composition = (
+        (run_manifest.get("research_overrides") or {}).get("composition") or {}
+    )
+    if composition:
+        role_differences = composition.get("parameter_differences") or {}
+        lines += [
+            "> **PROVENANCE-LINKED TRACK COMPOSITE.** Source runs remain immutable. "
+            "The complete replacement track was substituted before provider-free scoring.",
+            "",
+            f"- Base source run: `{composition.get('base_run_id')}`",
+            f"- Replacement source run: `{composition.get('replacement_run_id')}`",
+            f"- Replaced tracks: `{', '.join(composition.get('replaced_tracks') or [])}`",
+            f"- Recorded response-budget differences: `{role_differences}`",
+            f"- Composition provenance: `{composition.get('provenance_path')}` "
+            f"(`{composition.get('provenance_hash')}`)",
             "",
         ]
     if not metrics.get("baseline_eligible", run_manifest.get("baseline_eligible", False)):
@@ -478,11 +496,7 @@ def _transitions_section(metrics: dict) -> list[str]:
         ablation_rows.append({
             "ablation": entry.get("ablation"),
             "delta": format_ci(delta, digits=3) if delta else "n/a",
-            "verdict": (
-                entry.get("verdict", entry.get("note", "n/a"))
-                if entry.get("interpretation_allowed", True)
-                else "withheld: measurement validity gate"
-            ),
+            "verdict": interpretation_verdict(entry),
             "n_pairs": entry.get("n_pairs"),
         })
     lines += [
@@ -1036,11 +1050,7 @@ def _rendering_contrast_section(metrics: dict) -> list[str]:
         {
             "comparison": entry.get("comparison"),
             "delta": format_ci(entry.get("delta"), digits=3),
-            "verdict": (
-                entry.get("verdict")
-                if entry.get("interpretation_allowed", True)
-                else "withheld: measurement validity gate"
-            ),
+            "verdict": interpretation_verdict(entry),
             "n_pairs": entry.get("n_pairs"),
         }
         for entry in comparisons if entry
