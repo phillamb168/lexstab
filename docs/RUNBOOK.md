@@ -915,6 +915,8 @@ uv run lexstab compare-runs \
   --output runs/model-comparison.json
 ```
 
-The command fails closed on mismatched matrices, frozen inputs, non-execution model roles, run
-health, completion, or evaluator source hashes. Its primary result is the paired cross-model
-difference in differences for LP1 relative to LP0B and LP0BV. Raw per-model accuracy is secondary.
+The command fails closed on mismatched matrices, frozen inputs, execution parameters, invoked role
+counts or configurations, run health, completion, or evaluator source hashes. Configuration
+differences for roles not invoked in either run are retained as warnings. Its primary result is the
+paired cross-model difference in differences for LP1 relative to LP0B and LP0BV. Raw per-model
+accuracy is secondary.

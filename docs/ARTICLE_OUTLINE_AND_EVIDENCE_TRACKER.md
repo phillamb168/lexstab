@@ -78,6 +78,7 @@ This plan consolidates three strands of work.
 - Evidence that a formal grounding boundary can prevent action based on hidden-state guesses.
 - No current evidence that model-discovered renderings outperform canonical terminology.
 - The v0.3.0 independent-case replication and broad v0.2.1 Opus analysis.
+- The focused Opus 4.8 versus Sonnet 5 persistence comparison on the same v0.3.0 matrix.
 - The finding that direct Opus handled every adequate boundary variant correctly.
 - The resulting separation between user-language robustness, boundary safety, and internal
   representation persistence.
@@ -117,6 +118,12 @@ user-language variants, but it frequently changed an exact public message when a
 intent was repeatedly handed forward as free-form prose. Canonical authoritative state prevented
 that drift in the eight-case RMI replication. The article should treat this course correction as a
 result, not as a failure to confirm the opening intuition.
+
+The first model-tier replication then found that canonical-state persistence preserved all 24
+messages for both Opus 4.8 and Sonnet 5. Ordinary prose preserved 6 of 24 for Opus and 2 of 24 for
+Sonnet. A visible exactness reminder had little effect for Opus but raised Sonnet to 12 of 24. This
+is evidence that representation controls can interact with model tier, but it remains one
+operation family and does not establish model-native lexical preferences.
 
 ## 4. Purpose, audience, and intended reader change
 
@@ -320,7 +327,8 @@ is not clean evidence for a preferred lexical handle.
   post-canonical set.
 - No stable model-native lexicon has been demonstrated.
 - No general percentage benefit for a lexical adapter can be reported.
-- No cross-model or cross-version lexical preference has been established.
+- No cross-model or cross-version lexical preference has been established. The completed
+  cross-model result concerns representation persistence, not preferred terminology.
 - No cross-operation article-wide estimate is available.
 - No causal mechanism inside the model has been identified.
 
@@ -570,6 +578,11 @@ Report four findings with their limitations.
    five. The canonicalized conditions also produced one unnecessary clarification.
 4. Model-discovered renderings did not beat canonical or bare structured representations. All were
    at ceiling in the five-case post-canonical comparison.
+5. In the same eight-case RMI matrix, both Opus 4.8 and Sonnet 5 scored 24 of 24 under LP1.
+   Ordinary prose scored 6 of 24 for Opus and 2 of 24 for Sonnet. The LP1-minus-prose benefit was
+   0.75 for Opus and 0.917 for Sonnet; the cross-model difference was 0.167 with a 95 percent
+   interval of [-0.042, 0.458]. The exactness reminder produced a secondary cross-model difference
+   of 0.458 [0.208, 0.750], favoring Sonnet in five cases and Opus in none.
 
 The first and fourth points are important non-findings. The experiment narrowed the original thesis.
 The supported signal concerns grounding and persistence, not a model-native vocabulary.
@@ -801,9 +814,11 @@ reliably or know when not to act.
 | Formal grounding can prevent hidden-state inference | Early direct observation | v0.2 inadequate-request traces | Present as exploratory trace |
 | Repeated prose handoffs can alter exact arguments | Supported for one operation family and pinned Opus version | v0.3.0, eight RMI cases | Present as a bounded result |
 | Canonicalize-once improves exact preservation | Supported for exact RMI public messages in the tested protocol | v0.3.0 call-balanced comparison | Report effect, interval, case directions, and scope |
+| Canonical persistence can equalize frontier and economical model success | Supported only for the tested RMI protocol, where both models reached 24/24 under LP1 | v0.3.0 Opus versus Sonnet comparison | Bounded model-tier result, not a general cost claim |
+| Exactness reminders interact with model tier | Secondary bounded signal: Sonnet improved while Opus did not | v0.3.0 cross-model reminder ablation | Report interval and case directions; request replication |
 | Model-discovered terms improve execution | Unsupported | Post-canonical v0.2 cells at ceiling | Explicit non-finding |
 | Middleware beats user training | Open Phase Two question | No participant study yet | Call to action, not conclusion |
-| Economical model plus middleware can match frontier performance | Open Phase Two question | No comparison run yet | Future experiment |
+| Economical model plus middleware can match frontier performance | Supported only for one exact-message operation family | v0.3.0 Opus versus Sonnet LP1, both 24/24 | Do not generalize without more families and cost analysis |
 
 ## 16. Prior-art-aware positioning
 
@@ -1003,7 +1018,11 @@ adapter hypothesis remains unsupported.
 - A bounded claim that canonical authoritative state outperformed repeated free-form handoffs for
   the pinned Opus version.
 - A bounded non-finding that the compact visible verbatim reminder did not improve over unreminded
-  prose in this run.
+  prose for Opus in this run.
+- A bounded model-tier finding that canonical-state persistence reached 24 of 24 for both Opus 4.8
+  and Sonnet 5 while their prose conditions differed.
+- A secondary signal that the visible exactness reminder helped Sonnet more than Opus on this
+  operation family.
 
 Do not turn these into a universal claim that a frontier model "needs" middleware.
 
@@ -1012,7 +1031,8 @@ Do not turn these into a universal claim that a frontier model "needs" middlewar
 - Model-native lexical advantage.
 - Cross-model lexical stability.
 - ROI of training versus middleware.
-- Economical model plus middleware versus frontier direct execution.
+- Economical model plus middleware versus frontier direct execution across multiple operation
+  families and realistic cost inputs.
 - Effects of typed versus spoken input among real participants.
 
 ## 22. Proposed drafting order
@@ -1062,3 +1082,11 @@ When the next evidence checkpoint is complete:
 - Added the frozen v0.3.0 eight-case Opus persistence replication, corrected canonical-case
   inference, effective-input audit, bounded publication claim, and economical-model replication
   gate.
+
+### 2026-07-22
+
+- Added the compatible 72-cell Sonnet 5 replication and formal Opus-versus-Sonnet difference in
+  differences.
+- Recorded the bounded 24-of-24 LP1 result for both models, the inconclusive primary cross-model
+  benefit difference, and the stronger secondary reminder interaction.
+- Preserved cross-model lexical preference, multi-operation generalization, and ROI as open claims.

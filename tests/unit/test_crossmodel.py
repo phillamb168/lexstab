@@ -16,6 +16,10 @@ def _write_jsonl(path: Path, rows: list[dict]) -> None:
     )
 
 
+def _read_json(path: Path) -> dict:
+    return json.loads(path.read_text(encoding="utf-8"))
+
+
 def _make_run(
     root: Path,
     *,
@@ -194,4 +198,67 @@ def test_compare_runs_requires_two_unique_models(tmp_path: Path):
     second = _make_run(tmp_path, run_id="second", model_id="same", lp0b=(0, 0))
 
     with pytest.raises(ValueError, match="must be unique"):
+        compare_runs([first, second], samples=10)
+
+
+def test_compare_runs_warns_but_allows_unused_role_configuration_difference(
+    tmp_path: Path,
+):
+    first = _make_run(tmp_path, run_id="first", model_id="a", lp0b=(1, 0))
+    second = _make_run(tmp_path, run_id="second", model_id="b", lp0b=(0, 0))
+    manifest = _read_json(second / "run-manifest.json")
+    manifest["resolved_roles"]["evaluation_judge"]["model_id"] = "different-judge"
+    _write_json(second / "run-manifest.json", manifest)
+
+    result = compare_runs([first, second], samples=10)
+
+    compatibility = result["compatibility"]
+    assert compatibility["compatible"] is True
+    assert compatibility["execution_model_is_only_invoked_role_difference"] is True
+    assert compatibility["invoked_role_counts"] == {
+        "a": {"execution_primary": 6},
+        "b": {"execution_primary": 6},
+    }
+    assert compatibility["unused_role_configuration_differences"][0]["role"] == (
+        "evaluation_judge"
+    )
+    assert "configured but unused role evaluation_judge differs" in "\n".join(
+        compatibility["warnings"]
+    )
+
+
+def test_compare_runs_rejects_invoked_non_execution_role_difference(tmp_path: Path):
+    first = _make_run(tmp_path, run_id="first", model_id="a", lp0b=(1, 0))
+    second = _make_run(tmp_path, run_id="second", model_id="b", lp0b=(0, 0))
+    manifest = _read_json(second / "run-manifest.json")
+    manifest["resolved_roles"]["evaluation_judge"]["model_id"] = "different-judge"
+    _write_json(second / "run-manifest.json", manifest)
+    for run_dir in (first, second):
+        rows = [
+            json.loads(line)
+            for line in (run_dir / "invocations.jsonl").read_text().splitlines()
+        ]
+        rows.append(
+            {
+                "cell_id": "judge-cell",
+                "role": "evaluation_judge",
+                "finish_reason": "end_turn",
+                "latency_ms": 10,
+                "usage": {"prompt_tokens": 10, "completion_tokens": 2},
+            }
+        )
+        _write_jsonl(run_dir / "invocations.jsonl", rows)
+
+    with pytest.raises(ValueError, match="invoked role evaluation_judge"):
+        compare_runs([first, second], samples=10)
+
+
+def test_compare_runs_rejects_execution_budget_difference(tmp_path: Path):
+    first = _make_run(tmp_path, run_id="first", model_id="a", lp0b=(1, 0))
+    second = _make_run(tmp_path, run_id="second", model_id="b", lp0b=(0, 0))
+    manifest = _read_json(second / "run-manifest.json")
+    manifest["resolved_roles"]["execution_primary"]["parameters"]["max_tokens"] = 2048
+    _write_json(second / "run-manifest.json", manifest)
+
+    with pytest.raises(ValueError, match="differs.*beyond model_id"):
         compare_runs([first, second], samples=10)

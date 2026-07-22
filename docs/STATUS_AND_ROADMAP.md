@@ -860,20 +860,31 @@ mutual research deliverable rather than access to private prompts alone.
 Review and commit the provider-free composition feature, corrected report labels, generated Phase
 One composite report, `docs/PHASE_ONE_EVIDENCE_SUMMARY.md`, and the model-tier comparison tooling.
 
-The first comparison model is now pinned as `claude-sonnet-5`. The checked-in health slice has 18
-cells and 72 estimated calls. The unchanged full v0.3.0 configuration resolves to 72 cells and 288
-estimated calls, with the exact Opus matrix hash `sha256:4774655317382ac4812c52fa159d955130919c2a00fd213c8820d2aaf124ffd1`.
-The stored Opus run has been re-evaluated with evaluator source hash
-`sha256:17275a59c3a17a51aa8a6dfa8d29bb92673cff6e0905f50c76e87d9fcbe048ad`.
+The focused model-tier comparison is complete:
 
-After the commit, follow `docs/MODEL_TIER_COMPARISON_PROTOCOL.md` in order:
+- Opus run: `runs/run-v0.3.0-rmi-replication-1x-20260721`;
+- Sonnet run: `runs/run-v0.3.0-sonnet5-rmi-replication-1x-20260722`;
+- formal comparison: `runs/model-comparison-opus48-sonnet5-v0.3.0.json`;
+- shared matrix hash: `sha256:4774655317382ac4812c52fa159d955130919c2a00fd213c8820d2aaf124ffd1`;
+- shared evaluator source hash: `sha256:eef042d624358aee1b0ba4602afb6ea30492d6c9439c1b0d8e8ae11b8dd1e8bf`;
+- invoked roles: 288 `execution_primary` calls per model and no other invoked roles.
 
-1. run the provider-free readiness commands;
-2. run and inspect the 18-cell Sonnet health check;
-3. only after clean health, run the frozen 72-cell Sonnet matrix once;
-4. evaluate and report the Sonnet run;
-5. run `lexstab compare-runs` with Opus as the declared baseline;
-6. interpret the paired difference in differences before considering more repetitions.
+Within the tested RMI family, LP1 canonical-state persistence scored 24 of 24 for both models.
+LP0B prose scored 6 of 24 for Opus and 2 of 24 for Sonnet. LP0BV reminded prose scored 5 of 24
+for Opus and 12 of 24 for Sonnet. The Sonnet-minus-Opus difference in the LP1-versus-LP0B benefit
+was +0.167 with a case-clustered 95 percent interval of [-0.042, 0.458]. The cross-model reminder
+effect was +0.458 [0.208, 0.750], with five cases favoring Sonnet's reminder response, zero
+favoring Opus, and three tying. Treat the reminder result as a secondary bounded finding, not as a
+general economical-model conclusion.
+
+The formal comparison records two non-causal warnings for configured but unused role budgets and
+one code-revision warning. Frozen prompts, procedures, interfaces, execution parameters, matrix,
+and evaluator match. A same-revision rerun is preferable before publication but is not required to
+inspect this result.
+
+The next decision is whether to replicate the focused comparison at higher repetitions or broaden
+to additional operation families. Do not spend on either until the current comparison, case-level
+heterogeneity, and article relevance have been reviewed.
 
 The project should not yet:
 
@@ -883,6 +894,6 @@ The project should not yet:
 - claim a general lexical-adapter benefit;
 - mutate v0.1.0, v0.2.0, v0.2.1, or v0.3.0.
 
-The focused model-tier comparison is now the cheapest high-value next experiment. The human
-training versus middleware study should follow as a separate runtime-language protocol rather than
-being inferred from the current gold-start data.
+The human training versus middleware study remains a separate runtime-language protocol and cannot
+be inferred from the current gold-start data. Cross-model lexical preference also remains untested:
+this comparison concerns preservation of exact operational arguments across representation modes.

@@ -542,9 +542,10 @@ matrix and changes only `execution_primary`. `claude-opus-4-8` is the baseline a
 
 The comparison is computed for LP0B and LP0BV baselines, with final-state correctness and exact
 protected-argument preservation as outcomes. Runs must match on benchmark root, exact matrix,
-seed, clock, prompt, procedure, interface, non-execution roles, and evaluator source hash. Raw
-per-model condition accuracy remains descriptive. The initial response budget remains 1,024
-tokens, matching the Opus run.
+seed, clock, prompt, procedure, interface, invoked role counts and configurations, execution
+parameters, and evaluator source hash. A configured role that was not invoked in either run may
+differ, but the difference is retained as a warning. Raw per-model condition accuracy remains
+descriptive. The initial response budget remains 1,024 tokens, matching the Opus run.
 
 **Reason.** A raw model-accuracy difference cannot show whether canonical-state persistence is
 more valuable for one model tier. The paired difference in differences isolates the change in the

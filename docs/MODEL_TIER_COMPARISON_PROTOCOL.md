@@ -69,13 +69,15 @@ count as three independent cases.
 - the same matrix hash and exact matrix rows;
 - the same seed and frozen run clock;
 - the same prompt, procedure, and interface hashes;
-- the same non-execution model-role configuration;
+- the same configuration and invocation counts for every role actually used by the run;
 - complete, healthy, evaluated artifacts;
 - the same evaluation-harness source hash.
 
-The execution model ID, provider details, and response statistics may differ. A code-revision
-difference is reported as a warning when the frozen execution inputs still match. Before
-publication, rerunning both models from one code revision is preferable.
+The execution model ID and response statistics may differ. The execution provider and parameters,
+including `max_tokens`, must remain identical. Configuration differences for roles that were not
+invoked in either run are recorded as non-causal warnings rather than blocking the comparison. A
+code-revision difference is also reported as a warning when the frozen execution inputs still
+match. Before publication, rerunning both models from one code revision is preferable.
 
 Re-evaluate the stored Opus run after the comparison implementation is finalized. Evaluation is
 provider-free and makes the evaluator source hash match the future Sonnet evaluation.

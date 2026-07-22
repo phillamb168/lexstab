@@ -285,18 +285,26 @@ def _load_run(run_dir: Path) -> dict[str, Any]:
     }
 
 
-def _non_execution_roles(manifest: dict) -> dict:
-    return {
-        key: value
-        for key, value in (manifest.get("resolved_roles") or {}).items()
-        if key != "execution_primary"
-    }
+def _role_contract(manifest: dict, role: str, *, omit_model_id: bool = False) -> dict:
+    contract = dict(((manifest.get("resolved_roles") or {}).get(role) or {}))
+    if omit_model_id:
+        contract.pop("model_id", None)
+    return contract
+
+
+def _invoked_role_counts(run: dict[str, Any]) -> Counter:
+    return Counter(str(row.get("role") or "unknown") for row in run["invocations"])
 
 
 def _check_compatibility(runs: list[dict[str, Any]]) -> dict[str, Any]:
     reference = runs[0]
     mismatches: list[str] = []
     warnings: list[str] = []
+    unused_role_differences: list[dict[str, Any]] = []
+    invoked_counts = {
+        run["model_id"]: _invoked_role_counts(run)
+        for run in runs
+    }
     for run in runs[1:]:
         for field in _EXACT_MANIFEST_FIELDS:
             if run["manifest"].get(field) != reference["manifest"].get(field):
@@ -308,11 +316,55 @@ def _check_compatibility(runs: list[dict[str, Any]]) -> dict[str, Any]:
             mismatches.append(
                 f"{run['model_id']}: matrix rows differ from {reference['model_id']}"
             )
-        if _non_execution_roles(run["manifest"]) != _non_execution_roles(reference["manifest"]):
+        if invoked_counts[run["model_id"]] != invoked_counts[reference["model_id"]]:
             mismatches.append(
-                f"{run['model_id']}: non-execution model roles differ from "
-                f"{reference['model_id']}"
+                f"{run['model_id']}: invoked role counts differ from "
+                f"{reference['model_id']}; observed "
+                f"{dict(sorted(invoked_counts[run['model_id']].items()))} versus "
+                f"{dict(sorted(invoked_counts[reference['model_id']].items()))}"
             )
+        if _role_contract(
+            run["manifest"], "execution_primary", omit_model_id=True
+        ) != _role_contract(
+            reference["manifest"], "execution_primary", omit_model_id=True
+        ):
+            mismatches.append(
+                f"{run['model_id']}: execution_primary configuration differs from "
+                f"{reference['model_id']} beyond model_id"
+            )
+        all_invoked_roles = set(invoked_counts[run["model_id"]]) | set(
+            invoked_counts[reference["model_id"]]
+        )
+        for role in sorted(all_invoked_roles - {"execution_primary"}):
+            if _role_contract(run["manifest"], role) != _role_contract(
+                reference["manifest"], role
+            ):
+                mismatches.append(
+                    f"{run['model_id']}: invoked role {role} configuration differs from "
+                    f"{reference['model_id']}"
+                )
+        configured_roles = set(
+            (run["manifest"].get("resolved_roles") or {})
+        ) | set((reference["manifest"].get("resolved_roles") or {}))
+        unused_roles = configured_roles - all_invoked_roles
+        for role in sorted(unused_roles):
+            reference_contract = _role_contract(reference["manifest"], role)
+            run_contract = _role_contract(run["manifest"], role)
+            if run_contract != reference_contract:
+                difference = {
+                    "comparison_model": run["model_id"],
+                    "reference_model": reference["model_id"],
+                    "role": role,
+                    "reference_configuration": reference_contract,
+                    "comparison_configuration": run_contract,
+                    "role_was_invoked": False,
+                }
+                unused_role_differences.append(difference)
+                warnings.append(
+                    f"{run['model_id']}: configured but unused role {role} differs from "
+                    f"{reference['model_id']}; no invocation from this role appears in "
+                    "either run, so the difference is non-causal for this comparison."
+                )
         source_hash = run["metrics"].get("evaluation_harness_source_hash")
         reference_hash = reference["metrics"].get("evaluation_harness_source_hash")
         if not source_hash or not reference_hash:
@@ -337,7 +389,12 @@ def _check_compatibility(runs: list[dict[str, Any]]) -> dict[str, Any]:
             "evaluation_harness_source_hash"
         ),
         "warnings": warnings,
-        "execution_model_is_only_intended_model_variable": True,
+        "invoked_role_counts": {
+            model_id: dict(sorted(counts.items()))
+            for model_id, counts in invoked_counts.items()
+        },
+        "unused_role_configuration_differences": unused_role_differences,
+        "execution_model_is_only_invoked_role_difference": True,
     }
 
 
